@@ -1,0 +1,20 @@
+{
+  "name": "complete-package-template",
+  "version": "1.0.0",
+  "description": "TypeScript package template",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "test": "turbo test",
+    "dev": "turbo dev",
+    "lint": "turbo lint"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "devDependencies": {
+    "turbo": "^2.9.15"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}

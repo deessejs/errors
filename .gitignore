@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+.turbo/
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+
+# Caches
+.cache/
+.temp/
+.tmp/
+
+# pnpm
+.pnpm-store/
+
+# Turbo remote cache
+.turbo/
+
+# Generated files
+*.tsbuildinfo
