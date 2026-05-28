@@ -70,7 +70,6 @@ All workflows are located at `.github/workflows/` at the repository root:
 
 When deep expertise is needed:
 - **`tech-lead`**: To discuss architectural changes that impact the build or adding new packages.
-- **`codex`**: For complex troubleshooting or CI/CD debugging.
 
 ---
 

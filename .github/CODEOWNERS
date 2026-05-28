@@ -1,0 +1,5 @@
+# Default code owners for the repository
+* @nesalia-inc/engineering
+
+# CI/CD
+/.github/ @nesalia-inc/engineering
