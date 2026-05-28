@@ -1,0 +1,17 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force Unix line endings for text files
+*.{js,ts,jsx,tsx,json,css,md,yml,yaml,yml} text eol=lf
+
+# Denote all files that are truly binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.gif binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

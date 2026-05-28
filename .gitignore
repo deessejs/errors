@@ -41,3 +41,6 @@ coverage/
 
 # Generated files
 *.tsbuildinfo
+
+# Changesets
+.changeset/

@@ -24,9 +24,9 @@ color: orange
 ## Core Responsibilities
 
 ### 1. Versioning & Changelog
-- **SemVer Enforcement**: Ensure version bumps follow Semantic Versioning (Major.Minor.Patch) for publishable packages.
-- **Automated Changelogs**: Generate clear, categorized changelogs (Features, Fixes, Breaking Changes) from conventional commits.
-- **Git Flow Management**: Strictly manage the promotion of code from `dev` (unstable) to `staging` (release candidate) to `main` (production).
+- **Changesets**: Use Changesets for release management. It is well-suited for monorepos, provides manual control over releases, and generates changelogs automatically.
+- **SemVer Enforcement**: Ensure version bumps follow Semantic Versioning (Major.Minor.Patch).
+- **Git Flow Management**: Manage the promotion of code from `dev` to `staging` to `main`.
 
 ### 2. Build & Packaging
 - **Multi-Project Strategy**: Oversee build configurations for packages (`packages/*`) and applications (`apps/*`).
@@ -37,6 +37,26 @@ color: orange
 - **Workflow Optimization**: Monitor build times and optimize cache strategies for `pnpm` and `turborepo`.
 - **Failure Recovery**: In case of a pipeline failure, analyze if it's a transient infrastructure issue or a regression in the build configuration.
 - **Secret Management**: Ensure all environment variables are securely handled.
+- **CodeQL**: CodeQL is configured at the repository level, not in this template.
+
+### 4. Git Hooks
+- **Pre-commit Hooks**: Use Husky to run lint and type-check before commits.
+- **Scope**: Pre-commit hooks run `pnpm lint && pnpm turbo type-check` only.
+- **No commit-msg hooks**: Developers can commit in any format. No commit message enforcement.
+
+---
+
+## Release Process
+
+### Changesets Setup
+1. Add changesets when making significant changes: `npx changeset`
+2. Changesets create `.changeset/*.md` files that track version bumps
+3. When ready to release, merge the changeset PR to bump versions and generate changelog
+
+### Release Workflow
+- Use Changesets for version management
+- Releases are triggered manually via Changesets PRs
+- Changelog is auto-generated from changeset files
 
 ---
 
@@ -49,6 +69,8 @@ color: orange
 | **Build Orchestration** | Turborepo | Task caching, parallel execution, dependency graph |
 | **Language** | TypeScript | Strict mode, declaration generation |
 | **Testing** | Vitest | Unit tests with coverage |
+| **Release** | Changesets | Monorepo versioning and changelog generation |
+| **Git Hooks** | Husky | Pre-commit lint and type-check |
 
 ### Critical Workflow Constraints
 - **Branch Flow**:
@@ -56,6 +78,7 @@ color: orange
     - `staging`: Contains work that has been reviewed and is ready for release testing.
     - `main`: Production-ready code. Contains the official release history.
 - **All developers push directly to `main`**. The release engineer manages the flow from `main` to `staging` and from `staging` to `main` (releases).
+- **Web App**: The `apps/web` is a documentation site. No cross-package imports required.
 
 ### CI/CD Workflows at Root
 All workflows are located at `.github/workflows/` at the repository root:
@@ -63,6 +86,17 @@ All workflows are located at `.github/workflows/` at the repository root:
 - `types.yml` - TypeScript type checking
 - `tests.yml` - Vitest test execution
 - `build.yml` - Production builds
+- `release.yml` - Changesets release workflow
+
+---
+
+## What's NOT Included
+
+This template deliberately excludes:
+- **CodeQL**: Configured at repository level
+- **.devcontainer/**: Not included, contributors use their own setup
+- **Cross-package imports**: Web app is docs only, no imports from packages
+- **Commit-msg hooks**: No commit message format enforcement
 
 ---
 
@@ -77,3 +111,4 @@ When deep expertise is needed:
 - **Check `CLAUDE.md`** for project-specific guidance and branching strategy.
 - **Reference `turbo.json`** for the build pipeline configuration.
 - **Reference `package.json`** at root for workspace scripts.
+- **Reference `.github/workflows/release.yml`** for the release process.
