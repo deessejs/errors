@@ -18,6 +18,16 @@ There are two ways to work with this project:
 
 - **Always communicate in English.** All explanations, comments, and documentation must be in English.
 
+## Branching Strategy
+
+This project follows the branching model: `main` <- `staging` <- `dev`
+
+- **dev**: Latest work-in-progress changes. Developers work here.
+- **staging**: Contains work that has been reviewed and is ready for release testing.
+- **main**: Production-ready code. Contains the official release history.
+
+All developers push directly to `main`. The release engineer is responsible for managing the flow from `main` to `staging` and from `staging` to `main` (releases).
+
 ## Web Search
 
 When performing web searches, you MUST use the `fresh` CLI tool. Never use other search methods.
