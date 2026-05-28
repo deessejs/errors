@@ -26,12 +26,13 @@ function raise(errorInstance: ErrorInstance): never
 
 ```typescript
 import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
 
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
 });
 
 raise(ValidationError({ field: 'email' }));
@@ -43,12 +44,13 @@ Native `throw` is also supported:
 
 ```typescript
 import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
 
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
 });
 
 // Both work identically:
@@ -72,28 +74,12 @@ try {
 }
 ```
 
-### With Notes
-
-```typescript
-const AppError = error({ name: 'AppError' });
-
-try {
-  process();
-} catch (err) {
-  raise(
-    AppError({ input }).addNote('Batch job failed')
-  );
-  // or
-  throw AppError({ input }).addNote('Batch job failed');
-}
-```
-
 ## Why Support Both?
 
 ### Benefits of `raise()`
 
 1. **Middleware potential** — Can be intercepted, wrapped, or logged
-2. **Method chaining** — `raise(error.from(cause).addNote('...'))` reads naturally
+2. **Method chaining** — `raise(error.from(cause))` reads naturally
 3. **Consistent API** — All library errors go through the same function
 
 ### Benefits of `throw`
@@ -120,16 +106,13 @@ Use `raise()` in library code and internal application code for consistency. Use
 | Aspect | Native JS | @deessejs/errors |
 |--------|----------|------------------|
 | Syntax | `throw new Error('msg')` | `raise(ErrorFactory())` or `throw ErrorFactory()` |
-| Custom errors | `class X extends Error` | `error({ name: 'X' })` |
+| Custom errors | `class X extends Error` | `error({ name: 'X', fields: z.object(...) })` |
 | Chaining | `err.cause = cause` | `.from(cause)` |
-| Enriching | N/A | `.addNote()` |
 | Consistency | Mix of `throw` + built-ins | Both supported |
 
 ## Design Rationale
 
 See [Design Philosophy](../design-philosophy.md) for core principles.
-
-**Additional notes for `raise()`:**
 
 **Why support both `raise()` and `throw`?**
 
@@ -142,4 +125,3 @@ Not forcing a paradigm shift reduces adoption friction:
 
 - [error-function.md](./error-function.md) — How to create errors
 - [chaining.md](./chaining.md) — Exception chaining with `.from()`
-- [notes.md](./notes.md) — Enriching errors with notes

@@ -7,7 +7,10 @@ The `is()` function checks if an error is an instance of a specific error type (
 ## API
 
 ```typescript
-function is(error: unknown, ErrorType: ErrorType): boolean
+function is<T extends ErrorFactory>(
+  error: unknown,
+  ErrorType: T
+): boolean
 ```
 
 ### Parameters

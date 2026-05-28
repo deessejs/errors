@@ -134,4 +134,3 @@ Most code needs to find the most relevant (most recent) error first:
 
 - [chaining.md](./chaining.md) — Setting cause with `.from()`
 - [is-function.md](./is-function.md) — Type checking
-- [notes.md](./notes.md) — Notes are preserved through chains

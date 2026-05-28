@@ -9,12 +9,14 @@ When defining an error with `error()`, you can provide a `message` template that
 ### Error Definition
 
 ```typescript
+import { z } from 'zod';
+
 const MyError = error({
   name: 'MyError',
-  fields: {
-    field1: { type: 'string' },
-    field2: { type: 'number' },
-  },
+  fields: z.object({
+    field1: z.string(),
+    field2: z.number(),
+  }),
   message: 'Template with {field1} and {field2}',
 });
 
@@ -54,11 +56,13 @@ message: 'Enter \{fieldName\} here'
 ### String Interpolation
 
 ```typescript
+import { z } from 'zod';
+
 const RequiredFieldError = error({
   name: 'RequiredFieldError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
   message: 'Field "{field}" is required',
 });
 
@@ -69,13 +73,15 @@ err.message;  // 'Field "email" is required'
 ### Multiple Fields
 
 ```typescript
+import { z } from 'zod';
+
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-    expected: { type: 'string' },
-    actual: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+    expected: z.string(),
+    actual: z.string(),
+  }),
   message: 'Field "{field}" expected {expected}, got {actual}',
 });
 
@@ -91,12 +97,14 @@ err.message;  // 'Field "age" expected number, got string'
 ### Nested Fields
 
 ```typescript
+import { z } from 'zod';
+
 const ConfigError = error({
   name: 'ConfigError',
-  fields: {
-    key: { type: 'string' },
-    path: { type: 'string' },
-  },
+  fields: z.object({
+    key: z.string(),
+    path: z.string(),
+  }),
   message: 'Config key "{key}" not found in {path}',
 });
 
@@ -111,11 +119,13 @@ err.message;  // 'Config key "database.url" not found in config.json'
 ### Modifiers
 
 ```typescript
+import { z } from 'zod';
+
 const AppError = error({
   name: 'AppError',
-  fields: {
-    userId: { type: 'string' },
-  },
+  fields: z.object({
+    userId: z.string(),
+  }),
   message: 'User ID: {userId:upper}',
 });
 
@@ -126,11 +136,13 @@ err.message;  // 'User ID: ABC123'
 ### JSON Modifier
 
 ```typescript
+import { z } from 'zod';
+
 const DataError = error({
   name: 'DataError',
-  fields: {
-    data: { type: 'unknown' },
-  },
+  fields: z.object({
+    data: z.record(z.unknown()),
+  }),
   message: 'Invalid data: {data:json}',
 });
 
@@ -170,7 +182,7 @@ raise(ValidationError({ field: 'email' }));
 ```
 
 1. **DRY** — Define the template once, not at every call site
-2. **Type-safe** — Fields are validated; placeholders reference typed fields
+2. **Type-safe** — Fields are validated by Standard Schema
 3. **Consistent messages** — All errors use the same format
 
 **Why placeholder syntax `{field}` not template literals?**
@@ -190,6 +202,8 @@ The template system is intentionally simple:
 For complex message formatting, consider building the message in code:
 
 ```typescript
+import { z } from 'zod';
+
 const err = AppError({
   field: 'email',
   message: computeMessage('email', context),  // Custom logic
@@ -198,6 +212,5 @@ const err = AppError({
 
 ## Related Features
 
-- [error-function.md](./error-function.md) — Error definition
-- [notes.md](./notes.md) — Notes provide additional context beyond the message
-- [output-formatting.md](./output-formatting.md) — How messages appear in dev vs prod
+- [error-function.md](./error-function.md) — Error definition with Standard Schema
+- [chaining.md](./chaining.md) — Chaining adds context to errors

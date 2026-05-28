@@ -64,6 +64,7 @@ is(err, StorageError);   // true
 
 ```typescript
 import { error, raise, is } from '@deessejs/errors';
+import { z } from 'zod';
 
 const AppError = error({ name: 'AppError' });
 
@@ -80,9 +81,9 @@ const ValidationError = error({
 const RequiredFieldError = error({
   name: 'RequiredFieldError',
   inherits: ValidationError,
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
 });
 
 // AppError hierarchy:
@@ -195,7 +196,5 @@ const ChildError = error({
 
 ## Related Features
 
-- [error-function.md](./error-function.md) — Error definition
+- [error-function.md](./error-function.md) — Error definition with Standard Schema
 - [is-function.md](./is-function.md) — Type checking with inheritance
-- [type-guards.md](./type-guards.md) — Type-safe narrowing
-- [predefined-errors.md](./predefined-errors.md) — Extending predefined errors

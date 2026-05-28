@@ -86,9 +86,13 @@ try {
 When handling multiple errors, only the first is used as the direct cause:
 
 ```typescript
+import { z } from 'zod';
+
 const BatchError = error({
   name: 'BatchError',
-  fields: { count: { type: 'number' } },
+  fields: z.object({
+    count: z.number(),
+  }),
   httpStatus: 500,
 });
 

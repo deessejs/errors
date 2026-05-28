@@ -25,13 +25,14 @@ Test the following scenarios:
 
 ```typescript
 import { error } from '@deessejs/errors';
+import { z } from 'zod';
 
 const MsgError = error({
   name: 'MsgError',
-  fields: {
-    field: { type: 'string' },
-    count: { type: 'number' },
-  },
+  fields: z.object({
+    field: z.string(),
+    count: z.number(),
+  }),
   message: 'Field "{field}" has {count} items',
 });
 
@@ -42,7 +43,9 @@ expect(err.message).toBe('Field "email" has 5 items');
 // :upper modifier
 const UpperError = error({
   name: 'UpperError',
-  fields: { value: { type: 'string' } },
+  fields: z.object({
+    value: z.string(),
+  }),
   message: 'Value: {value:upper}',
 });
 expect(UpperError({ value: 'hello' }).message).toBe('Value: HELLO');
@@ -50,7 +53,9 @@ expect(UpperError({ value: 'hello' }).message).toBe('Value: HELLO');
 // :json modifier
 const JsonError = error({
   name: 'JsonError',
-  fields: { data: { type: 'unknown' } },
+  fields: z.object({
+    data: z.record(z.unknown()),
+  }),
   message: 'Data: {data:json}',
 });
 expect(JsonError({ data: { id: 1 } }).message).toBe('Data: {"id":1}');

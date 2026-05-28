@@ -13,7 +13,7 @@ Write unit tests for the error() factory function.
 Test the following scenarios:
 
 - Basic error creation with name only
-- Error with fields definition
+- Error with Standard Schema fields (Zod)
 - Error with custom message
 - Error with inherits (single parent)
 - Error with inherits (multiple parents)
@@ -24,15 +24,20 @@ Test the following scenarios:
 ## Test Coverage
 
 ```typescript
+import { error, is } from '@deessejs/errors';
+import { z } from 'zod';
+
 // Basic creation
 const BasicError = error({ name: 'BasicError' });
 expect(BasicError()).toBeDefined();
 expect(BasicError().name).toBe('BasicError');
 
-// With fields
+// With Standard Schema fields (Zod)
 const FieldError = error({
   name: 'FieldError',
-  fields: { field: { type: 'string' } },
+  fields: z.object({
+    field: z.string(),
+  }),
 });
 const err = FieldError({ field: 'value' });
 expect(err.fields.field).toBe('value');
@@ -45,7 +50,9 @@ expect(is(ChildError(), ParentError)).toBe(true);
 // With message
 const MsgError = error({
   name: 'MsgError',
-  fields: { value: { type: 'string' } },
+  fields: z.object({
+    value: z.string(),
+  }),
   message: 'Value: {value}',
 });
 const msgErr = MsgError({ value: 'test' });

@@ -7,9 +7,11 @@ The `error()` function creates error factory functions that define error types f
 ## API
 
 ```typescript
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+
 function error(config: {
   name: string;
-  fields?: Record<string, FieldDefinition>;
+  fields?: StandardSchemaV1;
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
   httpStatus?: number;
@@ -21,7 +23,7 @@ function error(config: {
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `name` | `string` | Yes | Error name identifier |
-| `fields` | `Record<string, FieldDefinition>` | No | Schema fields for error data |
+| `fields` | `StandardSchemaV1` | No | Schema fields (Zod, Valibot, ArkType, etc.) |
 | `inherits` | `ErrorFactory \| ErrorFactory[]` | No | Parent error factory to inherit from |
 | `message` | `string` | No | Message template with `{field}` placeholders |
 | `httpStatus` | `number` | No | HTTP status code for web frameworks |
@@ -45,21 +47,50 @@ const NotFoundError = error({
 raise(NotFoundError());
 ```
 
-### With Fields
+### With Fields (Standard Schema)
+
+Errors use Standard Schema for field definitions. Use any compatible library:
 
 ```typescript
+import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
+
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-    reason: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+  }),
   httpStatus: 400,
 });
 
 const err = ValidationError({ field: 'email', reason: 'invalid format' });
 err.fields.field;    // 'email'
 err.fields.reason;   // 'invalid format'
+```
+
+### With Valibot
+
+```typescript
+import * as valibot from 'valibot';
+
+const ValibotError = error({
+  name: 'ValibotError',
+  fields: valibot.object({
+    field: valibot.string(),
+  }),
+});
+```
+
+### With ArkType
+
+```typescript
+import * as ark from 'arktype';
+
+const ArkError = error({
+  name: 'ArkError',
+  fields: ark.type({ field: 'string' }),
+});
 ```
 
 ### Without Fields (Omit Entirely)
@@ -105,11 +136,13 @@ is(err, NetworkError);     // true if err is CombinedError
 ### With Message Template
 
 ```typescript
+import { z } from 'zod';
+
 const RequiredFieldError = error({
   name: 'RequiredFieldError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
   message: 'Field "{field}" is required',
 });
 
@@ -120,11 +153,13 @@ err.message;  // 'Field "email" is required'
 ### With HTTP Status
 
 ```typescript
+import { z } from 'zod';
+
 const NotFoundError = error({
   name: 'NotFoundError',
-  fields: {
-    path: { type: 'string' },
-  },
+  fields: z.object({
+    path: z.string(),
+  }),
   httpStatus: 404,
 });
 
@@ -137,22 +172,21 @@ err.httpStatus;  // 404
 The returned `ErrorFactory` is:
 
 1. **Callable** — `ErrorFactory(fields?)` creates an error instance
-2. **Typed** — TypeScript infers input/output types from fields
+2. **Typed** — TypeScript infers input/output types from Standard Schema
 3. **Namespaced** — The error name is available via `ErrorFactory.name`
 
 ```typescript
+import { z } from 'zod';
+
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
 });
 
 ValidationError.name;   // 'ValidationError'
-
-// TypeScript types:
-type Input = { field: string };
-type Output = ValidationError & { field: string };
+// TypeScript infers types from the Zod schema
 ```
 
 ## Error Instance Properties
@@ -176,6 +210,16 @@ All errors have these guaranteed properties:
 Fields are always accessed via `err.fields`:
 
 ```typescript
+import { z } from 'zod';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+  }),
+});
+
 const err = ValidationError({ field: 'email', reason: 'invalid format' });
 
 // Correct
@@ -189,76 +233,18 @@ err.fields.reason;  // 'invalid format'
 
 **Important:** `err.fields` is always an object (never `undefined` or `null`). If no fields were defined, it's an empty object `{}`.
 
-## Field Definitions
-
-Errors use **Standard Schema** for field definitions. This makes errors interoperable with any Standard Schema compatible library (Zod, Valibot, ArkType, etc.).
-
-### Standard Schema Only
-
-```typescript
-import { error, raise } from '@deessejs/errors';
-import { z } from 'zod';
-
-// Use Zod schema as field validator
-const ValidationError = error({
-  name: 'ValidationError',
-  fields: z.object({
-    field: z.string(),
-    reason: z.string(),
-  }),
-  httpStatus: 400,
-});
-
-// Works with Valibot too
-import * as valibot from 'valibot';
-const ValibotError = error({
-  name: 'ValibotError',
-  fields: valibot.object({
-    field: valibot.string(),
-  }),
-});
-
-// Works with ArkType
-import * as ark from 'arktype';
-const ArkError = error({
-  name: 'ArkError',
-  fields: ark.type({ field: 'string' }),
-});
-```
-
-### Why Standard Schema?
-
-Standard Schema allows the library to integrate with any validation library:
-- **Zod**, **Valibot**, **ArkType**, and many others implement this interface
-- No additional runtime dependencies beyond your choice of validator
-- Integrate once, validate anywhere
-- Type inference works seamlessly
-
-### Error Fields (for nesting)
-
-Errors can contain other errors as field values:
-
-```typescript
-const BatchError = error({
-  name: 'BatchError',
-  fields: {
-    errors: { type: 'array', items: { type: 'error' } },
-  },
-});
-
-const err = BatchError({ errors: [innerError1, innerError2] });
-err.fields.errors;  // Array of ErrorInstance
-
-// Access nested error properties
-err.fields.errors[0].name;    // Name of first error
-err.fields.errors[0].message; // Message of first error
-```
-
-### Serialization
+## Serialization
 
 Errors serialize to JSON with all properties:
 
 ```typescript
+import { z } from 'zod';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({ field: z.string() }),
+});
+
 const err = ValidationError({ field: 'email' })
   .addNote('Added at runtime');
 
@@ -284,17 +270,16 @@ JSON.stringify(err);
 
 See [Design Philosophy](../design-philosophy.md) for core principles.
 
-**Additional notes for `error()`:**
-
-**Why support Standard Schema?**
+**Why Standard Schema?**
 
 Standard Schema allows the library to integrate with any validation library:
-- Zod, Valibot, ArkType, and many others implement this interface
-- No additional runtime dependencies
+- **Zod**, **Valibot**, **ArkType**, and many others implement this interface
+- No additional runtime dependencies beyond your choice of validator
 - Integrate once, validate anywhere
+- Type inference works seamlessly
 
 ```typescript
-// Your app uses Zod
+// Your app uses Zod for everything
 import { z } from 'zod';
 const UserSchema = z.object({ id: z.string(), email: z.string() });
 
@@ -321,4 +306,3 @@ const UserError = error({
 - [chaining.md](./chaining.md) — Exception chaining with `.from()`
 - [inheritance.md](./inheritance.md) — Deep dive on inheritance
 - [message-formatting.md](./message-formatting.md) — Message templates
-- [http-status.md](./http-status.md) — HTTP status mapping
