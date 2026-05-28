@@ -191,27 +191,48 @@ err.fields.reason;  // 'invalid format'
 
 ## Field Definitions
 
-Fields follow the Standard Schema specification:
+Errors use **Standard Schema** for field definitions. This makes errors interoperable with any Standard Schema compatible library (Zod, Valibot, ArkType, etc.).
+
+### Standard Schema Only
 
 ```typescript
-const FieldDefinition = {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'error' | 'unknown';
-  required?: boolean;
-  items?: FieldDefinition;  // for arrays
-};
+import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
+
+// Use Zod schema as field validator
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+  }),
+  httpStatus: 400,
+});
+
+// Works with Valibot too
+import * as valibot from 'valibot';
+const ValibotError = error({
+  name: 'ValibotError',
+  fields: valibot.object({
+    field: valibot.string(),
+  }),
+});
+
+// Works with ArkType
+import * as ark from 'arktype';
+const ArkError = error({
+  name: 'ArkError',
+  fields: ark.type({ field: 'string' }),
+});
 ```
 
-### Supported Field Types
+### Why Standard Schema?
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `string` | Text values | `'hello'` |
-| `number` | Numeric values | `42`, `3.14` |
-| `boolean` | True/false | `true` |
-| `array` | Arrays with optional item type | `['a', 'b']` |
-| `object` | Nested objects | `{ nested: true }` |
-| `error` | Nested errors (for error groups) | `<ErrorInstance>` |
-| `unknown` | Any value | anything |
+Standard Schema allows the library to integrate with any validation library:
+- **Zod**, **Valibot**, **ArkType**, and many others implement this interface
+- No additional runtime dependencies beyond your choice of validator
+- Integrate once, validate anywhere
+- Type inference works seamlessly
 
 ### Error Fields (for nesting)
 
@@ -264,6 +285,25 @@ JSON.stringify(err);
 See [Design Philosophy](../design-philosophy.md) for core principles.
 
 **Additional notes for `error()`:**
+
+**Why support Standard Schema?**
+
+Standard Schema allows the library to integrate with any validation library:
+- Zod, Valibot, ArkType, and many others implement this interface
+- No additional runtime dependencies
+- Integrate once, validate anywhere
+
+```typescript
+// Your app uses Zod
+import { z } from 'zod';
+const UserSchema = z.object({ id: z.string(), email: z.string() });
+
+// Use it directly in error definitions
+const UserError = error({
+  name: 'UserError',
+  fields: UserSchema,
+});
+```
 
 **Why `inherits` takes a factory function, not a string?**
 - Type-safe — TypeScript validates the inheritance

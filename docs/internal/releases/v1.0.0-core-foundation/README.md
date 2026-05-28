@@ -18,18 +18,21 @@ Native JavaScript errors require class inheritance (`class X extends Error`), wh
 
 ```typescript
 import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
 
-// Define an error type
+// Define an error type with Standard Schema (Zod, Valibot, etc.)
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
 });
 
 // Create and throw instances
 raise(ValidationError({ field: 'email' }));
 ```
+
+> **Note:** The library only supports **Standard Schema** compatible libraries (Zod, Valibot, ArkType, etc.) for field definitions.
 
 ### Error Instance Properties
 
@@ -114,11 +117,13 @@ const chain = causes(err);
 ### Message Formatting
 
 ```typescript
+import { z } from 'zod';
+
 const ValidationError = error({
   name: 'ValidationError',
-  fields: {
-    field: { type: 'string' },
-  },
+  fields: z.object({
+    field: z.string(),
+  }),
   message: 'Field "{field}" is invalid',
 });
 
@@ -138,6 +143,42 @@ raise(ValidationError({ field: 'email' }));
 throw ValidationError({ field: 'email' });
 ```
 
+### Standard Schema Support
+
+The library supports **Standard Schema** compatible libraries (Zod, Valibot, ArkType, etc.) for field validation:
+
+```typescript
+import { error } from '@deessejs/errors';
+import { z } from 'zod';
+import * as valibot from 'valibot';
+
+// Works with Zod
+const ZodError = error({
+  name: 'ZodError',
+  fields: z.object({
+    field: z.string(),
+    value: z.number(),
+  }),
+});
+
+// Works with Valibot
+const ValibotError = error({
+  name: 'ValibotError',
+  fields: valibot.object({
+    field: valibot.string(),
+  }),
+});
+
+// Works with ArkType
+import * as ark from 'arktype';
+const ArkError = error({
+  name: 'ArkError',
+  fields: ark.type({ field: 'string' }),
+});
+```
+
+This makes errors interoperable with the TypeScript ecosystem — no additional dependencies needed.
+
 ## What's NOT Included
 
 This release intentionally excludes:
@@ -155,6 +196,8 @@ This release intentionally excludes:
 ### Exports
 
 ```typescript
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+
 // Core
 export const error: <T extends Record<string, unknown> = Record<string, unknown>>(
   config: ErrorConfig<T>
@@ -184,9 +227,10 @@ export type ErrorFactory<T extends Record<string, unknown> = Record<string, unkn
   (fields?: Partial<T>): ErrorInstance<T>;
 };
 
+// ErrorConfig uses Standard Schema for field definitions
 export type ErrorConfig<T extends Record<string, unknown> = Record<string, unknown>> = {
   name: string;
-  fields?: T;
+  fields?: StandardSchemaV1;  // Standard Schema only
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
   httpStatus?: number;
