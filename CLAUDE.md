@@ -4,15 +4,14 @@ This file provides guidance to Claude (claude.ai) about working within this code
 
 ## Project Purpose
 
-This is a **TypeScript package template**. Use this as a starting point when creating new TypeScript packages.
+This is **`@deessejs/errors`**, a TypeScript library that reimagines error handling in JavaScript/TypeScript — inspired by Python's error system. It provides exception chaining, hierarchical inheritance, and rich error semantics through a function-based API.
 
-### Working with this Template
+**This is NOT the template.** This is an actual package under active development, based on `nesalia-inc/errors`.
 
-There are two ways to work with this project:
+### Related Repositories
 
-1. **Developing the template itself**: You are working directly on this repository to improve or maintain it.
-
-2. **Using the template for a new project**: You have cloned this template to start a new project. If you encounter a bug, have an idea for a new feature, or notice something that should be fixed in the template, **create an issue on the template repository** (https://github.com/nesalia-inc/complete-package-template/issues) so the template can be improved for everyone. Use the issue templates located in `.github/ISSUE_TEMPLATE/` when creating issues.
+- **Template**: `nesalia-inc/complete-package-template` — Use this when creating new packages
+- **This package**: `nesalia-inc/errors` — Production error handling library
 
 ## Communication
 
