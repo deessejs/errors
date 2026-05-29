@@ -8,45 +8,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 import type { ErrorFactory, ErrorInstance } from './types.js';
 import { captureStack } from './capture.js';
-
-// Template placeholder regex (reusable)
-const TEMPLATE_PLACEHOLDER_REGEX = /\{(\w+)(?::(\w+))?\}/g;
-
-/**
- * Formats a message template by replacing {field} placeholders with values.
- *
- * @internal
- */
-const formatTemplate = ( template: string, fields: Record<string, unknown> ): string => {
-  return template.replace( /\{(\w+)(?::(\w+))?\}/g, ( fullMatch, fieldName, modifier ) => {
-    const value = fields[fieldName];
-    if ( value === undefined ) {
-      return fullMatch;
-    }
-
-    if ( modifier === 'upper' ) {
-      return String( value ).toUpperCase();
-    }
-    if ( modifier === 'lower' ) {
-      return String( value ).toLowerCase();
-    }
-    if ( modifier === 'json' ) {
-      return JSON.stringify( value );
-    }
-
-    return String( value );
-  } );
-};
-
-/**
- * Checks if a message string contains template placeholders.
- *
- * @internal
- */
-const hasTemplatePlaceholders = ( message: string ): boolean => {
-  TEMPLATE_PLACEHOLDER_REGEX.lastIndex = 0;
-  return TEMPLATE_PLACEHOLDER_REGEX.test( message );
-};
+import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
 // ============================================================================
 // Error Factory

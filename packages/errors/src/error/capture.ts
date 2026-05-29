@@ -1,9 +1,8 @@
 /**
- * Utility functions for error handling.
+ * Stack trace capture utilities.
  */
 
-// Regex pattern for matching stack frames
-const STACK_FRAME_PATTERN = /^\s+at\s+/i;
+import { STACK_FRAME_PATTERN } from './constants.js';
 
 /**
  * Captures the current stack trace, cleaning up internal frames.
