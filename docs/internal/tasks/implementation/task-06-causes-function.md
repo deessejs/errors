@@ -2,18 +2,24 @@
 
 ## Status
 
-🟡 Pending
+✅ Complete
 
 ## Description
 
 Implement causes(err) function that returns array of all errors in the cause chain.
 
+## Implementation
+
+Implemented in:
+- `src/causes/index.ts` - causes() function
+- `src/index.ts` - exported for public API
+
 ## Requirements
 
-- Return array from most recent to root cause
-- Handle errors with no cause
-- Handle native errors in chain
-- Provide both function and property access
+- [x] Return array from most recent to root cause
+- [x] Handle errors with no cause
+- [x] Handle native errors in chain
+- [x] Provide both function and property access
 
 ## API
 
@@ -26,21 +32,21 @@ err.causes; // ErrorInstance[]
 
 ## Acceptance Criteria
 
-- [ ] Returns array ordered most recent first
-- [ ] Returns empty array for error with no cause
-- [ ] Works through multiple chaining levels
-- [ ] Handles native errors in chain
-- [ ] `err.causes` property works same as causes(err)
+- [x] Returns array ordered most recent first
+- [x] Returns empty array for error with no cause
+- [x] Works through multiple chaining levels
+- [x] Handles native errors in chain
+- [x] `err.causes` property works same as causes(err)
 
 ## Dependencies
 
-- Task 01: error() factory
-- Task 05: .from() method
+- Task 01: error() factory ✅
+- Task 05: .from() method ✅
 
 ## Related Tasks
 
-- Task 13: Unit tests for causes()
-- Task 05: .from() method
+- Task 13: Unit tests for causes() ✅
+- Task 05: .from() method ✅
 
 ## Notes
 
