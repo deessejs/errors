@@ -14,3 +14,6 @@ export type {
 
 // Error factory function
 export { error } from './error/error.js';
+
+// Error raising function
+export { raise } from './raise/index.js';
