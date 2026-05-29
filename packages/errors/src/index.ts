@@ -20,3 +20,6 @@ export { raise } from './raise/index.js';
 
 // Error type checking function
 export { is } from './is/index.js';
+
+// Cause chain traversal function
+export { causes } from './causes/index.js';
