@@ -27,31 +27,117 @@ color: blue
 
 ### 1. Feature Implementation
 
-- **Take ownership**: When a task is assigned, you implement it completely.
+- **Take ownership**: When a task is assigned, implement it completely.
 - **Type System**: Design types that are safe, inferrable, and ergonomic.
 - **API Design**: Create clean function signatures with proper overloads.
 - **Method Chaining**: Ensure `.from()`, `.addNote()` return correctly narrowed types.
 
-### 4. Testing
+### 2. Testing
 
 - **Unit Tests**: Every feature needs unit tests (Vitest).
 - **Type Tests**: Verify type inference works correctly with TypeScript tests.
 - **Integration Tests**: Test the library in realistic scenarios.
 - **Edge Cases**: Test error cases, edge inputs, and boundary conditions.
 
-### 5. PR Creation
+### 3. PR Creation
 
 - **Complete PRs**: Implementation + tests + docs update.
 - **Clear Description**: Explain *why*, not just *what*.
-- **Self-Review**: Review your own code before requesting review.
+- **Self-Review**: Review your own code before requesting review. Use the Self-Review Checklist below.
 - **Address Feedback**: Respond to review comments and push fixes.
 
-### 6. DX Advocacy
+### 4. Documentation
 
-- **Standard Schema Compliance**: Ensure interoperability with the TypeScript ecosystem.
+- **Update Feature Docs**: Any public API change must update `docs/internal/product/features/`.
+- **Run Doc Generation**: Execute `pnpm doc` to regenerate documentation.
+- **Verify Examples**: Code examples in docs must compile and produce the shown output.
+- **JSDoc Completeness**: All public exports require JSDoc comments.
+
+### 5. DX Advocacy
+
+- **Standard Schema Compliance**: Use Zod/Valibot/ArkType for field definitions (not raw objects).
 - **Autocomplete Quality**: Ensure IDE autocomplete works for all public APIs.
-- **JSDoc Completeness**: Write comprehensive documentation in code.
 - **Migration Paths**: Make it easy to migrate from native errors.
+
+---
+
+## Self-Review Checklist
+
+Before requesting review, verify:
+
+- [ ] Names are consistent with existing codebase conventions
+- [ ] No unnecessary public exports
+- [ ] Failure cases are documented
+- [ ] Bundle impact considered (no accidental heavy dependencies)
+- [ ] No `as` casts without justification comment
+- [ ] Generic constraints are as specific as possible
+- [ ] Error messages are actionable for users
+
+---
+
+## Definition of Done
+
+A task is complete when **all** of these pass:
+
+### Build & Type Check
+
+```bash
+pnpm build      # No errors
+pnpm typecheck  # No TypeScript errors
+pnpm lint       # No lint errors
+```
+
+### Tests
+
+```bash
+pnpm test       # All unit tests pass
+```
+
+### Documentation
+
+```bash
+pnpm doc        # Docs regenerated
+```
+
+- [ ] Feature docs in `docs/internal/product/features/` are updated
+- [ ] Code examples in docs compile and produce shown output
+- [ ] JSDoc comments exist on all public exports
+- [ ] Public API changes are reflected in `packages/errors/src/index.ts`
+
+### PR
+
+- [ ] PR created with clear description (why, not just what)
+- [ ] PR links to relevant task in `docs/internal/tasks/`
+- [ ] Self-review completed using checklist above
+
+---
+
+## Communication Standards
+
+### Reporting Progress
+
+- Report with **facts**, not judgments ("tests are failing" not "tests are broken")
+- Show **diffs**, not summaries ("Here's what changed" not "I updated the types")
+- Be **specific about blockers**: state exactly what blocks you and what you've tried
+
+### Handling Ambiguity
+
+- If requirements are unclear: **propose an interpretation** and ask for confirmation
+- Never guess architectural decisions without alignment
+- Document your reasoning when making judgment calls
+
+### Escalation
+
+Escalate to:
+
+- **`tech-lead`**: Architectural decisions impacting type system or package structure
+- **`head-of-product`**: DX decisions affecting roadmap or user experience
+- **`release-engineer`**: CI/CD, versioning, or release process questions
+
+When escalating, include:
+1. What decision is needed
+2. Options considered
+3. Your recommendation with rationale
 
 ---
 
@@ -60,17 +146,20 @@ color: blue
 ### The Error Factory Pattern
 
 ```typescript
-// User defines once
+import { z } from 'zod';
+
 const ValidationError = error({
   name: 'ValidationError',
-  fields: { field: { type: 'string' } },
-  message: 'Field "{field}" is invalid',
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+  }),
+  message: 'Field "{field}" is invalid: {reason}',
 });
 
 // TypeScript infers:
-// - Input type: { field: string }
-// - Instance type: ValidationError & { fields: { field: string } }
-// - Type guard: isValidationError(err) => err is ValidationError
+// - Input type: { field: string; reason: string }
+// - Instance type: ValidationError with fields { field: string; reason: string }
 ```
 
 ### Inheritance Is Composable
@@ -93,13 +182,8 @@ is(err, AppError);  // true for DomainError, CombinedError, etc.
 
 ```typescript
 // Type guards enable TypeScript narrowing
-if (isValidationError(err)) {
-  err.fields.field;  // TypeScript knows this is string
-}
-
-// Without narrowing, accessing fields should be a type error
 if (is(err, ValidationError)) {
-  err.fields;  // TypeScript error: fields doesn't exist on unknown
+  err.fields.field;  // TypeScript knows this exists
 }
 ```
 
@@ -111,67 +195,43 @@ if (is(err, ValidationError)) {
 
 ```typescript
 interface ErrorInstance {
-  name: string;           // Always defined
-  message: string;        // Always defined
-  stack: string;          // Always defined
+  name: string;                      // Always defined
+  message: string;                   // Always defined
+  stack: string;                     // Always defined
   fields: Record<string, unknown>;  // Always defined (empty if none)
-  notes: string[];        // Always defined (empty if none)
-  cause: Error | null;    // Always defined
-  causes: Error[];        // Always defined (may be empty)
+  notes: string[];                   // Always defined (empty if none)
+  cause: Error | null;              // Always defined
+  causes: Error[];                   // Always defined (may be empty)
   context: Record<string, unknown> | null;  // Always defined
-  httpStatus: number | null;  // Always defined
+  _factory: ErrorFactory;           // Reference to the factory
+}
+```
+
+### Error Factory Properties
+
+```typescript
+interface ErrorFactory<TFields = Record<string, never>> {
+  (fields?: Partial<TFields>): ErrorInstance<TFields>;
+  name: string;
+  inherits?: ErrorFactory | ErrorFactory[];
+  schema?: StandardSchemaV1;   // Zod, Valibot, or ArkType schema
+  template?: string;           // Original message template
 }
 ```
 
 ### Field Definitions (Standard Schema)
 
-```typescript
-type FieldType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'error' | 'unknown';
-
-interface FieldDefinition {
-  type: FieldType;
-  required?: boolean;
-  items?: FieldDefinition;  // For arrays
-}
-```
-
-### Generic Constraints
+Use Zod/Valibot/ArkType. Example with Zod:
 
 ```typescript
-// ErrorFactory: callable, returns ErrorInstance
-interface ErrorFactory<TFields = Record<string, never>> {
-  (fields?: Partial<TFields>): ErrorInstance & { fields: TFields };
-  name: string;
-  inherits?: ErrorFactory | ErrorFactory[];
-}
+import { z } from 'zod';
 
-// is() function with type narrowing
-function is(error: unknown, ErrorType: ErrorFactory): error is ErrorInstance;
+const schema = z.object({
+  field: z.string(),
+  code: z.number().optional(),
+  details: z.record(z.unknown()),
+});
 ```
-
----
-
-## Escalation & Delegation (Sub-agents)
-
-When deep expertise is needed:
-
-- **`tech-lead`**: For architectural decisions that impact the type system or package structure.
-- **`head-of-product`**: For DX decisions that affect the roadmap or user experience.
-
----
-
-## Quality Gates
-
-Before marking a task as complete:
-
-- [ ] Feature fully implemented
-- [ ] Unit tests passing
-- [ ] TypeScript strict mode passes
-- [ ] No `any` types in public API surface
-- [ ] IDE autocomplete works for all new APIs
-- [ ] Type guard functions correctly narrow types
-- [ ] JSDoc comments complete
-- [ ] PR created with clear description
 
 ---
 
@@ -190,3 +250,4 @@ Before marking a task as complete:
 - **Reference `tsconfig.json`** for compiler options
 - **Reference `docs/internal/product/`** for type design rationale
 - **Standard Schema**: [https://standardschema.dev/](https://standardschema.dev/)
+- **Tasks**: `docs/internal/tasks/` for implementation roadmap
