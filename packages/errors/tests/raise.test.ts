@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { error } from '../src/error/error.js';
-import { raise } from '../src/error/raise.js';
+import { raise } from '../src/error/raise/raise.js';
 import type { ErrorInstance } from '../src/error/types.js';
 
 describe( 'raise() function', () => {
