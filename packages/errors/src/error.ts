@@ -17,7 +17,7 @@ import type { ErrorFactory, ErrorInstance } from './types/index.js';
  *
  * @internal
  */
-function formatTemplate( template: string, fields: Record<string, unknown> ): string {
+const formatTemplate = ( template: string, fields: Record<string, unknown> ): string => {
   return template.replace( /\{(\w+)(?::(\w+))?\}/g, ( fullMatch, fieldName, modifier ) => {
     const value = fields[fieldName];
     if ( value === undefined ) {
@@ -36,7 +36,7 @@ function formatTemplate( template: string, fields: Record<string, unknown> ): st
 
     return String( value );
   } );
-}
+};
 
 // Regex pattern for matching stack frames
 const STACK_FRAME_PATTERN = /^\s+at\s+/i;
@@ -47,7 +47,7 @@ const STACK_FRAME_PATTERN = /^\s+at\s+/i;
  *
  * @internal
  */
-function captureStack( message: string ): string {
+const captureStack = ( message: string ): string => {
   const stack = new Error().stack || '';
 
   const lines = stack.split( '\n' );
@@ -75,7 +75,7 @@ function captureStack( message: string ): string {
   }
 
   return cleanedLines.join( '\n' );
-}
+};
 
 // Template placeholder regex (reusable)
 const TEMPLATE_PLACEHOLDER_REGEX = /\{(\w+)(?::(\w+))?\}/g;
@@ -85,10 +85,10 @@ const TEMPLATE_PLACEHOLDER_REGEX = /\{(\w+)(?::(\w+))?\}/g;
  *
  * @internal
  */
-function hasTemplatePlaceholders( message: string ): boolean {
+const hasTemplatePlaceholders = ( message: string ): boolean => {
   TEMPLATE_PLACEHOLDER_REGEX.lastIndex = 0;
   return TEMPLATE_PLACEHOLDER_REGEX.test( message );
-}
+};
 
 // ============================================================================
 // Error Factory
@@ -143,7 +143,7 @@ function hasTemplatePlaceholders( message: string ): boolean {
  * });
  * ```
  */
-export function error<const T extends Record<string, unknown> = Record<string, never>>(
+export const error = <const T extends Record<string, unknown> = Record<string, never>>(
   config: {
     name: string;
     fields?: StandardSchemaV1;
@@ -151,13 +151,13 @@ export function error<const T extends Record<string, unknown> = Record<string, n
     message?: string;
     httpStatus?: number;
   }
-): ErrorFactory<T> {
+): ErrorFactory<T> => {
   const { name, fields, inherits, message, httpStatus } = config;
 
   /**
    * Error factory function - creates error instances.
    */
-  function ErrorFactoryInstance( input?: Partial<T> ): ErrorInstance<T> {
+  const ErrorFactoryInstance = ( input?: Partial<T> ): ErrorInstance<T> => {
     const fieldsData = ( input || {} ) as T;
 
     // Format message if template has placeholders
@@ -184,7 +184,7 @@ export function error<const T extends Record<string, unknown> = Record<string, n
       inherits: inherits ?? undefined,
       _factory: ErrorFactoryInstance as ErrorFactory<T>,
     };
-  }
+  };
 
   // Attach metadata to the factory function
   Object.defineProperty( ErrorFactoryInstance, 'name', {
@@ -211,4 +211,4 @@ export function error<const T extends Record<string, unknown> = Record<string, n
   }
 
   return ErrorFactoryInstance as ErrorFactory<T>;
-}
+};
