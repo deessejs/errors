@@ -6,7 +6,7 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type { ErrorFactory, ErrorInstance } from './types/index.js';
+import type { ErrorFactory, ErrorInstance } from './types.js';
 
 // ============================================================================
 // Utility Functions

@@ -1,5 +1,5 @@
 /**
- * Error factory types and related types.
+ * Error factory types.
  */
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
