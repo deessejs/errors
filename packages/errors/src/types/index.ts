@@ -31,7 +31,6 @@ export type ErrorFactory<TFields extends Record<string, unknown> = Record<string
   inherits?: ErrorFactory | ErrorFactory[];
   schema?: StandardSchemaV1;
   template?: string;
-  httpStatus?: number;
 };
 
 /**
@@ -55,8 +54,6 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
     // TODO: Implement context injection (Task 10)
     /** Injected context data */
     context: Record<string, unknown> | null;
-    /** HTTP status code (null if not defined) */
-    httpStatus: number | null;
     /** Parent error factories for type checking */
     inherits?: ErrorFactory | ErrorFactory[];
     /** Reference to the factory that created this instance */
@@ -77,6 +74,4 @@ export type ErrorConfig<_T extends Record<string, unknown> = Record<string, unkn
   inherits?: ErrorFactory | ErrorFactory[];
   /** Message template with {field} placeholders */
   message?: string;
-  /** HTTP status code */
-  httpStatus?: number;
 };

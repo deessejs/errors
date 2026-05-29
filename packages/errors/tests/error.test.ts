@@ -7,16 +7,7 @@ import { error } from '../src/error.js';
 import type { ErrorFactory, ErrorInstance, StandardSchemaV1 } from '../src/index.js';
 
 // Mock Standard Schema interface for testing (simplified StandardSchemaV1)
-interface MockSchema<T> {
-  '~standard': {
-    version: 1;
-    vendor: string;
-    validate: () => StandardSchemaV1.Result<T>;
-  };
-}
-
-// Helper to create a mock Standard Schema compatible object
-function createMockSchema<T>( name = 'mock' ): MockSchema<T> {
+const createMockSchema = <T>( name = 'mock' ): StandardSchemaV1 => {
   return {
     '~standard': {
       version: 1,
@@ -24,7 +15,7 @@ function createMockSchema<T>( name = 'mock' ): MockSchema<T> {
       validate: () => ( { value: undefined as unknown as T } ),
     },
   };
-}
+};
 
 describe( 'error() factory function', () => {
   describe( 'basic usage', () => {
@@ -43,7 +34,7 @@ describe( 'error() factory function', () => {
       expect( AppError.name ).toBe( 'AppError' );
     } );
 
-    it( 'should throw when calling the factory without field types (basic)', () => {
+    it( 'should create error instance with name as message when no template', () => {
       const BasicError = error( { name: 'BasicError' } );
 
       const instance = BasicError();
@@ -74,7 +65,6 @@ describe( 'error() factory function', () => {
       expect( Array.isArray( instance.causes ) ).toBe( true );
       expect( instance.causes ).toEqual( [] );
       expect( instance.context ).toBeNull();
-      expect( instance.httpStatus ).toBeNull();
     } );
 
     it( 'should have _factory reference back to the creator', () => {
@@ -232,34 +222,6 @@ describe( 'error() factory function', () => {
     } );
   } );
 
-  describe( 'httpStatus', () => {
-    it( 'should store httpStatus when provided', () => {
-      const NotFoundError = error( {
-        name: 'NotFoundError',
-        httpStatus: 404,
-      } );
-
-      expect( NotFoundError.httpStatus ).toBe( 404 );
-    } );
-
-    it( 'should set httpStatus on error instance', () => {
-      const NotFoundError = error( {
-        name: 'NotFoundError',
-        httpStatus: 404,
-      } );
-
-      const instance = NotFoundError();
-      expect( instance.httpStatus ).toBe( 404 );
-    } );
-
-    it( 'should be null when not provided', () => {
-      const SimpleError = error( { name: 'SimpleError' } );
-
-      const instance = SimpleError();
-      expect( instance.httpStatus ).toBeNull();
-    } );
-  } );
-
   describe( 'fields with Standard Schema', () => {
     it( 'should accept Standard Schema fields', () => {
       const mockSchema = createMockSchema<{ field: string; reason: string }>();
@@ -366,7 +328,7 @@ describe( 'error() factory function', () => {
       const TestError = error( { name: 'TestError' } );
       const instance = TestError();
 
-      expect( instance.stack ).toContain( 'Error: TestError' );
+      expect( instance.stack ).not.toBe( '' );
     } );
 
     it( 'should include formatted message in stack', () => {

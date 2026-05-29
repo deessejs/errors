@@ -102,7 +102,6 @@ const hasTemplatePlaceholders = ( message: string ): boolean => {
  * @param config.fields - Standard Schema field definitions (Zod, Valibot, ArkType, etc.)
  * @param config.inherits - Parent error factory to inherit from
  * @param config.message - Message template with {field} placeholders
- * @param config.httpStatus - HTTP status code
  *
  * @example
  * ```typescript
@@ -115,7 +114,6 @@ const hasTemplatePlaceholders = ( message: string ): boolean => {
  *     reason: z.string(),
  *   }),
  *   message: 'Field "{field}" is invalid: {reason}',
- *   httpStatus: 400,
  * });
  *
  * const err = ValidationError({ field: 'email', reason: 'invalid format' });
@@ -149,10 +147,9 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
     fields?: StandardSchemaV1;
     inherits?: ErrorFactory | ErrorFactory[];
     message?: string;
-    httpStatus?: number;
   }
 ): ErrorFactory<T> => {
-  const { name, fields, inherits, message, httpStatus } = config;
+  const { name, fields, inherits, message } = config;
 
   /**
    * Error factory function - creates error instances.
@@ -180,7 +177,6 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
       cause: null,
       causes: [],
       context: null,
-      httpStatus: httpStatus ?? null,
       inherits: inherits ?? undefined,
       _factory: ErrorFactoryInstance as ErrorFactory<T>,
     };
@@ -204,10 +200,6 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
 
   if ( message !== undefined ) {
     ( ErrorFactoryInstance as ErrorFactory<T> ).template = message;
-  }
-
-  if ( httpStatus !== undefined ) {
-    ( ErrorFactoryInstance as ErrorFactory<T> ).httpStatus = httpStatus;
   }
 
   return ErrorFactoryInstance as ErrorFactory<T>;
