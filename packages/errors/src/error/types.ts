@@ -30,7 +30,7 @@ export type ErrorFactory<TFields extends Record<string, unknown> = Record<string
   name: string;
   inherits?: ErrorFactory | ErrorFactory[];
   schema?: StandardSchemaV1;
-  template?: string;
+  rawMessage?: string;
 };
 
 /**

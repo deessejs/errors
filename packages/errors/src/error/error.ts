@@ -119,7 +119,7 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
   }
 
   if ( message !== undefined ) {
-    ( ErrorFactoryInstance as ErrorFactory<T> ).template = message;
+    ( ErrorFactoryInstance as ErrorFactory<T> ).rawMessage = message;
   }
 
   return ErrorFactoryInstance as ErrorFactory<T>;
