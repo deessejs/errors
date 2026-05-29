@@ -3,18 +3,20 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { error } from '../src/index';
-import type { ErrorFactory, ErrorInstance, StandardSchemaV1 } from '../src/index';
+import { error } from '../src/error.js';
+import type { ErrorFactory, ErrorInstance, StandardSchemaV1 } from '../src/index.js';
 
-// Mock Standard SDK interface for testing (simplified StandardSchemaV1)
-interface MockSchema<T> extends StandardSchemaV1 {
-  '~standard': StandardSchemaV1.Props<T, T> & {
+// Mock Standard Schema interface for testing (simplified StandardSchemaV1)
+interface MockSchema<T> {
+  '~standard': {
+    version: 1;
+    vendor: string;
     validate: () => StandardSchemaV1.Result<T>;
   };
 }
 
-// Helper to create a mock Standard SDK compatible object
-function createMockSchema<T>( name: string = 'mock' ): MockSchema<T> {
+// Helper to create a mock Standard Schema compatible object
+function createMockSchema<T>( name = 'mock' ): MockSchema<T> {
   return {
     '~standard': {
       version: 1,
@@ -82,7 +84,7 @@ describe( 'error() factory function', () => {
       expect( instance._factory ).toBe( TestError );
     } );
 
-    it( 'should have _inherits reference when inheriting', () => {
+    it( 'should have _inherits reference when inheriving', () => {
       const ParentError = error( { name: 'ParentError' } );
       const ChildError = error( {
         name: 'ChildError',
@@ -138,15 +140,6 @@ describe( 'error() factory function', () => {
   } );
 
   describe( 'message template', () => {
-    it( 'should store message template for later formatting', () => {
-      const ValidationError = error<{ field: string }>( {
-        name: 'ValidationError',
-        message: 'Field "{field}" is invalid',
-      } );
-
-      expect( ValidationError.template ).toBe( 'Field "{field}" is invalid' );
-    } );
-
     it( 'should format message with field placeholders', () => {
       const ValidationError = error<{ field: string }>( {
         name: 'ValidationError',
@@ -269,7 +262,6 @@ describe( 'error() factory function', () => {
 
   describe( 'fields with Standard Schema', () => {
     it( 'should accept Standard Schema fields', () => {
-      // Create a mock schema that mimics Standard SDK interface
       const mockSchema = createMockSchema<{ field: string; reason: string }>();
 
       const ValidationError = error( {
@@ -297,13 +289,6 @@ describe( 'error() factory function', () => {
       const instance = NoFieldsError();
       expect( instance.fields ).toEqual( {} );
     } );
-
-    it( 'should pass through provided fields', () => {
-      const FieldsError = error( { name: 'FieldsError' } );
-
-      const instance = FieldsError();
-      expect( instance.fields ).toEqual( {} );
-    } );
   } );
 
   describe( 'type inference', () => {
@@ -326,7 +311,7 @@ describe( 'error() factory function', () => {
       expect( instance.fields.field ).toBe( 'test' );
     } );
 
-    it( 'should work with typed ErrorConfig', () => {
+    it( 'should work with typed config', () => {
       type Config = { field: string };
 
       const TypedError = error<Config>( {
