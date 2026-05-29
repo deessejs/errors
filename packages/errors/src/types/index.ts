@@ -37,23 +37,28 @@ export interface ErrorFactory<TFields extends Record<string, unknown> = Record<s
 /**
  * Error instance returned by an ErrorFactory.
  * Contains all standard Error properties plus additional domain-specific fields.
+ *
+ * Note: Methods like .addNote() and .from() are implemented in separate tasks.
  */
 export interface ErrorInstance<TFields extends Record<string, unknown> = Record<string, never>>
   extends ErrorInstanceCore {
   /** User-defined fields from Standard Schema */
   fields: TFields;
+  // TODO: Implement .addNote() method (Task 05)
   /** Additional notes added via .addNote() */
   notes: string[];
+  // TODO: Implement .from() method (Task 06)
   /** Direct cause of this error (from .from()) */
   cause: Error | null;
   /** Full cause chain from .from() calls */
   causes: Error[];
+  // TODO: Implement context injection (Task 10)
   /** Injected context data */
   context: Record<string, unknown> | null;
   /** HTTP status code (null if not defined) */
   httpStatus: number | null;
   /** Parent error factories for type checking */
-  _inherits?: ErrorFactory | ErrorFactory[];
+  inherits?: ErrorFactory | ErrorFactory[];
   /** Reference to the factory that created this instance */
   _factory: ErrorFactory<TFields>;
 }

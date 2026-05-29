@@ -34,47 +34,60 @@ function formatTemplate( template: string, fields: Record<string, unknown> ): st
       return JSON.stringify( value );
     }
 
-    // Default: stringify the value
     return String( value );
   } );
 }
 
+// Regex pattern for matching stack frames
+const STACK_FRAME_PATTERN = /^\s+at\s+/i;
+
 /**
  * Captures the current stack trace, cleaning up internal frames.
+ * Note: This is V8-specific and may not work in non-V8 environments (Deno, etc.)
  *
  * @internal
  */
 function captureStack( message: string ): string {
-  // Capture stack - V8 engines provide Error.stack
   const stack = new Error().stack || '';
 
-  // Find the line after the error construction
-  // Pattern matches typical stack format: "Error: message\n    at ..."
   const lines = stack.split( '\n' );
-  const cleanedLines: string[] = [];
+  const cleanedLines: string[] = [ `Error: ${message}` ];
 
-  // Skip the "Error:" line and find where actual code starts
+  // Find start index (skip "Error: message" line)
   let startIndex = 0;
   for ( let i = 0; i < lines.length; i++ ) {
-    const line = lines[i];
-    // Stack lines typically start with "    at " or "\tat "
-    if ( line.match( /^\s+at\s+/ ) || line.match( /^\s+at\s+/i ) ) {
+    if ( STACK_FRAME_PATTERN.test( lines[i] ) ) {
       startIndex = i;
       break;
     }
   }
 
-  // Keep the first line (Error: message) and relevant stack frames
-  cleanedLines.push( `Error: ${message}` );
+  // Filter internal frames
   for ( let i = startIndex; i < lines.length; i++ ) {
     const line = lines[i];
-    // Filter out internal frames from this library
-    if ( !line.includes( 'node_modules/@deessejs' ) && !line.includes( '__vite' ) ) {
-      cleanedLines.push( line );
+    if ( line.includes( 'node_modules/@deessejs' ) ) {
+      continue;
     }
+    if ( line.includes( '__vite' ) ) {
+      continue;
+    }
+    cleanedLines.push( line );
   }
 
   return cleanedLines.join( '\n' );
+}
+
+// Template placeholder regex (reusable)
+const TEMPLATE_PLACEHOLDER_REGEX = /\{(\w+)(?::(\w+))?\}/g;
+
+/**
+ * Checks if a message string contains template placeholders.
+ *
+ * @internal
+ */
+function hasTemplatePlaceholders( message: string ): boolean {
+  TEMPLATE_PLACEHOLDER_REGEX.lastIndex = 0;
+  return TEMPLATE_PLACEHOLDER_REGEX.test( message );
 }
 
 // ============================================================================
@@ -147,14 +160,12 @@ export function error<const T extends Record<string, unknown> = Record<string, n
   function ErrorFactoryInstance( input?: Partial<T> ): ErrorInstance<T> {
     const fieldsData = ( input || {} ) as T;
 
-    // Format message if template is defined
-    let errorMessage: string;
-    if ( message && Object.keys( fieldsData ).length > 0 ) {
+    // Format message if template has placeholders
+    let errorMessage = name;
+    if ( message && hasTemplatePlaceholders( message ) ) {
       errorMessage = formatTemplate( message, fieldsData );
     } else if ( message ) {
       errorMessage = message;
-    } else {
-      errorMessage = name;
     }
 
     // Capture stack trace with cleaned frames
@@ -170,7 +181,7 @@ export function error<const T extends Record<string, unknown> = Record<string, n
       causes: [],
       context: null,
       httpStatus: httpStatus ?? null,
-      _inherits: inherits,
+      inherits: inherits ?? undefined,
       _factory: ErrorFactoryInstance as ErrorFactory<T>,
     };
   }

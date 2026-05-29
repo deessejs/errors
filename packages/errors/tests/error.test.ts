@@ -84,7 +84,7 @@ describe( 'error() factory function', () => {
       expect( instance._factory ).toBe( TestError );
     } );
 
-    it( 'should have _inherits reference when inheriving', () => {
+    it( 'should have inherits reference when inheriting', () => {
       const ParentError = error( { name: 'ParentError' } );
       const ChildError = error( {
         name: 'ChildError',
@@ -92,7 +92,7 @@ describe( 'error() factory function', () => {
       } );
       const instance = ChildError();
 
-      expect( instance._inherits ).toBe( ParentError );
+      expect( instance.inherits ).toBe( ParentError );
     } );
   } );
 
@@ -134,8 +134,8 @@ describe( 'error() factory function', () => {
       } );
 
       const instance = Child();
-      expect( instance._inherits ).toBeDefined();
-      expect( Array.isArray( instance._inherits ) ).toBe( true );
+      expect( instance.inherits ).toBeDefined();
+      expect( Array.isArray( instance.inherits ) ).toBe( true );
     } );
   } );
 
@@ -169,16 +169,6 @@ describe( 'error() factory function', () => {
 
       const instance = InternalError();
       expect( instance.message ).toBe( 'InternalError' );
-    } );
-
-    it( 'should use template without placeholders as-is', () => {
-      const FixedError = error( {
-        name: 'FixedError',
-        message: 'Something went wrong',
-      } );
-
-      const instance = FixedError();
-      expect( instance.message ).toBe( 'Something went wrong' );
     } );
 
     it( 'should support :upper modifier', () => {
@@ -221,7 +211,7 @@ describe( 'error() factory function', () => {
       expect( instance.message ).toBe( 'Field "" is invalid' );
     } );
 
-    it( 'should skip formatting when no fields provided', () => {
+    it( 'should format template even with no fields provided', () => {
       const TemplateError = error<{ field: string }>( {
         name: 'TemplateError',
         message: 'Field "{field}" is invalid',
@@ -229,6 +219,16 @@ describe( 'error() factory function', () => {
 
       const instance = TemplateError();
       expect( instance.message ).toBe( 'Field "{field}" is invalid' );
+    } );
+
+    it( 'should not format message without placeholders', () => {
+      const FixedError = error( {
+        name: 'FixedError',
+        message: 'Something went wrong',
+      } );
+
+      const instance = FixedError();
+      expect( instance.message ).toBe( 'Something went wrong' );
     } );
   } );
 
