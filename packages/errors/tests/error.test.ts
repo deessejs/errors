@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { error } from '../src/error.js';
+import { error } from '../src/error/error.js';
 import type { ErrorFactory, ErrorInstance, StandardSchemaV1 } from '../src/index.js';
 
 // Mock Standard Schema interface for testing (simplified StandardSchemaV1)

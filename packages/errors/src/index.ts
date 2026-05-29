@@ -10,7 +10,7 @@ export type {
   ErrorFactory,
   ErrorInstance,
   ErrorInstanceCore,
-} from './types/index.js';
+} from './error/types/index.js';
 
 // Error factory function
-export { error } from './error.js';
+export { error } from './error/error.js';
