@@ -22,30 +22,6 @@ import { formatTemplate, hasTemplatePlaceholders } from './format.js';
  */
 const FACTORY_SYMBOL = Symbol.for( '@deessejs/errors/factory' );
 
-/**
- * Type for the factory marker stored on error instances.
- * Uses unknown to avoid generic parameter conflicts.
- *
- * @internal
- */
-type FactoryMarker = {
-  [FACTORY_SYMBOL]?: unknown;
-};
-
-/**
- * Checks if an object was created by a specific error factory.
- * Uses Symbol-based reference comparison to avoid name collisions.
- *
- * @internal
- */
-const hasFactory = ( obj: unknown, factory: ErrorFactory ): obj is ErrorInstance & FactoryMarker => {
-  if ( obj == null || typeof obj !== 'object' ) {
-    return false;
-  }
-  const marker = obj as FactoryMarker;
-  return marker[FACTORY_SYMBOL] === factory;
-};
-
 // ============================================================================
 // Error Factory
 // ============================================================================
@@ -125,7 +101,7 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
     const stack = captureStack( errorMessage );
 
     // Create error instance using native Error
-    const instance = new Error( errorMessage ) as ErrorInstance<T> & FactoryMarker;
+    const instance = new Error( errorMessage ) as ErrorInstance<T>;
     instance.name = name;
     instance.fields = fieldsData;
     instance.notes = [];
@@ -136,7 +112,8 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
     instance.stack = stack;
 
     // Mark this instance as created by this factory (for is() checks)
-    instance[FACTORY_SYMBOL] = ErrorFactoryInstance;
+    // Use callable to avoid generic parameter conflicts
+    ( instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown> )[FACTORY_SYMBOL] = ErrorFactoryInstance;
 
     return instance;
   };
@@ -168,4 +145,4 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
 // Exports for is() function
 // ============================================================================
 
-export { FACTORY_SYMBOL, hasFactory };
+export { FACTORY_SYMBOL };

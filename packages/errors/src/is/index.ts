@@ -3,7 +3,20 @@
  */
 
 import type { ErrorFactory, ErrorInstance } from '../error/types.js';
-import { hasFactory } from '../error/error.js';
+import { FACTORY_SYMBOL } from '../error/error.js';
+
+/**
+ * Type to extract the fields from an ErrorFactory or native Error class.
+ *
+ * @internal
+ */
+type ExtractFields<T> = T extends ErrorFactory<infer F>
+  ? F
+  : T extends new ( ...args: unknown[] ) => infer E
+    ? E extends ErrorInstance<infer F>
+      ? F
+      : Record<string, unknown>
+    : Record<string, unknown>;
 
 /**
  * Checks if an error is an instance of a specific error type.
@@ -39,49 +52,61 @@ import { hasFactory } from '../error/error.js';
  * }
  * ```
  */
-const is = <T extends ErrorFactory>(
+const is = <T extends ErrorFactory | ( new ( ...args: unknown[] ) => Error )>(
   error: unknown,
   ErrorType: T
-): error is ErrorInstance => {
+): error is ErrorInstance<ExtractFields<T>> => {
   // Handle null/undefined
   if ( error == null ) {
     return false;
   }
 
-  // Handle native errors (TypeScript constructor comparison)
+  // Handle native errors - check prototype chain ends in Error
   if ( typeof ErrorType === 'function' && 'prototype' in ErrorType ) {
     try {
       if ( error instanceof ErrorType ) {
         return true;
       }
     } catch {
-      // instanceof can fail for certain cross-realm errors
+      // instanceof can fail for cross-realm errors
     }
   }
 
-  // Handle our ErrorFactory instances using Symbol-based identity
-  if ( hasFactory( error, ErrorType ) ) {
-    return true;
-  }
+  // Handle our ErrorFactory instances using Symbol-based reference
+  if ( typeof error === 'object' && error !== null ) {
+    const marker = error as Record<typeof FACTORY_SYMBOL, unknown>;
+    const factory = marker[FACTORY_SYMBOL];
 
-  // Check inheritance chain for parent type matching
-  if ( error instanceof Error ) {
-    const instance = error as Error & { inherits?: ErrorFactory | ErrorFactory[] };
-    const targetFactory = ErrorType;
+    if ( factory !== undefined ) {
+      // DFS walk of inheritance tree using stack (prevents GC pressure)
+      const stack: ErrorFactory[] = [factory as ErrorFactory];
+      const seen = new Set<ErrorFactory>();
 
-    // Walk inheritance chain to check if any ancestor matches
-    let current: ErrorFactory | ErrorFactory[] | undefined = instance.inherits;
+      while ( stack.length > 0 ) {
+        const current = stack.pop()!;
 
-    while ( current !== undefined ) {
-      // Normalize to array for iteration
-      const factories = Array.isArray( current ) ? current : [current];
+        // Prevent infinite loops in cyclic inheritance
+        if ( seen.has( current ) ) {
+          continue;
+        }
+        seen.add( current );
 
-      for ( const factory of factories ) {
-        if ( factory === targetFactory ) {
+        // Direct match
+        if ( current === ErrorType ) {
           return true;
         }
-        // Continue walking up the chain
-        current = factory.inherits;
+
+        // Add parents to stack
+        const inherits = ( current as ErrorFactory ).inherits;
+        if ( inherits !== undefined ) {
+          if ( Array.isArray( inherits ) ) {
+            for ( let i = 0; i < inherits.length; i++ ) {
+              stack.push( inherits[i] );
+            }
+          } else {
+            stack.push( inherits );
+          }
+        }
       }
     }
   }
