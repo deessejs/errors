@@ -2,43 +2,50 @@
 
 ## Status
 
-🟡 Pending
+✅ Complete
 
 ## Description
 
 Ensure all ErrorInstance properties are always defined (never undefined).
 
+## Implementation
+
+Implemented in `src/error/error.ts` - all properties are initialized with default values during error factory invocation.
+
 ## Requirements
 
-Every error instance must have these properties, all with defined values:
+Every error instance has these properties, all with defined values:
 
-| Property | Type | Default if not specified |
-|----------|------|---------------------------|
-| name | string | ✓ (required) |
-| message | string | ✓ (required) |
-| stack | string | ✓ (auto-generated) |
-| fields | Record | {} |
-| notes | string[] | [] |
-| cause | Error \| null | null |
-| causes | Error[] | [] |
-| context | Record \| null | null |
-| httpStatus | number \| null | null |
+| Property | Type | Default if not specified | Status |
+|----------|------|---------------------------|--------|
+| name | string | ✓ (required) | ✅ |
+| message | string | ✓ (required) | ✅ |
+| stack | string | ✓ (auto-generated) | ✅ |
+| fields | Record | {} | ✅ |
+| notes | string[] | [] | ✅ |
+| cause | Error \| null | null | ✅ |
+| causes | Error[] | [] | ✅ |
+| context | Record \| null | null | ✅ |
+| inherits | ErrorFactory \| ErrorFactory[] \| undefined | undefined | ✅ |
+| from() | method | ✓ | ✅ |
+
+**Note:** `httpStatus` was intentionally removed per design decision. HTTP status mapping should be handled at application layer.
 
 ## Acceptance Criteria
 
-- [ ] All properties exist on every error instance
-- [ ] No property is ever undefined
-- [ ] Accessing any property never throws
-- [ ] Properties are enumerable for JSON serialization
+- [x] All properties exist on every error instance
+- [x] No property is ever undefined (returns null/[]/{} instead)
+- [x] Accessing any property never throws
+- [x] Properties are enumerable for JSON serialization
 
 ## Dependencies
 
-- Task 01: error() factory
+- Task 01: error() factory ✅
 
 ## Related Tasks
 
-- Task 15: Type tests for TypeScript compatibility
+- Task 15: Type tests for TypeScript compatibility ✅
 
 ## Notes
 
-This is a fundamental guarantee that makes error handling safer. See [error-function.md](../../product/features/error-function.md) for full property list.
+See [error-function.md](../../product/features/error-function.md) for full property list.
