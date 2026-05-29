@@ -1,7 +1,7 @@
 {
-  "name": "example",
+  "name": "@deessejs/errors",
   "version": "1.0.0",
-  "description": "Example TypeScript package",
+  "description": "TypeScript error handling library inspired by Python — function-based API, exception chaining, hierarchical inheritance",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -19,7 +19,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },
-  "keywords": ["typescript", "template", "monorepo"],
+  "keywords": ["typescript", "errors", "exception", "error-handling"],
   "author": "Nesalia Inc. <hello@nesalia.com>",
   "license": "MIT",
   "devDependencies": {
