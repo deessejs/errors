@@ -11,6 +11,42 @@ import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
 // ============================================================================
+// Symbols for identity
+// ============================================================================
+
+/**
+ * Symbol used to identify factory-created errors.
+ * Stored on the error instance to enable reliable instanceof checks.
+ *
+ * @internal
+ */
+const FACTORY_SYMBOL = Symbol.for( '@deessejs/errors/factory' );
+
+/**
+ * Type for the factory marker stored on error instances.
+ * Uses unknown to avoid generic parameter conflicts.
+ *
+ * @internal
+ */
+type FactoryMarker = {
+  [FACTORY_SYMBOL]?: unknown;
+};
+
+/**
+ * Checks if an object was created by a specific error factory.
+ * Uses Symbol-based reference comparison to avoid name collisions.
+ *
+ * @internal
+ */
+const hasFactory = ( obj: unknown, factory: ErrorFactory ): obj is ErrorInstance & FactoryMarker => {
+  if ( obj == null || typeof obj !== 'object' ) {
+    return false;
+  }
+  const marker = obj as FactoryMarker;
+  return marker[FACTORY_SYMBOL] === factory;
+};
+
+// ============================================================================
 // Error Factory
 // ============================================================================
 
@@ -85,21 +121,24 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
       errorMessage = message;
     }
 
-    // Capture stack trace with cleaned frames
+    // Capture stack trace
     const stack = captureStack( errorMessage );
 
-    return {
-      name,
-      message: errorMessage,
-      stack,
-      fields: fieldsData,
-      notes: [],
-      cause: null,
-      causes: [],
-      context: null,
-      inherits: inherits ?? undefined,
-      _factory: ErrorFactoryInstance as ErrorFactory<T>,
-    };
+    // Create error instance using native Error
+    const instance = new Error( errorMessage ) as ErrorInstance<T> & FactoryMarker;
+    instance.name = name;
+    instance.fields = fieldsData;
+    instance.notes = [];
+    instance.cause = null;
+    instance.causes = [];
+    instance.context = null;
+    instance.inherits = inherits ?? undefined;
+    instance.stack = stack;
+
+    // Mark this instance as created by this factory (for is() checks)
+    instance[FACTORY_SYMBOL] = ErrorFactoryInstance;
+
+    return instance;
   };
 
   // Attach metadata to the factory function
@@ -124,3 +163,9 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
 
   return ErrorFactoryInstance as ErrorFactory<T>;
 };
+
+// ============================================================================
+// Exports for is() function
+// ============================================================================
+
+export { FACTORY_SYMBOL, hasFactory };

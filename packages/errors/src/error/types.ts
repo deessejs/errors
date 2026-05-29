@@ -56,8 +56,6 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
     context: Record<string, unknown> | null;
     /** Parent error factories for type checking */
     inherits?: ErrorFactory | ErrorFactory[];
-    /** Reference to the factory that created this instance */
-    _factory: ErrorFactory<TFields>;
   };
 
 /**

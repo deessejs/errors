@@ -17,3 +17,6 @@ export { error } from './error/error.js';
 
 // Error raising function
 export { raise } from './raise/index.js';
+
+// Error type checking function
+export { is } from './is/index.js';

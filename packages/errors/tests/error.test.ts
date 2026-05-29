@@ -67,11 +67,11 @@ describe( 'error() factory function', () => {
       expect( instance.context ).toBeNull();
     } );
 
-    it( 'should have _factory reference back to the creator', () => {
+    it( 'should be an instance of Error', () => {
       const TestError = error( { name: 'TestError' } );
       const instance = TestError();
 
-      expect( instance._factory ).toBe( TestError );
+      expect( instance instanceof Error ).toBe( true );
     } );
 
     it( 'should have inherits reference when inheriting', () => {
@@ -304,14 +304,13 @@ describe( 'error() factory function', () => {
       expect( ErrorA.name ).not.toBe( ErrorB.name );
     } );
 
-    it( 'should maintain factory reference on instances', () => {
+    it( 'should create errors that are instances of Error', () => {
       const TestError = error( { name: 'TestError' } );
       const instance1 = TestError();
       const instance2 = TestError();
 
-      expect( instance1._factory ).toBe( TestError );
-      expect( instance2._factory ).toBe( TestError );
-      expect( instance1._factory ).toBe( instance2._factory );
+      expect( instance1 instanceof Error ).toBe( true );
+      expect( instance2 instanceof Error ).toBe( true );
     } );
   } );
 
