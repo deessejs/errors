@@ -11,6 +11,18 @@ import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
 // ============================================================================
+// Symbols for identity
+// ============================================================================
+
+/**
+ * Symbol used to identify factory-created errors.
+ * Stored on the error instance to enable reliable instanceof checks.
+ *
+ * @internal
+ */
+const FACTORY_SYMBOL = Symbol.for( '@deessejs/errors/factory' );
+
+// ============================================================================
 // Error Factory
 // ============================================================================
 
@@ -85,21 +97,25 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
       errorMessage = message;
     }
 
-    // Capture stack trace with cleaned frames
+    // Capture stack trace
     const stack = captureStack( errorMessage );
 
-    return {
-      name,
-      message: errorMessage,
-      stack,
-      fields: fieldsData,
-      notes: [],
-      cause: null,
-      causes: [],
-      context: null,
-      inherits: inherits ?? undefined,
-      _factory: ErrorFactoryInstance as ErrorFactory<T>,
-    };
+    // Create error instance using native Error
+    const instance = new Error( errorMessage ) as ErrorInstance<T>;
+    instance.name = name;
+    instance.fields = fieldsData;
+    instance.notes = [];
+    instance.cause = null;
+    instance.causes = [];
+    instance.context = null;
+    instance.inherits = inherits ?? undefined;
+    instance.stack = stack;
+
+    // Mark this instance as created by this factory (for is() checks)
+    // Use callable to avoid generic parameter conflicts
+    ( instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown> )[FACTORY_SYMBOL] = ErrorFactoryInstance;
+
+    return instance;
   };
 
   // Attach metadata to the factory function
@@ -124,3 +140,9 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
 
   return ErrorFactoryInstance as ErrorFactory<T>;
 };
+
+// ============================================================================
+// Exports for is() function
+// ============================================================================
+
+export { FACTORY_SYMBOL };
