@@ -2,18 +2,25 @@
 
 ## Status
 
-🟡 Pending
+✅ Complete
 
 ## Description
 
 Implement message template parsing with {field} placeholders and modifiers.
 
+## Implementation
+
+Implemented in:
+- `src/error/format.ts` - formatTemplate and hasTemplatePlaceholders functions
+- Integrated into `src/error/error.ts` during error factory invocation
+
 ## Requirements
 
-- Parse {field} placeholders in message
-- Replace with field values from error instance
-- Support modifiers: :upper, :lower, :json
-- Support escaping with backslash
+- [x] Parse {field} placeholders in message
+- [x] Replace with field values from error instance
+- [x] Support modifiers: :upper, :lower, :json
+- [x] Support escaping with backslash
+- [x] Missing fields handled gracefully
 
 ## API
 
@@ -30,20 +37,20 @@ err.message; // 'Field "email" is invalid'
 
 ## Acceptance Criteria
 
-- [ ] Basic {field} substitution works
-- [ ] :upper modifier works
-- [ ] :lower modifier works
-- [ ] :json modifier works
-- [ ] Escaping with \ works
-- [ ] Missing fields handled gracefully
+- [x] Basic {field} substitution works
+- [x] :upper modifier works
+- [x] :lower modifier works
+- [x] :json modifier works
+- [x] Escaping with \ works
+- [x] Missing fields handled gracefully
 
 ## Dependencies
 
-- Task 01: error() factory (integrate into)
+- Task 01: error() factory ✅
 
 ## Related Tasks
 
-- Task 14: Unit tests for message formatting
+- Task 14: Unit tests for message formatting ✅
 
 ## Notes
 
