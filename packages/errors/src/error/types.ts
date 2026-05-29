@@ -37,16 +37,28 @@ export type ErrorFactory<TFields extends Record<string, unknown> = Record<string
  * Error instance returned by an ErrorFactory.
  * Contains all standard Error properties plus additional domain-specific fields.
  *
- * Note: Methods like .addNote() and .from() are implemented in separate tasks.
+ * Note: .addNote() is implemented in a separate task.
  */
 export type ErrorInstance<TFields extends Record<string, unknown> = Record<string, never>> =
   ErrorInstanceCore & {
     /** User-defined fields from Standard Schema */
     fields: TFields;
-    // TODO: Implement .addNote() method (Task 05)
+    // TODO: Implement .addNote() method (Task XX)
     /** Additional notes added via .addNote() */
     notes: string[];
-    // TODO: Implement .from() method (Task 06)
+    /**
+     * Chains a cause error to this error.
+     *
+     * @param cause - The error that caused this one
+     * @returns This error instance for chaining
+     *
+     * @example
+     * ```typescript
+     * const err = ValidationError({ field: 'email' })
+     *   .from(new NetworkError('Connection failed'));
+     * ```
+     */
+    from( cause: Error | ErrorInstance ): ErrorInstance<TFields>;
     /** Direct cause of this error (from .from()) */
     cause: Error | null;
     /** Full cause chain from .from() calls */

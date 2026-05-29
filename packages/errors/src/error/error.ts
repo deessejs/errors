@@ -111,6 +111,18 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
     instance.inherits = inherits ?? undefined;
     instance.stack = stack;
 
+    // Add .from() method for exception chaining
+    instance.from = ( cause: Error ): ErrorInstance<T> => {
+      // Build new causes array: [new cause] + [cause's causes] + [existing causes of instance]
+      // This maintains chronological order: newest first
+      const causeCauses = 'causes' in cause && Array.isArray( cause.causes )
+        ? cause.causes
+        : [];
+      instance.causes = [cause, ...causeCauses, ...instance.causes];
+      instance.cause = cause;
+      return instance;
+    };
+
     // Mark this instance as created by this factory (for is() checks)
     // Use callable to avoid generic parameter conflicts
     ( instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown> )[FACTORY_SYMBOL] = ErrorFactoryInstance;
