@@ -9,9 +9,12 @@ import { TEMPLATE_PLACEHOLDER_REGEX } from './constants.js';
  *
  * @internal
  */
-const formatTemplate = ( template: string, fields: Record<string, unknown> ): string => {
+const formatTemplate = <T extends Record<string, unknown>>(
+  template: string,
+  data: T
+): string => {
   return template.replace( /\{(\w+)(?::(\w+))?\}/g, ( fullMatch, fieldName, modifier ) => {
-    const value = fields[fieldName];
+    const value = data[fieldName];
     if ( value === undefined ) {
       return fullMatch;
     }
