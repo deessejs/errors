@@ -2,7 +2,7 @@
  * Error raising utilities.
  */
 
-import type { ErrorInstance } from '../types.js';
+import type { ErrorInstance } from '../error/types.js';
 
 /**
  * Throws an ErrorInstance.
