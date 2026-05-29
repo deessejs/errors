@@ -19,7 +19,12 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src/"
   },
-  "keywords": ["typescript", "errors", "exception", "error-handling"],
+  "keywords": [
+    "typescript",
+    "errors",
+    "exception",
+    "error-handling"
+  ],
   "author": "Nesalia Inc. <hello@nesalia.com>",
   "license": "MIT",
   "devDependencies": {
@@ -28,5 +33,9 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.0.0",
     "vitest": "^4.1.7"
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "@types/node": "^25.9.1"
   }
 }

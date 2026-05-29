@@ -1,8 +1,397 @@
-import { describe, it, expect } from 'vitest';
-import { helloWorld } from '../src/index';
+/**
+ * Unit tests for the error() factory function.
+ */
 
-describe('helloWorld', () => {
-  it('should return "Hello, World!"', () => {
-    expect(helloWorld()).toBe('Hello, World!');
-  });
-});
+import { describe, it, expect } from 'vitest';
+import { error } from '../src/index';
+import type { ErrorFactory, ErrorInstance, StandardSchemaV1 } from '../src/index';
+
+// Mock Standard SDK interface for testing (simplified StandardSchemaV1)
+interface MockSchema<T> extends StandardSchemaV1 {
+  '~standard': StandardSchemaV1.Props<T, T> & {
+    validate: () => StandardSchemaV1.Result<T>;
+  };
+}
+
+// Helper to create a mock Standard SDK compatible object
+function createMockSchema<T>( name: string = 'mock' ): MockSchema<T> {
+  return {
+    '~standard': {
+      version: 1,
+      vendor: name,
+      validate: () => ( { value: undefined as unknown as T } ),
+    },
+  };
+}
+
+describe( 'error() factory function', () => {
+  describe( 'basic usage', () => {
+    it( 'should create an error factory with only a name', () => {
+      const NotFoundError = error( {
+        name: 'NotFoundError',
+      } );
+
+      expect( typeof NotFoundError ).toBe( 'function' );
+      expect( NotFoundError.name ).toBe( 'NotFoundError' );
+    } );
+
+    it( 'should create an error factory with name property', () => {
+      const AppError = error( { name: 'AppError' } );
+
+      expect( AppError.name ).toBe( 'AppError' );
+    } );
+
+    it( 'should throw when calling the factory without field types (basic)', () => {
+      const BasicError = error( { name: 'BasicError' } );
+
+      const instance = BasicError();
+      expect( instance ).toBeDefined();
+      expect( instance.name ).toBe( 'BasicError' );
+      expect( instance.message ).toBe( 'BasicError' );
+      expect( instance.stack ).toBeDefined();
+      expect( instance.stack ).toContain( 'Error: BasicError' );
+    } );
+  } );
+
+  describe( 'ErrorInstance properties', () => {
+    it( 'should create error instance with all required properties', () => {
+      const TestError = error( { name: 'TestError' } );
+      const instance = TestError();
+
+      // Core properties
+      expect( typeof instance.name ).toBe( 'string' );
+      expect( typeof instance.message ).toBe( 'string' );
+      expect( typeof instance.stack ).toBe( 'string' );
+
+      // Additional properties
+      expect( instance.fields ).toBeDefined();
+      expect( typeof instance.fields ).toBe( 'object' );
+      expect( Array.isArray( instance.notes ) ).toBe( true );
+      expect( instance.notes ).toEqual( [] );
+      expect( instance.cause ).toBeNull();
+      expect( Array.isArray( instance.causes ) ).toBe( true );
+      expect( instance.causes ).toEqual( [] );
+      expect( instance.context ).toBeNull();
+      expect( instance.httpStatus ).toBeNull();
+    } );
+
+    it( 'should have _factory reference back to the creator', () => {
+      const TestError = error( { name: 'TestError' } );
+      const instance = TestError();
+
+      expect( instance._factory ).toBe( TestError );
+    } );
+
+    it( 'should have _inherits reference when inheriting', () => {
+      const ParentError = error( { name: 'ParentError' } );
+      const ChildError = error( {
+        name: 'ChildError',
+        inherits: ParentError,
+      } );
+      const instance = ChildError();
+
+      expect( instance._inherits ).toBe( ParentError );
+    } );
+  } );
+
+  describe( 'inherits option', () => {
+    it( 'should support single inheritance', () => {
+      const AppError = error( { name: 'AppError' } );
+      const ValidationError = error( {
+        name: 'ValidationError',
+        inherits: AppError,
+      } );
+
+      expect( ValidationError.inherits ).toBe( AppError );
+    } );
+
+    it( 'should support multiple inheritance', () => {
+      const NetworkError = error( { name: 'NetworkError' } );
+      const StorageError = error( { name: 'StorageError' } );
+      const CombinedError = error( {
+        name: 'CombinedError',
+        inherits: [NetworkError, StorageError],
+      } );
+
+      expect( Array.isArray( CombinedError.inherits ) ).toBe( true );
+      expect( ( CombinedError.inherits as ErrorFactory[] ).length ).toBe( 2 );
+    } );
+
+    it( 'should not have inherits property when not specified', () => {
+      const SimpleError = error( { name: 'SimpleError' } );
+
+      expect( 'inherits' in SimpleError ).toBe( false );
+    } );
+
+    it( 'should store inherits on factory for later type checking', () => {
+      const ParentA = error( { name: 'ParentA' } );
+      const ParentB = error( { name: 'ParentB' } );
+      const Child = error( {
+        name: 'Child',
+        inherits: [ParentA, ParentB],
+      } );
+
+      const instance = Child();
+      expect( instance._inherits ).toBeDefined();
+      expect( Array.isArray( instance._inherits ) ).toBe( true );
+    } );
+  } );
+
+  describe( 'message template', () => {
+    it( 'should store message template for later formatting', () => {
+      const ValidationError = error<{ field: string }>( {
+        name: 'ValidationError',
+        message: 'Field "{field}" is invalid',
+      } );
+
+      expect( ValidationError.template ).toBe( 'Field "{field}" is invalid' );
+    } );
+
+    it( 'should format message with field placeholders', () => {
+      const ValidationError = error<{ field: string }>( {
+        name: 'ValidationError',
+        message: 'Field "{field}" is invalid',
+      } );
+
+      const instance = ValidationError( { field: 'email' } );
+      expect( instance.message ).toBe( 'Field "email" is invalid' );
+    } );
+
+    it( 'should handle multiple placeholders', () => {
+      const ValidationError = error<{ field: string; expected: string; actual: string }>( {
+        name: 'ValidationError',
+        message: 'Field "{field}" expected {expected}, got {actual}',
+      } );
+
+      const instance = ValidationError( {
+        field: 'age',
+        expected: 'number',
+        actual: 'string',
+      } );
+      expect( instance.message ).toBe( 'Field "age" expected number, got string' );
+    } );
+
+    it( 'should use name as default message when no template', () => {
+      const InternalError = error( { name: 'InternalError' } );
+
+      const instance = InternalError();
+      expect( instance.message ).toBe( 'InternalError' );
+    } );
+
+    it( 'should use template without placeholders as-is', () => {
+      const FixedError = error( {
+        name: 'FixedError',
+        message: 'Something went wrong',
+      } );
+
+      const instance = FixedError();
+      expect( instance.message ).toBe( 'Something went wrong' );
+    } );
+
+    it( 'should support :upper modifier', () => {
+      const ErrorWithModifier = error<{ userId: string }>( {
+        name: 'ErrorWithModifier',
+        message: 'User ID: {userId:upper}',
+      } );
+
+      const instance = ErrorWithModifier( { userId: 'abc123' } );
+      expect( instance.message ).toBe( 'User ID: ABC123' );
+    } );
+
+    it( 'should support :lower modifier', () => {
+      const ErrorWithModifier = error<{ msg: string }>( {
+        name: 'ErrorWithModifier',
+        message: 'Message: {msg:lower}',
+      } );
+
+      const instance = ErrorWithModifier( { msg: 'HELLO WORLD' } );
+      expect( instance.message ).toBe( 'Message: hello world' );
+    } );
+
+    it( 'should support :json modifier', () => {
+      const DataError = error<{ data: { id: number; name: string } }>( {
+        name: 'DataError',
+        message: 'Invalid data: {data:json}',
+      } );
+
+      const instance = DataError( { data: { id: 1, name: 'test' } } );
+      expect( instance.message ).toBe( 'Invalid data: {"id":1,"name":"test"}' );
+    } );
+
+    it( 'should leave placeholder unchanged if field not found', () => {
+      const PartialError = error<{ field: string }>( {
+        name: 'PartialError',
+        message: 'Field "{field}" is invalid',
+      } );
+
+      const instance = PartialError( { field: '' } );
+      expect( instance.message ).toBe( 'Field "" is invalid' );
+    } );
+
+    it( 'should skip formatting when no fields provided', () => {
+      const TemplateError = error<{ field: string }>( {
+        name: 'TemplateError',
+        message: 'Field "{field}" is invalid',
+      } );
+
+      const instance = TemplateError();
+      expect( instance.message ).toBe( 'Field "{field}" is invalid' );
+    } );
+  } );
+
+  describe( 'httpStatus', () => {
+    it( 'should store httpStatus when provided', () => {
+      const NotFoundError = error( {
+        name: 'NotFoundError',
+        httpStatus: 404,
+      } );
+
+      expect( NotFoundError.httpStatus ).toBe( 404 );
+    } );
+
+    it( 'should set httpStatus on error instance', () => {
+      const NotFoundError = error( {
+        name: 'NotFoundError',
+        httpStatus: 404,
+      } );
+
+      const instance = NotFoundError();
+      expect( instance.httpStatus ).toBe( 404 );
+    } );
+
+    it( 'should be null when not provided', () => {
+      const SimpleError = error( { name: 'SimpleError' } );
+
+      const instance = SimpleError();
+      expect( instance.httpStatus ).toBeNull();
+    } );
+  } );
+
+  describe( 'fields with Standard Schema', () => {
+    it( 'should accept Standard Schema fields', () => {
+      // Create a mock schema that mimics Standard SDK interface
+      const mockSchema = createMockSchema<{ field: string; reason: string }>();
+
+      const ValidationError = error( {
+        name: 'ValidationError',
+        fields: mockSchema,
+      } );
+
+      expect( ValidationError.schema ).toBeDefined();
+    } );
+
+    it( 'should store fields schema for runtime validation', () => {
+      const mockSchema = createMockSchema<{ field: string }>();
+
+      const FieldError = error( {
+        name: 'FieldError',
+        fields: mockSchema,
+      } );
+
+      expect( FieldError.schema ).toBeDefined();
+    } );
+
+    it( 'should return empty fields object by default', () => {
+      const NoFieldsError = error( { name: 'NoFieldsError' } );
+
+      const instance = NoFieldsError();
+      expect( instance.fields ).toEqual( {} );
+    } );
+
+    it( 'should pass through provided fields', () => {
+      const FieldsError = error( { name: 'FieldsError' } );
+
+      const instance = FieldsError();
+      expect( instance.fields ).toEqual( {} );
+    } );
+  } );
+
+  describe( 'type inference', () => {
+    it( 'should infer proper types for ErrorFactory', () => {
+      const AppError = error( { name: 'AppError' } );
+
+      // Type checks - these compile if types are correct
+      const instance: ErrorInstance = AppError();
+      expect( instance.name ).toBe( 'AppError' );
+    } );
+
+    it( 'should allow passing fields to factory with typed error', () => {
+      const FieldError = error<{ field: string }>( {
+        name: 'FieldError',
+        message: 'Field "{field}" is invalid',
+      } );
+
+      // Should accept partial fields
+      const instance = FieldError( { field: 'test' } );
+      expect( instance.fields.field ).toBe( 'test' );
+    } );
+
+    it( 'should work with typed ErrorConfig', () => {
+      type Config = { field: string };
+
+      const TypedError = error<Config>( {
+        name: 'TypedError',
+        message: 'Field "{field}" is missing',
+      } );
+
+      // Instance should have field
+      const instance = TypedError( { field: 'email' } );
+      expect( instance.fields.field ).toBe( 'email' );
+    } );
+
+    it( 'should infer empty fields when no type provided', () => {
+      const NoFieldsError = error( { name: 'NoFieldsError' } );
+      const instance = NoFieldsError();
+
+      // fields should be Record<string, never> which is empty
+      expect( instance.fields ).toEqual( {} );
+    } );
+  } );
+
+  describe( 'factory identity', () => {
+    it( 'should create unique factory instances', () => {
+      const ErrorA = error( { name: 'ErrorA' } );
+      const ErrorB = error( { name: 'ErrorB' } );
+
+      expect( ErrorA ).not.toBe( ErrorB );
+      expect( ErrorA.name ).not.toBe( ErrorB.name );
+    } );
+
+    it( 'should maintain factory reference on instances', () => {
+      const TestError = error( { name: 'TestError' } );
+      const instance1 = TestError();
+      const instance2 = TestError();
+
+      expect( instance1._factory ).toBe( TestError );
+      expect( instance2._factory ).toBe( TestError );
+      expect( instance1._factory ).toBe( instance2._factory );
+    } );
+  } );
+
+  describe( 'stack trace', () => {
+    it( 'should generate a stack trace', () => {
+      const TestError = error( { name: 'TestError' } );
+      const instance = TestError();
+
+      expect( instance.stack ).toBeDefined();
+      expect( instance.stack.length ).toBeGreaterThan( 0 );
+    } );
+
+    it( 'should include error name in stack', () => {
+      const TestError = error( { name: 'TestError' } );
+      const instance = TestError();
+
+      expect( instance.stack ).toContain( 'Error: TestError' );
+    } );
+
+    it( 'should include formatted message in stack', () => {
+      const TestError = error<{ field: string }>( {
+        name: 'TestError',
+        message: 'Custom message for {field}',
+      } );
+      const instance = TestError( { field: 'value' } );
+
+      expect( instance.stack ).toContain( 'Custom message for value' );
+    } );
+  } );
+} );
