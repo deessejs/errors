@@ -13,24 +13,27 @@ const formatTemplate = <T extends Record<string, unknown>>(
   template: string,
   data: T
 ): string => {
-  return template.replace( /\{(\w+)(?::(\w+))?\}/g, ( fullMatch, fieldName, modifier ) => {
-    const value = data[fieldName];
-    if ( value === undefined ) {
-      return fullMatch;
-    }
+  return template.replace(
+    TEMPLATE_PLACEHOLDER_REGEX,
+    ( fullMatch, fieldName, modifier ) => {
+      const value = data[fieldName as keyof T];
+      if ( value === undefined ) {
+        return fullMatch;
+      }
 
-    if ( modifier === 'upper' ) {
-      return String( value ).toUpperCase();
-    }
-    if ( modifier === 'lower' ) {
-      return String( value ).toLowerCase();
-    }
-    if ( modifier === 'json' ) {
-      return JSON.stringify( value );
-    }
+      if ( modifier === 'upper' ) {
+        return String( value ).toUpperCase();
+      }
+      if ( modifier === 'lower' ) {
+        return String( value ).toLowerCase();
+      }
+      if ( modifier === 'json' ) {
+        return JSON.stringify( value );
+      }
 
-    return String( value );
-  } );
+      return String( value );
+    }
+  );
 };
 
 /**
