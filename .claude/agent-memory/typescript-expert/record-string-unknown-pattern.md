@@ -1,123 +1,91 @@
 ---
 name: record-string-unknown-pattern
-description: Senior TypeScript pattern for generic type constraints - T extends Record<string, unknown>
+description: TypeScript patterns from Senior to Principal/Staff level
 type: reference
 ---
 
-# TypeScript Pattern: `T extends Record<string, unknown>`
+# TypeScript Patterns: Senior to Principal/Staff Level
 
-## When to Use
+## Senior Pattern: `T extends Record<string, unknown>`
 
-Use `T extends Record<string, unknown>` for generic functions that accept dictionary-like objects. This is the preferred pattern for:
-- Message formatting with field interpolation
-- Data transformation utilities
-- Any function accepting dynamic key-value objects
+Use for generic functions accepting dictionary-like objects.
 
-## Why This Pattern (Senior Level)
+### Why This Pattern
 
-### 1. Safety: `unknown` vs `any`
+| Pattern | Level | Why |
+|:---|:---|:---|
+| `T extends any` | Junior | No constraint |
+| `T extends object` | Intermediate | Too broad |
+| `T extends Record<string, any>` | Intermediate | Unsafe values |
+| **`T extends Record<string, unknown>`** | **Senior** | Safe + explicit |
 
-- `any`: Compiler turns off, allows any property access
-- `unknown`: Forces type narrowing before use
+### Key Points
 
-### 2. Explicitness: `Record` vs `object`
-
-- `object`: Too broad - includes arrays, functions
-- `Record<string, unknown>`: Explicitly dictionary-like
-
-### 3. Interface Gotcha
-
-Interfaces don't have implicit index signatures:
+1. **`unknown` vs `any`**: Forces type narrowing before use
+2. **`Record` vs `object`**: Explicitly dictionary-like (not arrays/functions)
+3. **Interface Gotcha**: Interfaces lack implicit index signatures
 
 ```typescript
 interface UserInterface { name: string }
 type UserType = { name: string }
 
 process<T extends Record<string, unknown>>(obj: T) {}
-
-process(UserType)      // Works
-process(UserInterface) // Error: Index signature missing
+process(UserType)      // ✅ Works
+process(UserInterface) // ❌ Error
 ```
 
-## Pattern Comparison
+---
 
-| Pattern | Level |
-|:---|:---|
-| `T extends any` | Junior - no constraint |
-| `T extends object` | Intermediate - too broad |
-| `T extends Record<string, any>` | Intermediate - unsafe values |
-| **`T extends Record<string, unknown>`** | **Senior** - safe + explicit |
+## Principal/Staff Pattern: Template Literal Types
 
-## Defensive Programming with `unknown`
-
-When using `unknown`, always handle edge cases defensively:
+Extract keys from template string at compile-time for type-safe data.
 
 ```typescript
-const formatTemplate = <T extends Record<string, unknown>>(
-  template: string,
-  data: T
-): string => {
-  return template.replace(/\{(\w+)(?::(\w+))?\}/g, ( fullMatch, fieldName, modifier ) => {
-    const value = data[fieldName];
-    if ( value === undefined ) {
-      return fullMatch; // Leave placeholder if field not found
-    }
+type ExtractKeys<S extends string> =
+  S extends `${string}{${infer Key}}${infer Rest}`
+    ? (Key extends `${infer RealKey}:${string}` ? RealKey : Key) | ExtractKeys<Rest>
+    : never;
 
-    // Always coerce to String for safety
-    if ( modifier === 'upper' ) {
-      return String( value ).toUpperCase();
-    }
-    // ...
-  });
-};
-```
+const formatTemplate = <S extends string>(
+  template: S,
+  data: Record<ExtractKeys<S>, unknown>
+): string => { ... }
 
-## Regex State Safety (Critical Senior Pattern)
-
-Global regexes (`/g`) have state. Stored as constants, they remember `lastIndex`.
-
-```typescript
-// BUG: Without reset
-const REGEX = /\{(\w+)\}/g;
-const hasTemplatePlaceholders = ( message: string ): boolean => {
-  return REGEX.test( message ); // May fail on second call
-};
-
-// SENIOR FIX: Reset lastIndex
-const REGEX = /\{(\w+)\}/g;
-const hasTemplatePlaceholders = ( message: string ): boolean => {
-  REGEX.lastIndex = 0; // Reset before each use
-  return REGEX.test( message );
-};
+// Usage:
+formatTemplate("Hello {name}", { name: "Alice" }); // ✅ Works
+formatTemplate("Hello {name}", { age: 30 });      // ❌ Error: missing 'name'
 ```
 
 ### Why This Matters
 
-- JavaScript regex with `/g` flag is **stateful**
-- After `.test()`, the regex remembers where it stopped
-- Next call starts from middle → random `false` results
-- Senior developers know this and reset `lastIndex`
+- **Compile-time validation**: Missing keys are caught at compile time
+- **No runtime surprises**: API forces correct usage
+- **Self-documenting**: Template string defines required keys
 
-## API Surface Management
+---
 
-Use `@internal` JSDoc to mark functions as internal:
+## Senior-Level Regex State Management
+
+Global regex with `/g` flag is stateful. Always reset `lastIndex`:
 
 ```typescript
-/**
- * Formats a message template by replacing {field} placeholders with values.
- *
- * @internal
- */
-const formatTemplate = (...) => { ... };
+const REGEX = /\{(\w+)(?::(\w+))?\}/g;
+
+const hasTemplatePlaceholders = (message: string): boolean => {
+  REGEX.lastIndex = 0; // Reset before each use
+  return REGEX.test(message);
+};
 ```
 
-This signals these functions are for internal use only, not part of public API.
+**Without reset**: Second call might return `false` even when pattern exists.
 
-## Summary
+---
 
-Signals a developer who:
-1. Prioritizes type safety (no `any`)
-2. Understands utility types
-3. Writes defensive code
-4. Knows JavaScript gotchas (regex state)
-5. Manages API surface intentionally
+## Summary of Levels
+
+| Level | Technique | Benefit |
+|:---|:---|:---|
+| Junior | `any`, no constraints | Works, but unsafe |
+| Intermediate | `object`, `Record<string, any>` | Shape correct |
+| Senior | `Record<string, unknown>` | Type-safe |
+| Principal/Staff | Template Literal Types | Compile-time key validation |
