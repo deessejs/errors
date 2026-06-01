@@ -41,10 +41,10 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Publish packages
-        run: pnpm release
+      - name: Configure npm
+        run: npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+      - name: Publish packages
+        run: pnpm changeset publish
