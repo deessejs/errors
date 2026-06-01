@@ -124,7 +124,6 @@ const RequiredFieldError = error({
   name: 'RequiredFieldError',
   inherits: AppError,
   fields: { field: { type: 'string' } },
-  httpStatus: 400,
 });
 
 async function validateAndProcess(item: Item) {

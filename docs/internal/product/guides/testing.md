@@ -16,12 +16,10 @@ npm install -D @deessejs/errors
 // errors/index.ts
 import { error } from '@deessejs/errors';
 
-export const AppError = error({ name: 'AppError', httpStatus: 500 });
 
 export const ValidationError = error({
   name: 'ValidationError',
   fields: { field: { type: 'string' } },
-  httpStatus: 400,
 });
 ```
 
@@ -66,7 +64,6 @@ describe('validateEmail', () => {
     } catch (err) {
       expect(err.name).toBe('ValidationError');
       expect(err.fields.field).toBe('email');
-      expect(err.httpStatus).toBe(400);
     }
   });
 
@@ -214,10 +211,8 @@ export const errorMatchers = {
 
   toHaveHttpStatus(this: any, status: number): any {
     const err = this.obj;
-    if (err.httpStatus === status) {
       return this;
     }
-    throw new Error(`Expected HTTP ${status}, got ${err.httpStatus}`);
   },
 };
 
@@ -282,7 +277,6 @@ describe('fetchUser', () => {
     try {
       await fetchUser('nonexistent');
     } catch (err) {
-      expect(err.httpStatus).toBe(404);
     }
   });
 });
@@ -299,7 +293,6 @@ describe('fetchUser', () => {
   it('rejects with NotFoundError', async () => {
     await expect(fetchUser('nonexistent')).rejects.toMatchObject({
       name: 'NotFoundError',
-      httpStatus: 404,
     });
   });
 
@@ -479,7 +472,6 @@ expect(err.fields.field).toBe('email');
 
 ```typescript
 // ✅ Complete
-expect(err.httpStatus).toBe(400);
 expect(isValidationError(err)).toBe(true);
 ```
 

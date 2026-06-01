@@ -18,7 +18,6 @@ const ValidationError = error({
     field: { type: 'string' },
   },
   message: 'Field "{field}" is invalid',
-  httpStatus: 400,
 });
 
 // Raise it (or use throw)
@@ -58,7 +57,6 @@ if (isValidationError(err)) {
 | **Message Formatting** | [`features/message-formatting.md`](./features/message-formatting.md) | Template messages |
 | **Stack Cleaning** | [`features/stack-cleaning.md`](./features/stack-cleaning.md) | Clean stacks with `stripLibraryFrames()` |
 | **Predefined Errors** | [`features/predefined-errors.md`](./features/predefined-errors.md) | Built-in error types |
-| **HTTP Status Mapping** | [`features/http-status.md`](./features/http-status.md) | HTTP status codes |
 | **Inheritance** | [`features/inheritance.md`](./features/inheritance.md) | Single and multiple inheritance |
 | **Output Formatting** | [`features/output-formatting.md`](./features/output-formatting.md) | Dev vs Prod output |
 | **Async Support** | [`features/async-support.md`](./features/async-support.md) | Async patterns |
@@ -69,7 +67,6 @@ if (isValidationError(err)) {
 
 | Function | Purpose |
 |----------|---------|
-| `error({ name, fields?, inherits?, message?, httpStatus? })` | Define new error types |
 | `raise(errorInstance)` | Raise an error |
 | `throw errorInstance` | Native throw syntax (also supported) |
 | `is(err, ErrorType)` | Check if error is of type |
@@ -96,7 +93,6 @@ All properties are always defined on every error instance:
 | `err.cause` | `Error \| null` | Direct cause (null if none) |
 | `err.causes` | `Error[]` | Full cause chain (most recent first) |
 | `err.context` | `Record<string, unknown> \| null` | Injected context (null if none) |
-| `err.httpStatus` | `number \| null` | HTTP status code (null if not defined) |
 
 ### Utility Functions
 
@@ -132,7 +128,6 @@ const { isValidationError, isNotFoundError } = errors;
 | Chain traversal | Not available | `causes()` / `err.causes` |
 | Exception notes | Not supported | `.addNote()` |
 | Predefined errors | `new TypeError()` | `errors.TypeError` (namespaced) |
-| HTTP status | Not built-in | Via `httpStatus` property |
 | Type guards | Manual | `isXxxError()` functions |
 | Colored output | Console + boilerplate | Built-in |
 | JSON serialization | Manual | Automatic |
@@ -163,7 +158,7 @@ const { isValidationError, isNotFoundError } = errors;
 3. **Preserve debugging context** — Chaining, notes, and context injection
 4. **Improve DX** — Native `throw` support, colored output, message formatting
 5. **Align with Python ecosystem** — Familiar patterns for developers coming from Python
-6. **Production-ready** — JSON serialization, stack cleaning, HTTP status, environment-aware output
+6. **Production-ready** — JSON serialization, stack cleaning, environment-aware output
 
 ## Out of Scope
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Pending
+✅ Complete
 
 ## Description
 
@@ -56,7 +56,6 @@ basic.notes;    // string[]
 basic.cause;    // Error | null
 basic.causes;   // Error[]
 basic.context;  // Record | null
-basic.httpStatus; // number | null
 ```
 
 ## Dependencies

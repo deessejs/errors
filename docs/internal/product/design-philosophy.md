@@ -107,7 +107,7 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 
 **Why:**
 - Most recent error is usually the most important for handling
-- Natural for finding HTTP status or error codes
+- Natural for finding error codes
 - Less common to need root-first ordering
 
 **Contrast with Python:**
@@ -152,7 +152,7 @@ Classes require inheritance chains that are hard to trace. Composition via `inhe
 
 ### Why not string-based error codes?
 
-Error codes are often legacy patterns. HTTP status + error name provides sufficient identification.
+Error codes are often legacy patterns. Error names provide sufficient identification.
 
 ### Why not ExceptionGroup?
 

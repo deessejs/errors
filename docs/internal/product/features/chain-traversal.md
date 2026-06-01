@@ -100,7 +100,6 @@ try {
 ```typescript
 import { causes } from '@deessejs/errors';
 
-const status = causes(err).find(e => e.httpStatus)?.httpStatus ?? 500;
 ```
 
 ## Property Access
@@ -121,7 +120,6 @@ See [Design Philosophy](../design-philosophy.md) for core principles.
 **Why most-recent-first ordering?**
 
 Most code needs to find the most relevant (most recent) error first:
-- Find HTTP status: `err.causes.find(e => e.httpStatus)?.httpStatus`
 - Type checking: `err.causes.some(e => is(e, TimeoutError))`
 
 **Why different from `err.cause.cause.cause`?**

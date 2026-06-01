@@ -6,6 +6,8 @@ This directory contains persistent memory for the release engineer sub-agent.
 
 - [API Style: const & type](api-style-const-types.md) — Use `const` for functions, `type` for types
 - [No any policy](no-any-policy.md) — Never use `any`, only generics
+- [Changesets Setup](changesets-setup.md) — Initialized 2026-06-01, commands and config
+- [Release Versions](release-versions.md) — v1.0.0-v2.0.0 plan with feature assignments
 
 ## Project Context
 

@@ -97,7 +97,6 @@ This release intentionally excludes:
 
 - **Type guards** (`isValidationError()`, etc.) — coming in v1.2.0
 - **Predefined errors** (`errors.ValidationError`, etc.) — coming in v1.2.0
-- **HTTP status** (`httpStatus` property mapping) — coming in v1.3.0
 - **Output formatting** (dev vs prod modes) — coming in v1.3.0
 - **Stack cleaning** (`stripLibraryFrames()`) — coming in v1.3.0
 - **Context injection** (`withContext()`) — coming in v2.0.0

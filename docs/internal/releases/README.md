@@ -9,7 +9,7 @@ This document summarizes the release strategy for `@deessejs/errors` and provide
 | **v1.0.0** | Core Foundation | error(), raise(), is(), inherits, .from(), causes, message formatting | MVP |
 | **v1.1.0** | Enhanced DX | .addNote(), context property documentation | After v1.0.0 |
 | **v1.2.0** | Type Safety | Type guards, predefined errors, errors namespace | After v1.1.0 |
-| **v1.3.0** | Production Ready | HTTP status, formatError(), stripLibraryFrames(), dev/prod output | After v1.2.0 |
+| **v1.3.0** | Production Ready 
 | **v2.0.0** | Advanced Context | withContext(), async patterns, AsyncLocalStorage | After v1.3.0 |
 
 ## Feature Coverage by Version
@@ -36,7 +36,6 @@ This document summarizes the release strategy for `@deessejs/errors` and provide
 - [x] Type guards: `isValidationError()`, `isTypeError()`, etc.
 
 ### v1.3.0 — Production Ready
-- [x] HTTP status mapping via `httpStatus` property
 - [x] `formatError()` function for per-call formatting
 - [x] `setOutputMode()` for global configuration
 - [x] `stripLibraryFrames()` for cleaning stack traces

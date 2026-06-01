@@ -160,7 +160,6 @@ const NotFoundError = error({
     id: { type: 'string' },
   },
   message: '{resource} {id} not found',
-  httpStatus: 404,
 });
 
 raise(NotFoundError({ resource: 'User', id: userId }));
@@ -198,7 +197,6 @@ const ValidationError = error({
       },
     },
   },
-  httpStatus: 400,
 });
 
 raise(ValidationError({
@@ -282,20 +280,17 @@ import { error, errors } from '@deessejs/errors';
 // Base errors
 export const AppError = error({
   name: 'AppError',
-  httpStatus: 500,
 });
 
 // Domain errors
 export const ValidationError = error({
   name: 'ValidationError',
   inherits: AppError,
-  httpStatus: 400,
 });
 
 export const NotFoundError = error({
   name: 'NotFoundError',
   inherits: AppError,
-  httpStatus: 404,
 });
 
 // Re-export predefined errors
@@ -371,7 +366,6 @@ try {
   doSomething();
 } catch (err) {
   // Get HTTP status from error or cause chain
-  const status = err.httpStatus ?? causes(err).find(e => e.httpStatus)?.httpStatus ?? 500;
 
   if (isValidationError(err)) {
     res.status(status).json({
@@ -459,4 +453,3 @@ For large codebases, migrate incrementally:
 - [is-function.md](../features/is-function.md) — Type checking
 - [type-guards.md](../features/type-guards.md) — Type-safe narrowing
 - [inheritance.md](../features/inheritance.md) — Error hierarchy
-- [http-status.md](../features/http-status.md) — HTTP status mapping

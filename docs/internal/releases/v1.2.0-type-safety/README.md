@@ -126,7 +126,6 @@ if (isValidationError(err)) {
 
 This release intentionally excludes:
 
-- **HTTP status** (`httpStatus` property on errors) — coming in v1.3.0 (note: predefined errors already have httpStatus)
 - **Output formatting** (dev vs prod modes) — coming in v1.3.0
 - **Stack cleaning** (`stripLibraryFrames()`) — coming in v1.3.0
 - **Context injection** (`withContext()`) — coming in v2.0.0

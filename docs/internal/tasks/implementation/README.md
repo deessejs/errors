@@ -8,14 +8,14 @@ This folder contains all implementation tasks for v1.0.0 Core Foundation.
 
 | ID | Task | Status |
 |----|------|--------|
-| 01 | error() factory | 🟡 Pending |
-| 02 | raise() function | 🟡 Pending |
-| 03 | is() function | 🟡 Pending |
-| 04 | inherits option | 🟡 Pending |
-| 05 | .from() method | 🟡 Pending |
-| 06 | causes() function | 🟡 Pending |
-| 07 | message templates | 🟡 Pending |
-| 08 | ErrorInstance properties | 🟡 Pending |
+| 01 | error() factory | ✅ Complete |
+| 02 | raise() function | ✅ Complete |
+| 03 | is() function | ✅ Complete |
+| 04 | inherits option | ✅ Complete |
+| 05 | .from() method | ✅ Complete |
+| 06 | causes() function | ✅ Complete |
+| 07 | message templates | ✅ Complete |
+| 08 | ErrorInstance properties | ✅ Complete |
 
 ## Execution Order
 

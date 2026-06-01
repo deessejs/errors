@@ -29,7 +29,6 @@ Every error instance has these properties, all with defined values:
 | inherits | ErrorFactory \| ErrorFactory[] \| undefined | undefined | ✅ |
 | from() | method | ✓ | ✅ |
 
-**Note:** `httpStatus` was intentionally removed per design decision. HTTP status mapping should be handled at application layer.
 
 ## Acceptance Criteria
 

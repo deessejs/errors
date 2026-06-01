@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Pending
+✅ Complete
 
 ## Description
 
@@ -10,7 +10,6 @@ Create the `error()` factory function that returns an ErrorFactory. This is the 
 
 ## Requirements
 
-- Accept config object with: `name`, `fields?`, `inherits?`, `message?`, `httpStatus?`
 - Return a callable factory function
 - **Only support Standard Schema** compatible libraries (Zod, Valibot, ArkType, etc.) for field validation
 - Support single and multiple inheritance
@@ -68,7 +67,6 @@ type ErrorConfig<T> = {
   fields?: StandardSchemaV1;  // Standard Schema only
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
-  httpStatus?: number;
 };
 ```
 
@@ -80,7 +78,6 @@ type ErrorConfig<T> = {
 - [ ] `inherits` option works for single parent
 - [ ] `inherits` option works for multiple parents
 - [ ] `message` template is stored for later formatting
-- [ ] `httpStatus` is stored if provided
 - [ ] Factory has `name` property
 - [ ] Factory has `inherits` property if specified
 

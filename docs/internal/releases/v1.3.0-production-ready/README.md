@@ -2,7 +2,7 @@
 
 ## Overview
 
-This release makes the library production-ready with HTTP status mapping, environment-aware output formatting, and stack trace cleaning. It provides the tools needed for production error handling while keeping the developer experience excellent in development.
+This release makes the library production-ready with environment-aware output formatting and stack trace cleaning. It provides the tools needed for production error handling while keeping the developer experience excellent in development.
 
 ## Release Date
 
@@ -11,68 +11,10 @@ Target: TBD (after v1.2.0)
 ## Motivation
 
 For production use, errors need to:
-1. Integrate with HTTP frameworks (Express, Next.js, NestJS)
-2. Output appropriately for different environments (pretty in dev, compact in prod)
-3. Provide clean, actionable stack traces
+1. Output appropriately for different environments (pretty in dev, compact in prod)
+2. Provide clean, actionable stack traces
 
 ## What's Included
-
-### HTTP Status Mapping
-
-All errors can define an HTTP status code:
-
-```typescript
-import { error } from '@deessejs/errors';
-
-const NotFoundError = error({
-  name: 'NotFoundError',
-  fields: {
-    path: { type: 'string' },
-  },
-  httpStatus: 404,
-});
-
-const err = NotFoundError({ path: '/users/123' });
-err.httpStatus; // 404
-```
-
-#### HTTP Status in Predefined Errors
-
-| Error | HTTP Status |
-|-------|-------------|
-| `errors.ValidationError` | 400 (Bad Request) |
-| `errors.TypeError` | 400 (Bad Request) |
-| `errors.NotFoundError` | 404 (Not Found) |
-| `errors.UnauthorizedError` | 401 (Unauthorized) |
-| `errors.ForbiddenError` | 403 (Forbidden) |
-| `errors.TimeoutError` | 504 (Gateway Timeout) |
-
-#### Finding HTTP Status in Cause Chain
-
-```typescript
-// Search the entire cause chain for HTTP status
-const status = err.httpStatus
-  ?? err.causes.find(e => e.httpStatus)?.httpStatus
-  ?? 500;
-```
-
-#### HTTP Handler Integration
-
-```typescript
-// Express/Next.js integration
-function handleError(err: unknown) {
-  const status = err.httpStatus ?? err.causes.find(e => e.httpStatus)?.httpStatus ?? 500;
-
-  return {
-    status,
-    body: {
-      name: err.name,
-      message: err.message,
-      notes: err.notes,
-    },
-  };
-}
-```
 
 ### Output Formatting: Dev vs Prod
 
@@ -189,7 +131,6 @@ JSON.stringify(err);
 //   "cause": null,
 //   "causes": [],
 //   "context": null,
-//   "httpStatus": null,
 //   "stack": "Error: AppError\n    at ..."
 // }
 ```
@@ -236,28 +177,18 @@ export const stripLibraryFrames: <T extends Record<string, unknown>>(
 ) => ErrorInstance<T>;
 ```
 
-### Enhanced Exports
-
-```typescript
-// httpStatus was already available in v1.0.0 config
-// Now with better documentation and chain traversal support
-```
-
 ## Migration Path
 
 No migration required — this is purely additive. Existing code continues to work.
 
 ## Testing Requirements
 
-- [ ] Unit tests for httpStatus on custom errors
-- [ ] Unit tests for HTTP status chain traversal
 - [ ] Unit tests for development output format
 - [ ] Unit tests for production output format
 - [ ] Unit tests for formatError() with all modes
 - [ ] Unit tests for setOutputMode()
 - [ ] Unit tests for stripLibraryFrames()
 - [ ] Unit tests for JSON serialization
-- [ ] Integration tests for HTTP framework integration
 - [ ] Snapshot tests for output formatting
 
 ## Changelog Entry
@@ -266,8 +197,6 @@ No migration required — this is purely additive. Existing code continues to wo
 ## v1.3.0 — Production Ready (YYYY-MM-DD)
 
 ### Added
-- HTTP status mapping via `httpStatus` property
-- `httpStatus` in predefined errors (ValidationError, NotFoundError, etc.)
 - Automatic environment detection (dev vs prod)
 - Pretty colored output in development mode
 - Compact single-line output in production mode
@@ -277,12 +206,10 @@ No migration required — this is purely additive. Existing code continues to wo
 - JSON serialization with `JSON.stringify()`
 
 ### Changed
-- Improved HTTP status documentation
 - Enhanced output formatting docs
 ```
 
 ## Related Documents
 
-- [HTTP Status Feature](../product/features/http-status.md)
 - [Output Formatting Feature](../product/features/output-formatting.md)
 - [Stack Cleaning Feature](../product/features/stack-cleaning.md)

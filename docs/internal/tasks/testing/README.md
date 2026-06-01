@@ -8,14 +8,14 @@ This folder contains all testing-related tasks for v1.0.0 Core Foundation.
 
 | ID | Task | Status |
 |----|------|--------|
-| 09 | Unit tests for error() factory | 🟡 Pending |
-| 10 | Unit tests for raise() | 🟡 Pending |
-| 11 | Unit tests for is() | 🟡 Pending |
-| 12 | Unit tests for .from() | 🟡 Pending |
-| 13 | Unit tests for causes() | 🟡 Pending |
-| 14 | Unit tests for messages | 🟡 Pending |
-| 15 | Type tests for TypeScript | 🟡 Pending |
-| 18 | Integration tests | 🟡 Pending |
+| 09 | Unit tests for error() factory | ✅ Complete |
+| 10 | Unit tests for raise() | ✅ Complete |
+| 11 | Unit tests for is() | ✅ Complete |
+| 12 | Unit tests for .from() | ✅ Complete |
+| 13 | Unit tests for causes() | ✅ Complete |
+| 14 | Unit tests for messages | ✅ Complete |
+| 15 | Type tests for TypeScript | ✅ Complete |
+| 18 | Integration tests | ✅ Complete |
 
 ## Test Framework
 

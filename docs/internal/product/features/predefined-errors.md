@@ -168,7 +168,6 @@ export const ConfigError = error({
     path: { type: 'string' },
   },
   message: 'Config key "{key}" not found in {path}',
-  httpStatus: 500,
 });
 
 // Rate limit errors
@@ -178,7 +177,6 @@ export const RateLimitError = error({
     retryAfter: { type: 'number' },
   },
   message: 'Rate limited. Retry after {retryAfter}ms',
-  httpStatus: 429,
 });
 
 // Type guards
@@ -242,4 +240,3 @@ Error-specific fields capture the most useful information for that error type.
 - [inheritance.md](./inheritance.md) — Extending predefined errors
 - [is-function.md](./is-function.md) — Base type checking
 - [type-guards.md](./type-guards.md) — Type-safe narrowing
-- [http-status.md](./http-status.md) — HTTP status mapping

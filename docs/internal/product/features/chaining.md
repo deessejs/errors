@@ -93,7 +93,6 @@ const BatchError = error({
   fields: z.object({
     count: z.number(),
   }),
-  httpStatus: 500,
 });
 
 const errors = [err1, err2, err3];

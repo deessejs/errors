@@ -14,7 +14,6 @@ function error(config: {
   fields?: StandardSchemaV1;
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
-  httpStatus?: number;
 }): ErrorFactory
 ```
 
@@ -26,7 +25,6 @@ function error(config: {
 | `fields` | `StandardSchemaV1` | No | Schema fields (Zod, Valibot, ArkType, etc.) |
 | `inherits` | `ErrorFactory \| ErrorFactory[]` | No | Parent error factory to inherit from |
 | `message` | `string` | No | Message template with `{field}` placeholders |
-| `httpStatus` | `number` | No | HTTP status code for web frameworks |
 
 ### Returns
 
@@ -41,7 +39,6 @@ import { error, raise } from '@deessejs/errors';
 
 const NotFoundError = error({
   name: 'NotFoundError',
-  httpStatus: 404,
 });
 
 raise(NotFoundError());
@@ -61,7 +58,6 @@ const ValidationError = error({
     field: z.string(),
     reason: z.string(),
   }),
-  httpStatus: 400,
 });
 
 const err = ValidationError({ field: 'email', reason: 'invalid format' });
@@ -111,7 +107,6 @@ const AppError = error({ name: 'AppError' });
 const ValidationError = error({
   name: 'ValidationError',
   inherits: AppError,  // Pass the factory function
-  httpStatus: 400,
 });
 
 is(err, AppError);           // true if err is ValidationError
@@ -160,11 +155,9 @@ const NotFoundError = error({
   fields: z.object({
     path: z.string(),
   }),
-  httpStatus: 404,
 });
 
 const err = NotFoundError({ path: '/users/123' });
-err.httpStatus;  // 404
 ```
 
 ## ErrorFactory
@@ -203,7 +196,6 @@ All errors have these guaranteed properties:
 | `cause` | `Error \| null` | Yes | Direct cause (null if none) |
 | `causes` | `Error[]` | Yes | Full cause chain (may be empty) |
 | `context` | `Record<string, unknown> \| null` | Yes | Injected context (null if none) |
-| `httpStatus` | `number \| null` | Yes | HTTP status (null if not defined) |
 
 ### Field Access
 
@@ -257,7 +249,6 @@ JSON.stringify(err);
 //   "cause": null,
 //   "causes": [],
 //   "context": null,
-//   "httpStatus": null,
 //   "stack": "Error: ValidationError\n    at ..."
 // }
 ```
@@ -295,10 +286,6 @@ const UserError = error({
 - No circular dependency issues
 - IDE autocomplete works
 
-**Why httpStatus as a property?**
-- HTTP status is inherent to the error type, not instance-specific
-- Enables framework integration without extra mapping
-- Consistent with how HTTP frameworks handle errors
 
 ## Related Features
 

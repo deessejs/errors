@@ -48,7 +48,6 @@ Every error instance has these guaranteed properties:
 | `cause` | `Error \| null` | Yes | Direct cause (null if none) |
 | `causes` | `Error[]` | Yes | Full cause chain (may be empty) |
 | `context` | `Record<string, unknown> \| null` | Yes | Injected context (null if none) |
-| `httpStatus` | `number \| null` | Yes | HTTP status (null if not defined) |
 
 ### Exception Chaining: `.from()`
 
@@ -185,7 +184,6 @@ This release intentionally excludes:
 
 - **Type guards** (`isValidationError()`, etc.) — coming in v1.2.0
 - **Predefined errors** (`errors.ValidationError`, etc.) — coming in v1.2.0
-- **HTTP status** (`httpStatus` property on errors) — coming in v1.3.0
 - **Output formatting** (dev vs prod modes) — coming in v1.3.0
 - **Stack cleaning** (`stripLibraryFrames()`) — coming in v1.3.0
 - **Context injection** (`withContext()`) — coming in v2.0.0
@@ -216,7 +214,6 @@ export type ErrorInstance<T extends Record<string, unknown> = Record<string, unk
   cause: Error | null;
   causes: Error[];
   context: Record<string, unknown> | null;
-  httpStatus: number | null;
   from: (cause: Error | ErrorInstance) => ErrorInstance<T>;
   addNote: (note: string) => ErrorInstance<T>;
 };
@@ -233,7 +230,6 @@ export type ErrorConfig<T extends Record<string, unknown> = Record<string, unkno
   fields?: StandardSchemaV1;  // Standard Schema only
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
-  httpStatus?: number;
 };
 ```
 

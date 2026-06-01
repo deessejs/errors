@@ -65,7 +65,6 @@ err.cause;     // Direct cause
 err.causes;    // Full cause chain
 err.context;   // Injected context
 err.stack;     // Stack trace
-err.httpStatus;// HTTP status code (if defined)
 ```
 
 ## JSON Serialization
@@ -80,7 +79,6 @@ const AppError = error({
   fields: {
     code: { type: 'number' },
   },
-  httpStatus: 500,
 });
 
 const err = AppError({ code: 42 })
@@ -92,7 +90,6 @@ JSON.stringify(err);
 //   "name": "AppError",
 //   "message": "AppError",
 //   "fields": { "code": 42 },
-//   "httpStatus": 500,
 //   "notes": ["User action", "Retry attempt 3"],
 //   "cause": null,
 //   "causes": [],
@@ -178,7 +175,6 @@ console.log({
   message: err.message,
   fields: err.fields,
   context: err.context,
-  httpStatus: err.httpStatus,
 });
 ```
 
@@ -216,7 +212,6 @@ Sentry.captureException(err, {
     fields: err.fields,
     notes: err.notes,
     context: err.context,
-    httpStatus: err.httpStatus,
   },
 });
 
@@ -227,7 +222,6 @@ datadogLogger.error(err.message, {
   'error.name': err.name,
   'error.fields': JSON.stringify(err.fields),
   'error.context': JSON.stringify(err.context),
-  'error.http_status': err.httpStatus ?? undefined,
 });
 ```
 
@@ -256,4 +250,3 @@ Global configuration is convenient for applications; per-call is safer for libra
 - [notes.md](./notes.md) — Notes in output
 - [context-injection.md](./context-injection.md) — Context in output
 - [stack-cleaning.md](./stack-cleaning.md) — Stack in output
-- [http-status.md](./http-status.md) — HTTP status in output
