@@ -42,9 +42,11 @@ jobs:
         run: pnpm test
 
       - name: Configure npm
-        run: npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
+        run: |
+          npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npm config set access public
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish packages
-        run: pnpm changeset publish -- --access public
+        run: pnpm changeset publish
