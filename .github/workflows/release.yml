@@ -49,9 +49,14 @@ jobs:
       - name: Publish packages
         run: pnpm changeset publish
 
+      - name: Get latest tag
+        id: tag
+        run: echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.version }}
           body_path: packages/errors/CHANGELOG.md
           draft: false
         env:
