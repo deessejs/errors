@@ -14,8 +14,8 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    # Only run when PR is merged and has version bump label
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'version bump')
+    # Only run when PR is merged and has version bump label OR manually triggered
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'version bump'))
 
     steps:
       - name: Checkout
