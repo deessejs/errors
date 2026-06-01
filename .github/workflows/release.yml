@@ -48,3 +48,11 @@ jobs:
 
       - name: Publish packages
         run: pnpm changeset publish
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: packages/errors/CHANGELOG.md
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
