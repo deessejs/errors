@@ -1,19 +1,15 @@
-# Contributing to Complete Package Template
+# Contributing to @deessejs/errors
 
 Thank you for your interest in contributing to this project!
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/complete-package-template.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/errors.git`
 3. Install dependencies: `pnpm install`
 4. Create a feature branch: `git checkout -b feature/your-feature-name`
 
 ## Development Workflow
-
-### Working on the Template Itself
-
-If you are improving the template:
 
 1. Make your changes
 2. Ensure all tests pass: `pnpm test`
@@ -22,13 +18,6 @@ If you are improving the template:
 5. Build the project: `pnpm build`
 6. Commit your changes
 7. Open a pull request
-
-### Using the Template for a New Project
-
-If you cloned this template to start a new project and found an issue or have a feature idea:
-
-- **Create an issue** on the template repository: https://github.com/nesalia-inc/complete-package-template/issues
-- Use the appropriate issue template for your report
 
 ## Branching Strategy
 
@@ -75,4 +64,4 @@ pnpm turbo test    # Run tests across all packages
 
 ## Questions?
 
-Open an issue or reach out to the maintainers.
+Open an issue or reach out to us at **support@nesalia.com**.

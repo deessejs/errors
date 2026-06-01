@@ -1,76 +1,51 @@
-# Complete Package Template
+# @deessejs/errors
 
-A TypeScript monorepo template using pnpm workspaces and Turborepo.
+A TypeScript error handling library with exception chaining, hierarchical inheritance, and rich error semantics — inspired by Python's error system.
 
-## Structure
+## Features
 
-```
-├── apps/
-│   └── web/          # Next.js documentation site
-├── packages/
-│   └── example/      # Example TypeScript package
-├── turbo.json        # Turborepo pipeline configuration
-├── pnpm-workspace.yaml
-└── package.json
-```
+- **Exception Chaining** — Preserve the full context of errors with cause chains
+- **Hierarchical Inheritance** — Organize errors in meaningful hierarchies
+- **Rich Error Semantics** — Attach metadata, codes, and structured data to errors
+- **TypeScript First** — Full type safety with comprehensive type definitions
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+
-- pnpm 10+
-
-### Installation
+## Installation
 
 ```bash
-pnpm install
+npm install @deessejs/errors
+# or
+pnpm add @deessejs/errors
+# or
+yarn add @deessejs/errors
 ```
 
-## Available Scripts
+## Quick Start
 
-### Workspace (root)
+```typescript
+import { BaseError, ErrorKind, errorOf, errorWithCause } from '@deessejs/errors';
 
-| Command | Description |
-|---------|-------------|
-| `pnpm build` | Build all packages |
-| `pnpm test` | Run all tests |
-| `pnpm lint` | Lint all packages |
+// Create typed errors
+const myError = errorOf(
+  'VALIDATION_ERROR',
+  'Invalid input provided',
+  { field: 'email', value: 'not-an-email' }
+);
 
-### Package: example
+// Chain errors with context
+const wrapped = errorWithCause(
+  errorOf('PROCESSING_ERROR', 'Failed to process data'),
+  myError
+);
 
-```bash
-pnpm --filter example build         # Build the package
-pnpm --filter example test          # Run tests (watch mode)
-pnpm --filter example test:run      # Run tests (single run)
-pnpm --filter example type-check    # TypeScript type checking
-pnpm --filter example lint           # Run ESLint
+// Access the full chain
+console.log(wrapped.message);        // "Failed to process data"
+console.log(wrapped.cause?.message); // "Invalid input provided"
 ```
 
-### App: web
+## Documentation
 
-```bash
-pnpm --filter web dev      # Start development server
-pnpm --filter web build   # Build for production
-pnpm --filter web lint     # Run ESLint
-```
+For full documentation, visit [errors.deessejs.com](https://errors.deessejs.com)
 
-## CI/CD
+## License
 
-Each package has its own GitHub Actions workflows in `.github/workflows/`:
-
-| Workflow | Description |
-|----------|-------------|
-| Lint | Runs ESLint |
-| Type Check | Runs TypeScript type checking |
-| Tests | Runs Vitest |
-| Build | Builds the package/app |
-
-## Tech Stack
-
-- **Package Manager**: pnpm
-- **Build Tool**: Turborepo
-- **Language**: TypeScript
-- **Testing**: Vitest
-- **Linting**: ESLint
-- **App Framework**: Next.js (React)
+MIT
