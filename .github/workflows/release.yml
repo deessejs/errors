@@ -47,4 +47,4 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish packages
-        run: pnpm changeset publish
+        run: pnpm changeset publish -- --access public
