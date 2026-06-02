@@ -102,7 +102,7 @@ export default function HomePage() {
                 <path
                   d="M 20 0 L 0 0 0 20"
                   fill="none"
-                  stroke="#dddddd"
+                  stroke="currentColor"
                   strokeWidth="1"
                 />
               </pattern>
@@ -113,10 +113,10 @@ export default function HomePage() {
                 x2="100%"
                 y2="0%"
               >
-                <stop offset="0%" stopColor="white" stopOpacity="0" />
-                <stop offset="35%" stopColor="white" stopOpacity="0" />
-                <stop offset="70%" stopColor="white" stopOpacity="1" />
-                <stop offset="90%" stopColor="white" stopOpacity="0" />
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
+                <stop offset="35%" stopColor="currentColor" stopOpacity="0" />
+                <stop offset="70%" stopColor="currentColor" stopOpacity="1" />
+                <stop offset="90%" stopColor="currentColor" stopOpacity="0" />
               </linearGradient>
               <mask id="fadeMask">
                 <rect
@@ -142,7 +142,7 @@ export default function HomePage() {
       </div>
 
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200">
+      <nav className="sticky top-0 z-50 bg-fd-background/80 backdrop-blur-sm border-b border-fd-border">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex h-full items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
@@ -152,33 +152,33 @@ export default function HomePage() {
                 fill="none"
                 aria-hidden="true"
               >
-                <rect width="108" height="108" fill="black" />
+                <rect width="108" height="108" fill="currentColor" />
                 <rect
                   width="18"
                   height="18"
                   transform="matrix(-1 0 0 1 72 18)"
-                  fill="white"
+                  fill="currentColor"
                 />
                 <rect
                   width="18"
                   height="18"
                   transform="matrix(-1 0 0 1 54 72)"
-                  fill="white"
+                  fill="currentColor"
                 />
                 <rect
                   width="18"
                   height="18"
                   transform="matrix(-1 0 0 1 54 36)"
-                  fill="white"
+                  fill="currentColor"
                 />
                 <rect
                   width="18"
                   height="18"
                   transform="matrix(-1 0 0 1 72 54)"
-                  fill="white"
+                  fill="currentColor"
                 />
               </svg>
-              <span className="text-2xl font-bold tracking-tight text-gray-950 leading-8">
+              <span className="text-2xl font-bold tracking-tight text-fd-foreground leading-8">
                 @deessejs/errors
               </span>
             </Link>
@@ -186,7 +186,7 @@ export default function HomePage() {
           <div className="flex items-center gap-6">
             <Link
               href="/docs"
-              className="text-sm font-medium text-gray-500 hover:text-gray-950 transition-colors"
+              className="text-sm font-medium text-fd-muted hover:text-fd-foreground transition-colors"
             >
               Documentation
             </Link>
@@ -194,7 +194,7 @@ export default function HomePage() {
               href="https://github.com/nesalia-inc/errors"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 hover:text-gray-950 transition-colors"
+              className="text-fd-muted hover:text-fd-foreground transition-colors"
               aria-label="GitHub"
             >
               <svg
@@ -213,12 +213,12 @@ export default function HomePage() {
         {/* Hero Section */}
         <section className="relative overflow-hidden">
           <div className="max-w-6xl mx-auto px-6 pt-20 lg:pt-28 pb-8 relative z-10">
-            <h1 className="text-5xl lg:text-6xl font-bold tracking-tight leading-[0.95] text-gray-950">
+            <h1 className="text-5xl lg:text-6xl font-bold tracking-tight leading-[0.95] text-fd-foreground">
               Error Handling,
               <br />
               Reimagined.
             </h1>
-            <p className="mt-6 max-w-2xl text-xl text-gray-600">
+            <p className="mt-6 max-w-2xl text-xl text-fd-muted-foreground">
               A TypeScript library that brings Python-inspired error handling to
               JavaScript. Exception chaining, hierarchical inheritance, and rich
               error semantics through a function-based API.
@@ -226,13 +226,13 @@ export default function HomePage() {
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href="/docs"
-                className="inline-flex items-center gap-2.5 bg-gray-950 hover:bg-gray-800 rounded-none px-5 py-3 text-sm font-medium text-white transition-colors"
+                className="inline-flex items-center gap-2.5 bg-fd-primary hover:bg-fd-primary/90 rounded-none px-5 py-3 text-sm font-medium text-fd-primary-foreground transition-colors"
               >
                 Get Started
               </Link>
               <Link
                 href="/docs/installation"
-                className="inline-flex items-center gap-2.5 border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 rounded-none px-5 py-3 text-sm font-medium text-gray-700 transition-colors"
+                className="inline-flex items-center gap-2.5 border border-fd-border hover:border-fd-accent bg-fd-card hover:bg-fd-accent/50 rounded-none px-5 py-3 text-sm font-medium text-fd-muted-foreground transition-colors"
               >
                 npm install @deessejs/errors
               </Link>
@@ -246,12 +246,12 @@ export default function HomePage() {
             className="max-w-6xl mx-auto px-6 py-16"
             style={{
               background:
-                'linear-gradient(to bottom, transparent 0%, transparent 50%, #f8f9fb 50%, #f8f9fb 100%)',
+                'linear-gradient(to bottom, transparent 0%, transparent 50%, transparent 50%, transparent 100%)',
             }}
           >
-            <div className="border border-gray-300 rounded-none overflow-hidden shadow-lg bg-white/70 backdrop-blur-sm">
+            <div className="border-fd-border rounded-none overflow-hidden shadow-lg bg-fd-card/70 backdrop-blur-sm">
               {/* Code block chrome */}
-              <div className="flex items-stretch border-b border-gray-200 bg-gray-50/60">
+              <div className="flex items-stretch border-b border-fd-border bg-fd-secondary/60">
                 <div className="flex items-center gap-2 px-4 py-2.5 min-w-0">
                   <svg
                     className="w-3.5 h-3.5 text-blue-500 shrink-0"
@@ -266,26 +266,26 @@ export default function HomePage() {
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
-                  <span className="font-mono text-[13px] text-gray-600 truncate">
+                  <span className="font-mono text-[13px] text-fd-muted-foreground truncate">
                     example.ts
                   </span>
                 </div>
               </div>
               <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-transparent m-0 rounded-none">
-                <code className="font-mono text-gray-800">{HERO_CODE}</code>
+                <code className="font-mono text-fd-foreground">{HERO_CODE}</code>
               </pre>
             </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section className="bg-[#f8f9fb]">
+        <section className="bg-fd-background-secondary">
           <div className="max-w-6xl mx-auto px-6 py-24">
             <div className="max-w-2xl">
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-gray-950">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-fd-foreground">
                 Features
               </h2>
-              <p className="mt-4 text-lg text-gray-600 leading-relaxed">
+              <p className="mt-4 text-lg text-fd-muted-foreground leading-relaxed">
                 Everything you need for robust error handling in TypeScript.
               </p>
             </div>
@@ -296,12 +296,12 @@ export default function HomePage() {
                 <Link
                   key={feature.title}
                   href={feature.href}
-                  className="lg:col-span-3 border border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50 rounded-none p-6 transition-colors"
+                  className="lg:col-span-3 border border-fd-border bg-fd-card border-fd-border hover:border-fd-accent hover:bg-fd-secondary rounded-none p-6 transition-colors"
                 >
-                  <h3 className="text-xl font-semibold tracking-tight text-gray-950">
+                  <h3 className="text-xl font-semibold tracking-tight text-fd-foreground">
                     {feature.title}
                   </h3>
-                  <p className="mt-1.5 text-[15px] text-gray-600 leading-relaxed">
+                  <p className="mt-1.5 text-[15px] text-fd-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
                 </Link>
@@ -310,38 +310,38 @@ export default function HomePage() {
               {/* Secondary features - spans 2 columns */}
               <Link
                 href="/docs/type-checking"
-                className="lg:col-span-2 border border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50 rounded-none p-6 transition-colors"
+                className="lg:col-span-2 border border-fd-border bg-fd-card border-fd-border hover:border-fd-accent hover:bg-fd-secondary rounded-none p-6 transition-colors"
               >
-                <h3 className="text-xl font-semibold tracking-tight text-gray-950">
+                <h3 className="text-xl font-semibold tracking-tight text-fd-foreground">
                   Type Guards
                 </h3>
-                <p className="mt-1.5 text-[15px] text-gray-600 leading-relaxed">
-                  The <code className="text-sm bg-gray-100 px-1">is()</code>{' '}
+                <p className="mt-1.5 text-[15px] text-fd-muted-foreground leading-relaxed">
+                  The <code className="text-sm bg-fd-muted px-1">is()</code>{' '}
                   function provides type-safe error checking.
                 </p>
               </Link>
 
               <Link
                 href="/docs/fields-schema"
-                className="lg:col-span-2 border border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50 rounded-none p-6 transition-colors"
+                className="lg:col-span-2 border border-fd-border bg-fd-card border-fd-border hover:border-fd-accent hover:bg-fd-secondary rounded-none p-6 transition-colors"
               >
-                <h3 className="text-xl font-semibold tracking-tight text-gray-950">
+                <h3 className="text-xl font-semibold tracking-tight text-fd-foreground">
                   Schema Validation
                 </h3>
-                <p className="mt-1.5 text-[15px] text-gray-600 leading-relaxed">
+                <p className="mt-1.5 text-[15px] text-fd-muted-foreground leading-relaxed">
                   Validate error fields with Standard Schema (Zod, Valibot, etc.).
                 </p>
               </Link>
 
               <Link
                 href="/docs/from-method"
-                className="lg:col-span-2 border border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50 rounded-none p-6 transition-colors"
+                className="lg:col-span-2 border border-fd-border bg-fd-card border-fd-border hover:border-fd-accent hover:bg-fd-secondary rounded-none p-6 transition-colors"
               >
-                <h3 className="text-xl font-semibold tracking-tight text-gray-950">
+                <h3 className="text-xl font-semibold tracking-tight text-fd-foreground">
                   Cause Traversal
                 </h3>
-                <p className="mt-1.5 text-[15px] text-gray-600 leading-relaxed">
-                  Use <code className="text-sm bg-gray-100 px-1">causes()</code> to
+                <p className="mt-1.5 text-[15px] text-fd-muted-foreground leading-relaxed">
+                  Use <code className="text-sm bg-fd-muted px-1">causes()</code> to
                   iterate the full error chain.
                 </p>
               </Link>
@@ -349,16 +349,16 @@ export default function HomePage() {
               {/* CTA card */}
               <Link
                 href="/docs"
-                className="group lg:col-span-2 border border-gray-300 bg-gray-950 hover:bg-gray-800 rounded-none p-6 transition-colors"
+                className="group lg:col-span-2 border-fd-border bg-fd-primary hover:bg-fd-primary/90 rounded-none p-6 transition-colors"
               >
-                <h3 className="text-xl font-semibold tracking-tight text-white">
+                <h3 className="text-xl font-semibold tracking-tight text-fd-primary-foreground">
                   Explore the docs
                 </h3>
-                <p className="mt-1.5 text-base text-gray-300 leading-relaxed">
+                <p className="mt-1.5 text-base text-fd-secondary-foreground leading-relaxed">
                   Learn how to build robust error handling in your TypeScript
                   projects.
                 </p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-white">
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-fd-primary-foreground">
                   Read the docs <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
                 </span>
               </Link>
@@ -367,13 +367,13 @@ export default function HomePage() {
         </section>
 
         {/* Before/After Comparison */}
-        <section className="bg-white">
+        <section className="bg-fd-background">
           <div className="max-w-6xl mx-auto px-6 py-24">
             <div className="max-w-2xl mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-gray-950">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-fd-foreground">
                 From fragile to robust.
               </h2>
-              <p className="mt-4 text-lg text-gray-600 leading-relaxed">
+              <p className="mt-4 text-lg text-fd-muted-foreground leading-relaxed">
                 Stop relying on fragile string matching. Get type-safe, structured
                 errors that make debugging a breeze.
               </p>
@@ -381,26 +381,26 @@ export default function HomePage() {
 
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Before */}
-              <div className="border border-gray-300 rounded-none overflow-hidden">
-                <div className="border-b border-gray-200 bg-gray-100 px-4 py-2.5">
-                  <span className="text-sm font-medium text-red-600">
+              <div className="border-fd-border rounded-none overflow-hidden">
+                <div className="border-b border-fd-border bg-fd-muted px-4 py-2.5">
+                  <span className="text-sm font-medium text-fd-destructive">
                     Before
                   </span>
                 </div>
-                <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-white m-0 rounded-none">
-                  <code className="font-mono text-gray-600">{BEFORE_CODE}</code>
+                <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-fd-background m-0 rounded-none">
+                  <code className="font-mono text-fd-muted-foreground">{BEFORE_CODE}</code>
                 </pre>
               </div>
 
               {/* After */}
-              <div className="border border-gray-300 rounded-none overflow-hidden">
-                <div className="border-b border-gray-200 bg-green-50 px-4 py-2.5">
-                  <span className="text-sm font-medium text-green-600">
+              <div className="border-fd-border rounded-none overflow-hidden">
+                <div className="border-b border-fd-border bg-fd-accent/30 px-4 py-2.5">
+                  <span className="text-sm font-medium text-fd-primary">
                     @deessejs/errors
                   </span>
                 </div>
-                <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-white m-0 rounded-none">
-                  <code className="font-mono text-gray-800">{AFTER_CODE}</code>
+                <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-fd-background m-0 rounded-none">
+                  <code className="font-mono text-fd-foreground">{AFTER_CODE}</code>
                 </pre>
               </div>
             </div>
@@ -408,24 +408,24 @@ export default function HomePage() {
         </section>
 
         {/* Install Section */}
-        <section className="bg-[#f8f9fb]">
+        <section className="bg-fd-background-secondary">
           <div className="max-w-6xl mx-auto px-6 py-24">
             <div className="max-w-2xl">
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-gray-950">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-fd-foreground">
                 Get started in seconds.
               </h2>
-              <p className="mt-4 text-lg text-gray-600 leading-relaxed">
+              <p className="mt-4 text-lg text-fd-muted-foreground leading-relaxed">
                 Install the package and start building better errors today.
               </p>
             </div>
 
             <div className="mt-8 flex flex-col gap-4">
-              <div className="inline-flex items-center gap-3 bg-gray-950 text-white px-5 py-3 font-mono text-sm rounded-none">
-                <span className="text-gray-400">$</span>
+              <div className="inline-flex items-center gap-3 bg-fd-primary text-fd-primary-foreground px-5 py-3 font-mono text-sm rounded-none">
+                <span className="text-fd-muted">$</span>
                 <span>npm install @deessejs/errors</span>
               </div>
-              <div className="inline-flex items-center gap-3 bg-white border border-gray-300 text-gray-700 px-5 py-3 font-mono text-sm rounded-none">
-                <span className="text-gray-400">$</span>
+              <div className="inline-flex items-center gap-3 bg-fd-background border-fd-border text-fd-muted-foreground px-5 py-3 font-mono text-sm rounded-none">
+                <span className="text-fd-muted">$</span>
                 <span>pnpm add @deessejs/errors</span>
               </div>
             </div>
@@ -433,7 +433,7 @@ export default function HomePage() {
             <div className="mt-8">
               <Link
                 href="/docs"
-                className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-950 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-fd-muted hover:text-fd-foreground transition-colors"
               >
                 Read the full documentation
                 <span>&rarr;</span>
@@ -444,7 +444,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white">
+      <footer className="border-t border-fd-border bg-fd-background">
         <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg
@@ -453,33 +453,33 @@ export default function HomePage() {
               fill="none"
               aria-hidden="true"
             >
-              <rect width="108" height="108" fill="black" />
+              <rect width="108" height="108" fill="currentColor" />
               <rect
                 width="18"
                 height="18"
                 transform="matrix(-1 0 0 1 72 18)"
-                fill="white"
+                fill="currentColor"
               />
               <rect
                 width="18"
                 height="18"
                 transform="matrix(-1 0 0 1 54 72)"
-                fill="white"
+                fill="currentColor"
               />
               <rect
                 width="18"
                 height="18"
                 transform="matrix(-1 0 0 1 54 36)"
-                fill="white"
+                fill="currentColor"
               />
               <rect
                 width="18"
                 height="18"
                 transform="matrix(-1 0 0 1 72 54)"
-                fill="white"
+                fill="currentColor"
               />
             </svg>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-fd-muted">
               @deessejs/errors — MIT License
             </span>
           </div>
@@ -487,7 +487,7 @@ export default function HomePage() {
             href="https://github.com/nesalia-inc/errors"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-gray-500 hover:text-gray-950 transition-colors"
+            className="text-sm text-fd-muted hover:text-fd-foreground transition-colors"
           >
             GitHub
           </a>
