@@ -20,7 +20,7 @@ export async function CodeBlockServer({
 					<span className="flex-1 truncate font-mono text-[13px]">{title}</span>
 				</div>
 			) : null}
-			<div dangerouslySetInnerHTML={{ __html: html }} />
+			<div className="[&_pre]:!bg-background" dangerouslySetInnerHTML={{ __html: html }} />
 		</figure>
 	);
 }

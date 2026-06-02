@@ -13,12 +13,5 @@ export async function highlightCode(code: string, lang: string): Promise<string>
 			light: 'github-light',
 			dark: 'github-dark',
 		},
-		transformers: [
-			{
-				pre(node) {
-					delete node.properties.style;
-				},
-			},
-		],
 	});
 }
