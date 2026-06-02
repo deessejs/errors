@@ -1,26 +1,37 @@
-import { highlightCode } from '@/lib/highlight';
+import { codeToHtml } from 'shiki';
 
-interface CodeBlockServerProps {
+interface CodeBlockProps {
 	code: string;
-	language: string;
+	language?: string;
 	title?: string;
 }
 
-export async function CodeBlockServer({
+export async function CodeBlock({
 	code,
-	language,
+	language = 'typescript',
 	title,
-}: CodeBlockServerProps) {
-	const html = await highlightCode(code, language);
+}: CodeBlockProps) {
+	const html = await codeToHtml(code, {
+		lang: language,
+		themes: {
+			light: 'github-light',
+			dark: 'github-dark',
+		},
+	});
 
 	return (
-		<figure className="shiki relative my-4 border border-fd-border rounded-xl overflow-hidden text-sm not-prose">
-			{title ? (
-				<div className="flex items-center gap-2 h-9.5 border-b border-fd-border bg-fd-secondary px-4 text-fd-muted-foreground">
-					<span className="flex-1 truncate font-mono text-[13px]">{title}</span>
+		<div className="h-full w-full overflow-hidden rounded-none border border-fd-border">
+			{title && (
+				<div className="flex items-center gap-1.5 px-3 py-2 border-b border-fd-border bg-fd-secondary">
+					<div className="h-2.5 w-2.5 rounded-full bg-fd-destructive" />
+					<div className="h-2.5 w-2.5 rounded-full bg-fd-primary" />
+					<div className="h-2.5 w-2.5 rounded-full bg-fd-accent" />
+					<span className="ml-2 font-mono text-[13px] text-fd-muted-foreground">
+						{title}
+					</span>
 				</div>
-			) : null}
-			<div className="[&_pre]:!bg-background" dangerouslySetInnerHTML={{ __html: html }} />
-		</figure>
+			)}
+			<div className="[&_pre]:!bg-background [&_pre]:p-6 [&_pre]:m-0" dangerouslySetInnerHTML={{ __html: html }} />
+		</div>
 	);
 }

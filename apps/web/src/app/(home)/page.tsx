@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CodeBlockServer } from '@/components/code-block';
+import { CodeBlock } from '@/components/code-block';
 
 // Floating squares data for blueprint aesthetic
 const floatingSquares = [
@@ -177,7 +177,7 @@ export default function HomePage() {
         {/* Hero Code Section */}
         <section className="relative z-10">
           <div className="max-w-6xl mx-auto px-6 py-16">
-            <CodeBlockServer language="typescript" title="example.ts" code={HERO_CODE} />
+            <CodeBlock language="typescript" title="example.ts" code={HERO_CODE} />
           </div>
         </section>
 
@@ -284,10 +284,10 @@ export default function HomePage() {
 
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Before */}
-              <CodeBlockServer language="typescript" title="before.ts" code={BEFORE_CODE} />
+              <CodeBlock language="typescript" title="before.ts" code={BEFORE_CODE} />
 
               {/* After */}
-              <CodeBlockServer language="typescript" title="after.ts" code={AFTER_CODE} />
+              <CodeBlock language="typescript" title="after.ts" code={AFTER_CODE} />
             </div>
           </div>
         </section>
