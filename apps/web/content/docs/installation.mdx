@@ -33,13 +33,13 @@ bun add @deessejs/errors
 
 Once installed, you can import the core functions from the package:
 
-```ts main.ts
+```ts title="main.ts"
 import { error, raise, is, causes } from '@deessejs/errors';
 ```
 
 You can also import specific functions if you prefer tree-shaking:
 
-```ts partial.ts
+```ts title="partial.ts"
 import { error } from '@deessejs/errors';
 import { is } from '@deessejs/errors';
 ```
@@ -48,7 +48,7 @@ import { is } from '@deessejs/errors';
 
 The library works out of the box with TypeScript. No special compiler options are required, but the following settings in your `tsconfig.json` will ensure the best experience:
 
-```json tsconfig.json
+```json title="tsconfig.json"
 {
   "compilerOptions": {
     "strict": true,
@@ -63,7 +63,7 @@ The `moduleResolution: "bundler"` option is recommended if you're using a modern
 
 To verify that the library is installed correctly, create a simple test file:
 
-```ts verify.ts
+```ts title="verify.ts"
 import { error } from '@deessejs/errors';
 
 const TestError = error({ name: 'TestError' });

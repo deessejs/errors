@@ -9,7 +9,7 @@ While single inheritance creates clear parent-child relationships, some errors n
 
 To inherit from multiple parents, pass an array of error factories to the `inherits` property:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error, is } from '@deessejs/errors';
 
 const NetworkError = error({ name: 'NetworkError' });
@@ -28,7 +28,7 @@ Now this error belongs to both categories in the hierarchy.
 
 When an error inherits from multiple parents, `is()` returns true for any of its parents:
 
-```ts checking.ts
+```ts title="checking.ts"
 const NetworkError = error({ name: 'NetworkError' });
 const StorageError = error({ name: 'StorageError' });
 
@@ -50,7 +50,7 @@ This flexibility lets you categorize errors from multiple angles.
 
 Consider a caching layer that sits between the network and storage. It might fail in ways that are both network-related and storage-related:
 
-```ts example.ts
+```ts title="example.ts"
 import { error, raise, is } from '@deessejs/errors';
 
 const NetworkError = error({ name: 'NetworkError' });
@@ -88,7 +88,7 @@ This pattern is useful for middleware and infrastructure code that needs to resp
 
 Multiple inheritance works seamlessly with typed fields:
 
-```ts with-fields.ts
+```ts title="with-fields.ts"
 import { error, is } from '@deessejs/errors';
 
 const NetworkError = error<{ endpoint: string }>({

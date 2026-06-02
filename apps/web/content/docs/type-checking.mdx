@@ -9,7 +9,7 @@ The `is()` function is your primary tool for checking what kind of error you're 
 
 Pass an error and an error type to `is()` to check if the error is an instance of that type:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -30,7 +30,7 @@ The function returns `true` if the error matches the type directly or inherits f
 
 The most common use case is inside catch blocks where you need to handle different error types:
 
-```ts catch-block.ts
+```ts title="catch-block.ts"
 import { error, raise, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -60,7 +60,7 @@ TypeScript narrows the type inside each branch when using `is()`, giving you acc
 
 The `is()` function also works with native JavaScript errors:
 
-```ts native.ts
+```ts title="native.ts"
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -82,7 +82,7 @@ This lets you mix @deessejs/errors with standard JavaScript error handling seaml
 
 When `is()` returns true, TypeScript knows the error is of that specific type. This enables type-safe access to fields:
 
-```ts type-safety.ts
+```ts title="type-safety.ts"
 import { error, is } from '@deessejs/errors';
 
 const ValidationError = error<{ field: string; reason: string }>({
@@ -105,7 +105,7 @@ Without the `is()` check, TypeScript would report an error because `err` is `unk
 
 You can check for multiple types in sequence:
 
-```ts multiple.ts
+```ts title="multiple.ts"
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -132,7 +132,7 @@ Order your checks from most specific to least specific to ensure the correct han
 
 Native JavaScript `instanceof` doesn't work with @deessejs/errors errors because they're created with a factory function rather than a class. The `is()` function bridges this gap and adds support for inheritance checking.
 
-```ts comparison.ts
+```ts title="comparison.ts"
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });

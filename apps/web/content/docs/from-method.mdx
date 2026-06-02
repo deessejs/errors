@@ -9,7 +9,7 @@ When an error occurs as a result of another error, it's important to preserve th
 
 The `from()` method attaches a cause error to the current error. Call it on an error instance to establish the relationship:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -33,7 +33,7 @@ The `from()` method returns the error instance, so you can chain method calls or
 
 A single error can have multiple causes in its chain. Each call to `from()` adds a new cause to the front of the chain:
 
-```ts multiple.ts
+```ts title="multiple.ts"
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
@@ -55,7 +55,7 @@ The order is always newest first, which makes sense when reading error chains â€
 
 You can combine `from()` with `raise()` for concise error handling:
 
-```ts with-raise.ts
+```ts title="with-raise.ts"
 import { error, raise } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -72,7 +72,7 @@ try {
 
 Since `from()` returns the error instance, you can write this more compactly:
 
-```ts compact.ts
+```ts title="compact.ts"
 import { error, raise } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -89,7 +89,7 @@ try {
 
 After building an error chain, you can access all causes through the `causes` array or use the `causes()` helper function for more robust access:
 
-```ts access.ts
+```ts title="access.ts"
 import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });

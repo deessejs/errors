@@ -9,7 +9,7 @@ This page collects common patterns and practical examples for using @deessejs/er
 
 Validation errors are one of the most common error types. They typically include the field that failed validation and a reason for the failure.
 
-```ts validation.ts
+```ts title="validation.ts"
 import { error, raise } from '@deessejs/errors';
 import { z } from 'zod';
 
@@ -50,7 +50,7 @@ When validation fails, you get an error with specific information about which fi
 
 Network errors benefit from including the endpoint and any relevant request data.
 
-```ts network.ts
+```ts title="network.ts"
 import { error, raise } from '@deessejs/errors';
 
 const NetworkError = error<{
@@ -84,7 +84,7 @@ You can extend this pattern to include request headers, body, or timing informat
 
 Database errors typically need the query that failed and any relevant identifiers.
 
-```ts database.ts
+```ts title="database.ts"
 import { error, raise } from '@deessejs/errors';
 
 const DatabaseError = error<{
@@ -118,7 +118,7 @@ Chaining the original error preserves the full context of what went wrong.
 
 Create a reusable error handler that processes errors based on their type.
 
-```ts handler.ts
+```ts title="handler.ts"
 import { error, raise, is, causes } from '@deessejs/errors';
 import { ValidationError, NetworkError, DatabaseError } from './errors';
 
@@ -161,7 +161,7 @@ This pattern centralizes error handling logic and ensures consistent responses.
 
 When building services that call other services, wrap errors to add context while preserving the cause chain.
 
-```ts service.ts
+```ts title="service.ts"
 import { error, raise } from '@deessejs/errors';
 import { NetworkError, UserNotFoundError } from './errors';
 
@@ -194,7 +194,7 @@ The caller gets both the context of the current operation and the underlying cau
 
 Create a hierarchy that lets you handle errors at different levels of granularity.
 
-```ts hierarchy.ts
+```ts title="hierarchy.ts"
 import { error, is } from '@deessejs/errors';
 
 // Top level

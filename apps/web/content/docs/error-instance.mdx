@@ -9,7 +9,7 @@ When you create an error using an error factory, you get an error instance. This
 
 Error instances include all standard `Error` properties:
 
-```ts properties.ts
+```ts title="properties.ts"
 import { error } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError', message: 'Something went wrong' });
@@ -27,7 +27,7 @@ These properties behave exactly like native errors, so they work with all existi
 
 The `fields` property contains the data you passed when creating the error. This is where you store structured context about what went wrong.
 
-```ts fields.ts
+```ts title="fields.ts"
 const ValidationError = error<{ field: string; value: unknown }>({
   name: 'ValidationError',
   message: 'Invalid value',
@@ -45,7 +45,7 @@ The fields object is typed based on what you defined in the error factory, provi
 
 The `from()` method chains another error as the cause of the current error. This is how you preserve the full context of what led to an error.
 
-```ts from-method.ts
+```ts title="from-method.ts"
 import { error } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -67,7 +67,7 @@ The `from()` method returns the error instance, allowing you to chain multiple c
 
 The `cause` property holds the direct cause of the error — the error passed to the most recent `from()` call.
 
-```ts cause.ts
+```ts title="cause.ts"
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
@@ -83,7 +83,7 @@ When no cause has been set, `cause` is `null`.
 
 The `causes` array contains the entire chain of errors, ordered from most recent to oldest. This gives you the full history of what happened.
 
-```ts causes-array.ts
+```ts title="causes-array.ts"
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
@@ -102,7 +102,7 @@ When you chain multiple errors, the new cause is added to the front of the array
 
 The `notes` property allows you to attach additional context to an error after it's created. This is useful for adding debugging information in catch blocks.
 
-```ts notes.ts
+```ts title="notes.ts"
 const AppError = error({ name: 'AppError' });
 const err = AppError({});
 
@@ -120,7 +120,7 @@ Notes are stored as an array of strings and can be modified at any time.
 
 The `context` property holds additional data that was injected into the error. This is useful for framework integrations or middleware that need to attach extra information.
 
-```ts context.ts
+```ts title="context.ts"
 const AppError = error({ name: 'AppError' });
 const err = AppError({});
 

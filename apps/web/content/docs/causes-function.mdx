@@ -9,7 +9,7 @@ The `causes()` function provides a safe way to access the cause chain of any err
 
 Call `causes()` with an error to get its cause chain as an array:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -32,7 +32,7 @@ The returned array contains only the errors that were explicitly added using `fr
 
 The `causes()` function handles edge cases that direct property access doesn't:
 
-```ts safety.ts
+```ts title="safety.ts"
 import { causes } from '@deessejs/errors';
 
 // Works with native errors (no causes property)
@@ -54,7 +54,7 @@ This robustness makes `causes()` ideal for writing generic error handling code t
 
 You can iterate over the causes array to log or process each error in the chain:
 
-```ts iterate.ts
+```ts title="iterate.ts"
 import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -80,7 +80,7 @@ This is useful for building detailed error logs or monitoring dashboards that tr
 
 A common pattern is to build a summary message from the error chain:
 
-```ts summary.ts
+```ts title="summary.ts"
 import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -102,7 +102,7 @@ console.log(summary);
 
 Use `causes()` with `is()` to search for specific error types in the chain:
 
-```ts combined.ts
+```ts title="combined.ts"
 import { error, causes, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });

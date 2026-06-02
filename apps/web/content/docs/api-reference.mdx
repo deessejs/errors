@@ -9,7 +9,7 @@ This page documents all public exports from @deessejs/errors. Use this as a comp
 
 Creates an error factory function for defining typed, structured errors.
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 const errorFactory = error<T>(config)
 ```
 
@@ -35,7 +35,7 @@ An `ErrorFactory` function that creates error instances. The factory has these p
 
 ### Example
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 import { error } from '@deessejs/errors';
 
 const ValidationError = error<{ field: string }>({
@@ -53,7 +53,7 @@ const err = ValidationError({ field: 'email' });
 
 Throws an error instance. This is the primary mechanism for throwing errors in @deessejs/errors.
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 raise(error: ErrorInstance): never
 ```
 
@@ -69,7 +69,7 @@ raise(error: ErrorInstance): never
 
 ### Example
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 import { error, raise } from '@deessejs/errors';
 
 const ValidationError = error({ name: 'ValidationError' });
@@ -83,7 +83,7 @@ raise(ValidationError({}));
 
 Type guard function to check if an error is an instance of a specific error type.
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 const result = is(error, ErrorType)
 ```
 
@@ -100,7 +100,7 @@ const result = is(error, ErrorType)
 
 ### Example
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -121,7 +121,7 @@ is(err, AppError); // true (through inheritance)
 
 Returns all causes in an error chain.
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 const chain = causes(error: unknown): Error[]
 ```
 
@@ -137,7 +137,7 @@ const chain = causes(error: unknown): Error[]
 
 ### Example
 
-```ts title="${f%.mdx}.ts"
+```ts title="title="${f%.mdx}.ts""
 import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });

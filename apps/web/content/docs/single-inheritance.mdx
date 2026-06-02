@@ -9,7 +9,7 @@ Error hierarchies help organize errors by domain and concern. @deessejs/errors s
 
 To create an error that inherits from another, use the `inherits` property when defining the error factory:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error, is } from '@deessejs/errors';
 
 // Base error for the application
@@ -28,7 +28,7 @@ Now `ValidationError` is a child of `AppError` in the hierarchy. You can verify 
 
 When an error inherits from another, `is()` returns true for both the error itself and all its ancestors:
 
-```ts checking.ts
+```ts title="checking.ts"
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({
   name: 'ValidationError',
@@ -47,7 +47,7 @@ This is powerful for error handling — you can write a catch block for `AppErro
 
 Here's how inheritance helps in a real application:
 
-```ts example.ts
+```ts title="example.ts"
 import { error, raise, is } from '@deessejs/errors';
 
 // Base errors
@@ -83,7 +83,7 @@ This pattern lets you handle errors at different levels of granularity depending
 
 You can combine inheritance with message templates for powerful error definitions:
 
-```ts with-message.ts
+```ts title="with-message.ts"
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -103,7 +103,7 @@ console.log(is(err, AppError)); // true
 
 The `inherits` property on the error factory lets you access parent types programmatically:
 
-```ts parents.ts
+```ts title="parents.ts"
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({
   name: 'ValidationError',

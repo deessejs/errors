@@ -9,7 +9,7 @@ The `error()` function is the primary way to define error types in @deessejs/err
 
 At minimum, an error factory requires a name. This name identifies the error type and appears in the `name` property of instances.
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error } from '@deessejs/errors';
 
 const NotFoundError = error({
@@ -27,7 +27,7 @@ When you provide only a name, the message defaults to the same value. This is us
 
 You can provide a custom message that gives more context about what went wrong:
 
-```ts custom-message.ts
+```ts title="custom-message.ts"
 const ValidationError = error({
   name: 'ValidationError',
   message: 'Validation failed',
@@ -41,7 +41,7 @@ console.log(err.message); // "Validation failed"
 
 The real power of error factories comes from attaching structured data. You can define the type of fields your error accepts using a generic parameter:
 
-```ts with-fields.ts
+```ts title="with-fields.ts"
 const UserError = error<{ userId: string; reason: string }>({
   name: 'UserError',
 });
@@ -57,7 +57,7 @@ The fields object is completely flexible. You can include any data that helps de
 
 For more robust error definitions, you can provide a Standard Schema (compatible with Zod, Valibot, or ArkType) to validate fields at creation time:
 
-```ts with-schema.ts
+```ts title="with-schema.ts"
 import { z } from 'zod';
 import { error } from '@deessejs/errors';
 
@@ -78,7 +78,7 @@ When fields don't match the schema, an error is thrown during error creation. Th
 
 The function returned by `error()` has several useful properties attached to it:
 
-```ts properties.ts
+```ts title="properties.ts"
 const AppError = error({ name: 'AppError' });
 
 console.log(AppError.name); // "AppError"
@@ -92,7 +92,7 @@ These properties are useful for introspection and for the `is()` function to che
 
 Error factories are designed to be created once and reused throughout your application. Define them at module level so they're available everywhere:
 
-```ts definitions.ts
+```ts title="definitions.ts"
 // errors/index.ts
 import { error } from '@deessejs/errors';
 
@@ -114,7 +114,7 @@ export const NetworkError = error({
 
 Then import and use them wherever needed:
 
-```ts usage.ts
+```ts title="usage.ts"
 import { raise } from '@deessejs/errors';
 import { NotFoundError } from './errors';
 

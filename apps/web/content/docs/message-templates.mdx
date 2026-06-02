@@ -9,7 +9,7 @@ Message templates let you create dynamic error messages that include runtime val
 
 Wrap field names in curly braces to create placeholders in your message:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error } from '@deessejs/errors';
 
 const ValidationError = error<{ field: string }>({
@@ -27,7 +27,7 @@ The placeholder is replaced with the actual value from the fields object at runt
 
 You can include multiple placeholders in a single message:
 
-```ts multiple.ts
+```ts title="multiple.ts"
 import { error } from '@deessejs/errors';
 
 const FormatError = error<{ expected: string; actual: string }>({
@@ -49,7 +49,7 @@ Modifiers transform the placeholder value before insertion. They follow the fiel
 
 The `:upper` modifier converts the value to uppercase:
 
-```ts upper.ts
+```ts title="upper.ts"
 import { error } from '@deessejs/errors';
 
 const UserCreatedError = error<{ userId: string }>({
@@ -67,7 +67,7 @@ This is useful for displaying IDs or codes that should be consistently formatted
 
 The `:lower` modifier converts the value to lowercase:
 
-```ts lower.ts
+```ts title="lower.ts"
 import { error } from '@deessejs/errors';
 
 const PathError = error<{ path: string }>({
@@ -83,7 +83,7 @@ console.log(err.message); // "Invalid path: /users/data"
 
 The `:json` modifier serializes complex values to JSON:
 
-```ts json.ts
+```ts title="json.ts"
 import { error } from '@deessejs/errors';
 
 const DataError = error<{ data: { id: number; name: string } }>({
@@ -101,7 +101,7 @@ The JSON modifier is particularly useful for debugging when you need to see the 
 
 Modifiers can be combined with other fields:
 
-```ts combined.ts
+```ts title="combined.ts"
 import { error } from '@deessejs/errors';
 
 const ApiError = error<{
@@ -125,7 +125,7 @@ console.log(err.message); // "GET /api/users failed with status 404"
 
 If a placeholder references a field that wasn't provided, the placeholder is left unchanged in the message:
 
-```ts missing.ts
+```ts title="missing.ts"
 import { error } from '@deessejs/errors';
 
 const ValidationError = error<{ field: string }>({

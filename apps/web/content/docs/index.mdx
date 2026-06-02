@@ -15,7 +15,7 @@ This library is particularly useful when you need to:
 
 The quickest way to understand how @deessejs/errors works is to see it in action. Here's a basic example that demonstrates creating typed errors and chaining them together.
 
-```ts index.ts
+```ts title="index.ts"
 import { error, raise } from '@deessejs/errors';
 
 // Define your error types
@@ -31,7 +31,7 @@ console.log(validationErr.message); // "Validation failed"
 
 For catching and handling errors, you can use the standard try/catch syntax or the library's `raise()` function:
 
-```ts handling.ts
+```ts title="handling.ts"
 try {
   raise(ValidationError({}));
 } catch (err) {
@@ -46,7 +46,7 @@ try {
 
 When an error occurs as a result of another error, you can preserve that relationship using the `.from()` method. This creates a chain that maintains the full history of what went wrong.
 
-```ts chaining.ts
+```ts title="chaining.ts"
 const validationErr = ValidationError({});
 const appErr = error({ name: 'AppError' })();
 
@@ -61,7 +61,7 @@ console.log(appErr.causes.length); // 1
 
 Errors can inherit from other errors, creating hierarchies that are useful for organization and type checking. A child error can check against its parent types.
 
-```ts inheritance.ts
+```ts title="inheritance.ts"
 import { error, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -81,7 +81,7 @@ console.log(is(err, AppError)); // true (through inheritance)
 
 You can define errors with message templates that include field placeholders. These are replaced at runtime with the data you provide.
 
-```ts templates.ts
+```ts title="templates.ts"
 const UserError = error<{ userId: string; reason: string }>({
   name: 'UserError',
   message: 'User "{userId}" failed: {reason}',

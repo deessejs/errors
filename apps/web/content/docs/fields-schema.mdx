@@ -9,7 +9,7 @@ Errors become much more useful when they carry structured data about what went w
 
 When you create an error factory, you can specify a generic type that defines the shape of the fields object:
 
-```ts basic.ts
+```ts title="basic.ts"
 import { error } from '@deessejs/errors';
 
 const ValidationError = error<{
@@ -24,7 +24,7 @@ const ValidationError = error<{
 
 Now when you create an error instance, TypeScript ensures you provide the required fields:
 
-```ts usage.ts
+```ts title="usage.ts"
 // All required fields provided
 const err = ValidationError({
   field: 'email',
@@ -45,7 +45,7 @@ The fields object is always accessible on the error instance, giving you a consi
 
 Once an error is caught, you can access its fields to provide meaningful feedback or logging:
 
-```ts access.ts
+```ts title="access.ts"
 import { error } from '@deessejs/errors';
 import { raise } from '@deessejs/errors';
 
@@ -72,7 +72,7 @@ For production applications, you may want to validate field values when errors a
 
 ### Using Zod
 
-```ts zod.ts
+```ts title="zod.ts"
 import { z } from 'zod';
 import { error } from '@deessejs/errors';
 
@@ -97,7 +97,7 @@ try {
 
 ### Using Valibot
 
-```ts valibot.ts
+```ts title="valibot.ts"
 import { valibot } from 'fumadocs-core/source';
 import { error } from '@deessejs/errors';
 
@@ -112,7 +112,7 @@ const ValidationError = error({
 
 ### Using ArkType
 
-```ts arktype.ts
+```ts title="arktype.ts"
 import { error } from '@deessejs/errors';
 import { t } from 'arktype';
 
@@ -139,7 +139,7 @@ Schema validation in error factories provides several benefits:
 
 Here are some common patterns for error fields:
 
-```ts patterns.ts
+```ts title="patterns.ts"
 // Database errors
 const DatabaseError = error<{
   query: string;
