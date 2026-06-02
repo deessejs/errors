@@ -1,0 +1,136 @@
+---
+title: Exception Chaining
+description: Chain errors together using the from() method to preserve the full context of what went wrong.
+---
+
+When an error occurs as a result of another error, it's important to preserve that relationship. @deessejs/errors provides the `from()` method for exactly this purpose, creating chains that maintain the full history of failures.
+
+## Basic Chaining
+
+The `from()` method attaches a cause error to the current error. Call it on an error instance to establish the relationship:
+
+```ts basic.ts
+import { error } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+// Create the original error
+const validationErr = ValidationError({ field: 'email' });
+
+// Create the wrapping error
+const appErr = AppError({});
+
+// Chain the validation error as the cause
+appErr.from(validationErr);
+
+console.log(appErr.cause === validationErr); // true
+```
+
+The `from()` method returns the error instance, so you can chain method calls or use it inline.
+
+## Multiple Causes
+
+A single error can have multiple causes in its chain. Each call to `from()` adds a new cause to the front of the chain:
+
+```ts multiple.ts
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+
+// Add causes in order
+appErr.from(ValidationError({ field: 'email' }));
+appErr.from(new Error('Database connection failed'));
+
+// Most recent cause is first
+console.log(appErr.causes.length); // 2
+console.log(appErr.causes[0].name); // "ValidationError"
+console.log(appErr.causes[1].message); // "Database connection failed"
+```
+
+The order is always newest first, which makes sense when reading error chains — the most recent cause is what led directly to the current error.
+
+## Chaining with raise()
+
+You can combine `from()` with `raise()` for concise error handling:
+
+```ts with-raise.ts
+import { error, raise } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+try {
+  // Something throws a validation error
+  throw ValidationError({ field: 'email' });
+} catch (err) {
+  // Wrap it in an application error
+  raise(AppError({}).from(err));
+}
+```
+
+Since `from()` returns the error instance, you can write this more compactly:
+
+```ts compact.ts
+import { error, raise } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+try {
+  throw ValidationError({ field: 'email' });
+} catch (err) {
+  raise(AppError({}).from(err));
+}
+```
+
+## Accessing the Full Chain
+
+After building an error chain, you can access all causes through the `causes` array or use the `causes()` helper function for more robust access:
+
+```ts access.ts
+import { error, causes } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(ValidationError({ field: 'email' }));
+appErr.from(new Error('Connection timeout'));
+
+// Using the causes array directly
+console.log(appErr.causes.length); // 2
+
+// Using the causes() helper (handles non-@deessejs/errors errors)
+const chain = causes(appErr);
+console.log(chain.length); // 2
+```
+
+The `causes()` function is particularly useful when working with errors from different sources, as it gracefully handles cases where the `causes` array might not exist.
+
+## Why Chain Errors?
+
+Exception chaining serves several important purposes:
+
+**Debugging** — When something goes wrong in production, the full chain tells the complete story of what happened, not just the final error.
+
+**Logging** — You can log or monitor the entire chain to understand patterns in failures across your application.
+
+**User experience** — Show users a meaningful error message while keeping technical details for diagnostics.
+
+**Service boundaries** — When errors cross async boundaries or service calls, chaining preserves context that would otherwise be lost.
+
+## See Also
+
+<Cards>
+  <Card title="Error Instance" href="/docs/error-instance">
+    Learn about all properties available on error instances.
+  </Card>
+  <Card title="causes() Function" href="/docs/causes-function">
+    Traverse error chains programmatically.
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Check error types in catch blocks.
+  </Card>
+</Cards>

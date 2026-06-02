@@ -1,0 +1,130 @@
+---
+title: Single Inheritance
+description: Create error hierarchies with single inheritance in @deessejs/errors.
+---
+
+Error hierarchies help organize errors by domain and concern. @deessejs/errors supports single inheritance, where one error type can inherit from another, creating a parent-child relationship.
+
+## Basic Inheritance
+
+To create an error that inherits from another, use the `inherits` property when defining the error factory:
+
+```ts basic.ts
+import { error, is } from '@deessejs/errors';
+
+// Base error for the application
+const AppError = error({ name: 'AppError' });
+
+// Specific error that inherits from AppError
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+```
+
+Now `ValidationError` is a child of `AppError` in the hierarchy. You can verify this relationship using the `is()` function.
+
+## Type Checking with Inheritance
+
+When an error inherits from another, `is()` returns true for both the error itself and all its ancestors:
+
+```ts checking.ts
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+
+const err = ValidationError({ field: 'email' });
+
+console.log(is(err, ValidationError)); // true
+console.log(is(err, AppError)); // true (through inheritance)
+```
+
+This is powerful for error handling — you can write a catch block for `AppError` and it will catch all errors that inherit from it, including `ValidationError`, `DatabaseError`, and any other descendants.
+
+## Practical Example
+
+Here's how inheritance helps in a real application:
+
+```ts example.ts
+import { error, raise, is } from '@deessejs/errors';
+
+// Base errors
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+const NetworkError = error({
+  name: 'NetworkError',
+  inherits: AppError,
+});
+const DatabaseError = error({
+  name: 'DatabaseError',
+  inherits: AppError,
+});
+
+// Error handler that catches all application errors
+function handleError(err: unknown) {
+  if (is(err, AppError)) {
+    // Catches ValidationError, NetworkError, DatabaseError, etc.
+    console.log(`App error: ${err.name}`);
+  }
+}
+
+handleError(ValidationError({ field: 'email' })); // Logs
+handleError(NetworkError({ url: '/api' })); // Logs
+```
+
+This pattern lets you handle errors at different levels of granularity depending on your needs.
+
+## Inheriting with Message Templates
+
+You can combine inheritance with message templates for powerful error definitions:
+
+```ts with-message.ts
+import { error, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+
+const ValidationError = error<{ field: string }>({
+  name: 'ValidationError',
+  inherits: AppError,
+  message: 'Field "{field}" is invalid',
+});
+
+const err = ValidationError({ field: 'email' });
+console.log(err.message); // "Field "email" is invalid"
+console.log(is(err, AppError)); // true
+```
+
+## Accessing Parent Information
+
+The `inherits` property on the error factory lets you access parent types programmatically:
+
+```ts parents.ts
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+
+console.log(ValidationError.inherits === AppError); // true
+```
+
+This is useful for building introspection tools or generating documentation automatically.
+
+## See Also
+
+<Cards>
+  <Card title="Multiple Inheritance" href="/docs/multiple-inheritance">
+    Learn how errors can inherit from multiple parents.
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Check error types with the is() function.
+  </Card>
+  <Card title="Error Hierarchy" href="/docs/index">
+    See the complete picture of how errors work together.
+  </Card>
+</Cards>

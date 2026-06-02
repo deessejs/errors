@@ -1,0 +1,87 @@
+---
+title: Installation
+description: Install @deessejs/errors in your TypeScript or JavaScript project.
+---
+
+Adding @deessejs/errors to your project is straightforward. The library is available on npm and supports all major package managers.
+
+## Install the Package
+
+Choose your preferred package manager and run the installation command:
+
+```bash
+npm install @deessejs/errors
+```
+
+```bash
+pnpm add @deessejs/errors
+```
+
+```bash
+yarn add @deessejs/errors
+```
+
+```bash
+bun add @deessejs/errors
+```
+
+## Requirements
+
+@deessejs/errors requires Node.js 18 or later. The library is written in TypeScript and ships with full type definitions, so no additional `@types` packages are needed.
+
+## Import the Library
+
+Once installed, you can import the core functions from the package:
+
+```ts main.ts
+import { error, raise, is, causes } from '@deessejs/errors';
+```
+
+You can also import specific functions if you prefer tree-shaking:
+
+```ts partial.ts
+import { error } from '@deessejs/errors';
+import { is } from '@deessejs/errors';
+```
+
+## TypeScript Configuration
+
+The library works out of the box with TypeScript. No special compiler options are required, but the following settings in your `tsconfig.json` will ensure the best experience:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+The `moduleResolution: "bundler"` option is recommended if you're using a modern bundler like Vite, webpack 5, or Turbopack.
+
+## Verify Installation
+
+To verify that the library is installed correctly, create a simple test file:
+
+```ts verify.ts
+import { error } from '@deessejs/errors';
+
+const TestError = error({ name: 'TestError' });
+const err = TestError({});
+
+console.log(err.name); // "TestError"
+console.log(err instanceof Error); // true
+```
+
+Run this file with Node.js or your bundler to confirm everything works.
+
+## See Also
+
+<Cards>
+  <Card title="Getting Started" href="/docs/index">
+    Return to the introduction and quick start guide.
+  </Card>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Learn how to create custom error types.
+  </Card>
+</Cards>

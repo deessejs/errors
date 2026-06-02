@@ -1,0 +1,248 @@
+---
+title: Recipes
+description: Practical examples and patterns for using @deessejs/errors in real applications.
+---
+
+This page collects common patterns and practical examples for using @deessejs/errors in your applications. These recipes demonstrate how to apply the library's features to solve real-world error handling problems.
+
+## Validation Errors
+
+Validation errors are one of the most common error types. They typically include the field that failed validation and a reason for the failure.
+
+```ts validation.ts
+import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
+
+// Define validation schema
+const UserSchema = z.object({
+  email: z.string().email(),
+  age: z.number().min(0).max(150),
+});
+
+// Create the error factory
+const ValidationError = error<{ field: string; reason: string; value?: unknown }>({
+  name: 'ValidationError',
+  message: 'Validation failed for field "{field}"',
+});
+
+// Validation function
+function validateUser(data: unknown) {
+  const result = UserSchema.safeParse(data);
+
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    raise(
+      ValidationError({
+        field: issue.path.join('.'),
+        reason: issue.message,
+        value: (result.error as { value?: unknown }).value,
+      })
+    );
+  }
+
+  return result.data;
+}
+```
+
+When validation fails, you get an error with specific information about which field failed and why.
+
+## Network Errors
+
+Network errors benefit from including the endpoint and any relevant request data.
+
+```ts network.ts
+import { error, raise } from '@deessejs/errors';
+
+const NetworkError = error<{
+  endpoint: string;
+  method?: string;
+  statusCode?: number;
+}>({
+  name: 'NetworkError',
+  message: 'Request to {endpoint} failed',
+});
+
+async function fetchWithError(url: string) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    raise(
+      NetworkError({
+        endpoint: url,
+        statusCode: response.status,
+      })
+    );
+  }
+
+  return response.json();
+}
+```
+
+You can extend this pattern to include request headers, body, or timing information.
+
+## Database Errors
+
+Database errors typically need the query that failed and any relevant identifiers.
+
+```ts database.ts
+import { error, raise } from '@deessejs/errors';
+
+const DatabaseError = error<{
+  operation: string;
+  table?: string;
+  query?: string;
+}>({
+  name: 'DatabaseError',
+  message: 'Database {operation} failed',
+});
+
+// Wrap database operations
+async function executeQuery(query: string, table: string) {
+  try {
+    return await db.query(query);
+  } catch (err) {
+    raise(
+      DatabaseError({
+        operation: 'query',
+        table,
+        query,
+      }).from(err as Error)
+    );
+  }
+}
+```
+
+Chaining the original error preserves the full context of what went wrong.
+
+## Error Handling Middleware
+
+Create a reusable error handler that processes errors based on their type.
+
+```ts handler.ts
+import { error, raise, is, causes } from '@deessejs/errors';
+import { ValidationError, NetworkError, DatabaseError } from './errors';
+
+export function handleApiError(err: unknown) {
+  // Log the full error chain
+  console.error('Error chain:', causes(err).map((e) => e.message));
+
+  if (is(err, ValidationError)) {
+    return {
+      status: 400,
+      message: `Invalid input: ${err.fields.field}`,
+    };
+  }
+
+  if (is(err, NetworkError)) {
+    return {
+      status: 503,
+      message: 'External service unavailable',
+    };
+  }
+
+  if (is(err, DatabaseError)) {
+    return {
+      status: 500,
+      message: 'Database operation failed',
+    };
+  }
+
+  // Generic fallback
+  return {
+    status: 500,
+    message: 'Internal server error',
+  };
+}
+```
+
+This pattern centralizes error handling logic and ensures consistent responses.
+
+## Service Layer Error Wrapping
+
+When building services that call other services, wrap errors to add context while preserving the cause chain.
+
+```ts service.ts
+import { error, raise } from '@deessejs/errors';
+import { NetworkError, UserNotFoundError } from './errors';
+
+const AppError = error({ name: 'AppError' });
+
+class UserService {
+  async getUser(userId: string) {
+    try {
+      const user = await this.fetchUser(userId);
+      if (!user) {
+        raise(UserNotFoundError({ userId }));
+      }
+      return user;
+    } catch (err) {
+      // Wrap any error from lower layers
+      raise(AppError({}).from(err as Error));
+    }
+  }
+
+  private async fetchUser(userId: string) {
+    // Implementation
+    return null;
+  }
+}
+```
+
+The caller gets both the context of the current operation and the underlying cause.
+
+## Hierarchical Error Categories
+
+Create a hierarchy that lets you handle errors at different levels of granularity.
+
+```ts hierarchy.ts
+import { error, is } from '@deessejs/errors';
+
+// Top level
+const AppError = error({ name: 'AppError' });
+
+// Domain level
+const UserError = error({ name: 'UserError', inherits: AppError });
+const ProductError = error({ name: 'ProductError', inherits: AppError });
+
+// Specific errors
+const UserNotFoundError = error<{ userId: string }>({
+  name: 'UserNotFoundError',
+  inherits: UserError,
+});
+
+const UserPermissionError = error<{ userId: string; action: string }>({
+  name: 'UserPermissionError',
+  inherits: UserError,
+});
+
+function handleError(err: unknown) {
+  if (is(err, AppError)) {
+    // Catches everything
+  }
+  if (is(err, UserError)) {
+    // Catches UserNotFoundError, UserPermissionError
+  }
+  if (is(err, UserNotFoundError)) {
+    // Catches only user not found errors
+  }
+}
+```
+
+This lets you write both broad handlers and specific ones depending on the situation.
+
+## See Also
+
+<Cards>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Create custom error types.
+  </Card>
+  <Card title="Single Inheritance" href="/docs/single-inheritance">
+    Build error hierarchies.
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Handle errors by type.
+  </Card>
+  <Card title="Exception Chaining" href="/docs/from-method">
+    Preserve error context.
+  </Card>
+</Cards>

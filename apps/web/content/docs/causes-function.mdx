@@ -1,0 +1,135 @@
+---
+title: The causes() Function
+description: Use the causes() function to traverse error chains and access all causes in an error.
+---
+
+The `causes()` function provides a safe way to access the cause chain of any error. It works with both @deessejs/errors instances and native JavaScript errors, returning an empty array for errors without causes.
+
+## Basic Usage
+
+Call `causes()` with an error to get its cause chain as an array:
+
+```ts basic.ts
+import { error, causes } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(ValidationError({ field: 'email' }));
+appErr.from(new Error('Network timeout'));
+
+const chain = causes(appErr);
+
+console.log(chain.length); // 2
+console.log(chain[0].name); // "ValidationError"
+console.log(chain[1].message); // "Network timeout"
+```
+
+The returned array contains only the errors that were explicitly added using `from()`, ordered from newest to oldest.
+
+## Why Use causes() Instead of Direct Access?
+
+The `causes()` function handles edge cases that direct property access doesn't:
+
+```ts safety.ts
+import { causes } from '@deessejs/errors';
+
+// Works with native errors (no causes property)
+const nativeError = new Error('Something failed');
+const chain1 = causes(nativeError);
+console.log(chain1.length); // 0
+
+// Works with null/undefined (returns empty array)
+const chain2 = causes(null);
+console.log(chain2.length); // 0
+
+const chain3 = causes(undefined);
+console.log(chain3.length); // 0
+```
+
+This robustness makes `causes()` ideal for writing generic error handling code that doesn't need to check the error type first.
+
+## Iterating Over the Chain
+
+You can iterate over the causes array to log or process each error in the chain:
+
+```ts iterate.ts
+import { error, causes } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(ValidationError({ field: 'email' }));
+appErr.from(new Error('Database connection failed'));
+
+// Log each cause
+for (const cause of causes(appErr)) {
+  console.log(`[${cause.name}] ${cause.message}`);
+}
+
+// Output:
+// [ValidationError] ValidationError
+// [Error] Database connection failed
+```
+
+This is useful for building detailed error logs or monitoring dashboards that track where errors originate.
+
+## Building Error Summaries
+
+A common pattern is to build a summary message from the error chain:
+
+```ts summary.ts
+import { error, causes } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(ValidationError({ field: 'email' }));
+appErr.from(new Error('DB connection failed'));
+
+const summary = causes(appErr)
+  .map((cause) => `${cause.name}: ${cause.message}`)
+  .join(' → ');
+
+console.log(summary);
+// "ValidationError: ValidationError → Error: DB connection failed"
+```
+
+## Combining with is()
+
+Use `causes()` with `is()` to search for specific error types in the chain:
+
+```ts combined.ts
+import { error, causes, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const NetworkError = error({ name: 'NetworkError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(NetworkError({ endpoint: '/api/users' }));
+appErr.from(ValidationError({ field: 'email' }));
+
+// Check if any cause is a NetworkError
+const hasNetworkFailure = causes(appErr).some(
+  (cause) => is(cause, NetworkError)
+);
+
+console.log(hasNetworkFailure); // true
+```
+
+This pattern is useful when you need to know not just that an error happened, but what kind of errors were involved in its chain.
+
+## See Also
+
+<Cards>
+  <Card title="Exception Chaining" href="/docs/from-method">
+    Learn how to build error chains with from().
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Use is() to check error types.
+  </Card>
+</Cards>

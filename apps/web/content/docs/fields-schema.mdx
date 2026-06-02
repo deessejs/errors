@@ -1,0 +1,177 @@
+---
+title: Fields and Schema
+description: Define structured fields and validation schemas for error types in @deessejs/errors.
+---
+
+Errors become much more useful when they carry structured data about what went wrong. @deessejs/errors lets you define fields on your error factories and optionally validate them using Standard Schema compatible libraries.
+
+## Defining Fields
+
+When you create an error factory, you can specify a generic type that defines the shape of the fields object:
+
+```ts basic.ts
+import { error } from '@deessejs/errors';
+
+const ValidationError = error<{
+  field: string;
+  reason: string;
+  value?: unknown;
+}>({
+  name: 'ValidationError',
+  message: 'Validation failed',
+});
+```
+
+Now when you create an error instance, TypeScript ensures you provide the required fields:
+
+```ts usage.ts
+// All required fields provided
+const err = ValidationError({
+  field: 'email',
+  reason: 'invalid format',
+});
+
+// Optional field omitted (valid)
+const err2 = ValidationError({
+  field: 'email',
+  reason: 'invalid format',
+  value: 'not-an-email',
+});
+```
+
+The fields object is always accessible on the error instance, giving you a consistent place to look for error context.
+
+## Accessing Field Values
+
+Once an error is caught, you can access its fields to provide meaningful feedback or logging:
+
+```ts access.ts
+import { error } from '@deessejs/errors';
+import { raise } from '@deessejs/errors';
+
+const ValidationError = error<{ field: string; reason: string }>({
+  name: 'ValidationError',
+  message: 'Validation failed',
+});
+
+try {
+  raise(ValidationError({ field: 'email', reason: 'not a valid email address' }));
+} catch (err) {
+  // TypeScript knows the shape of fields
+  const fields = (err as { fields: { field: string; reason: string } }).fields;
+  console.log(`Error in field "${fields.field}": ${fields.reason}`);
+  // Output: Error in field "email": not a valid email address
+}
+```
+
+For full type inference in catch blocks, use the `is()` function with type narrowing.
+
+## Schema Validation
+
+For production applications, you may want to validate field values when errors are created. @deessejs/errors supports Standard Schema, which means you can use any compatible validation library like Zod, Valibot, or ArkType.
+
+### Using Zod
+
+```ts zod.ts
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({
+    field: z.string().min(1),
+    reason: z.string().min(1),
+  }),
+});
+
+// Valid error creation
+const err = ValidationError({ field: 'email', reason: 'invalid' });
+
+// Invalid creation - throws ZodError
+try {
+  ValidationError({ field: '', reason: 'invalid' });
+} catch (e) {
+  console.log(e instanceof Error); // true
+}
+```
+
+### Using Valibot
+
+```ts valibot.ts
+import { valibot } from 'fumadocs-core/source';
+import { error } from '@deessejs/errors';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: valibot({
+    field: 'string',
+    reason: 'string',
+  }),
+});
+```
+
+### Using ArkType
+
+```ts arktype.ts
+import { error } from '@deessejs/errors';
+import { t } from 'arktype';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: t.type({
+    field: 'string',
+    reason: 'string',
+  }),
+});
+```
+
+## Why Use Schema Validation?
+
+Schema validation in error factories provides several benefits:
+
+**Early error detection** — Configuration mistakes in your error definitions are caught immediately rather than causing subtle bugs later.
+
+**Self-documenting code** — The schema serves as documentation for what data each error type expects.
+
+**Consistent data** — All errors of a given type have the same structure, making logging and monitoring easier.
+
+## Common Field Patterns
+
+Here are some common patterns for error fields:
+
+```ts patterns.ts
+// Database errors
+const DatabaseError = error<{
+  query: string;
+  table?: string;
+  code?: string;
+}>({ name: 'DatabaseError' });
+
+// API errors
+const ApiError = error<{
+  endpoint: string;
+  statusCode: number;
+  response?: unknown;
+}>({ name: 'ApiError' });
+
+// Validation errors
+const ValidationError = error<{
+  field: string;
+  reason: string;
+  value?: unknown;
+  constraints?: Record<string, unknown>;
+}>({ name: 'ValidationError' });
+```
+
+Design your fields to capture what's useful for debugging and logging, not just what's required to identify the error.
+
+## See Also
+
+<Cards>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Create error types with the error() function.
+  </Card>
+  <Card title="Recipes" href="/docs/recipes">
+    See practical examples of error definitions for common scenarios.
+  </Card>
+</Cards>

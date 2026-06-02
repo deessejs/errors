@@ -1,13 +1,106 @@
 ---
-title: Hello World
-description: Your first document
+title: Getting Started
+description: Get started with @deessejs/errors, a TypeScript error handling library with exception chaining and hierarchical inheritance.
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+@deessejs/errors is a TypeScript library that reimagines error handling in JavaScript. Inspired by Python's exception system, it provides exception chaining, hierarchical inheritance, and rich error semantics through a function-based API.
 
-## What is Next?
+This library is particularly useful when you need to:
+
+- Preserve the full context of errors across async boundaries and service calls
+- Organize errors in meaningful hierarchies that reflect your domain
+- Attach structured data and metadata to errors for better debugging
+
+## Quick Start
+
+The quickest way to understand how @deessejs/errors works is to see it in action. Here's a basic example that demonstrates creating typed errors and chaining them together.
+
+```ts index.ts
+import { error, raise } from '@deessejs/errors';
+
+// Define your error types
+const ValidationError = error({
+  name: 'ValidationError',
+  message: 'Validation failed',
+});
+
+// Use the factory to create error instances
+const validationErr = ValidationError({});
+console.log(validationErr.message); // "Validation failed"
+```
+
+For catching and handling errors, you can use the standard try/catch syntax or the library's `raise()` function:
+
+```ts handling.ts
+try {
+  raise(ValidationError({}));
+} catch (err) {
+  console.log(err.name); // "ValidationError"
+  console.log(err instanceof Error); // true
+}
+```
+
+## Key Features
+
+### Exception Chaining
+
+When an error occurs as a result of another error, you can preserve that relationship using the `.from()` method. This creates a chain that maintains the full history of what went wrong.
+
+```ts chaining.ts
+const validationErr = ValidationError({});
+const appErr = error({ name: 'AppError' })();
+
+// Chain the validation error as the cause
+appErr.from(validationErr);
+
+console.log(appErr.cause === validationErr); // true
+console.log(appErr.causes.length); // 1
+```
+
+### Hierarchical Inheritance
+
+Errors can inherit from other errors, creating hierarchies that are useful for organization and type checking. A child error can check against its parent types.
+
+```ts inheritance.ts
+import { error, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+
+const err = ValidationError({});
+
+// Check the error type
+console.log(is(err, ValidationError)); // true
+console.log(is(err, AppError)); // true (through inheritance)
+```
+
+### Message Templates
+
+You can define errors with message templates that include field placeholders. These are replaced at runtime with the data you provide.
+
+```ts templates.ts
+const UserError = error<{ userId: string; reason: string }>({
+  name: 'UserError',
+  message: 'User "{userId}" failed: {reason}',
+});
+
+const err = UserError({ userId: 'usr_123', reason: 'not found' });
+console.log(err.message); // "User "usr_123" failed: not found"
+```
+
+## See Also
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card title="Installation" href="/docs/installation">
+    Learn how to install and set up the library in your project.
+  </Card>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Create custom error types with the error() function.
+  </Card>
+  <Card title="Exception Chaining" href="/docs/from-method">
+    Chain errors together to preserve context.
+  </Card>
 </Cards>
