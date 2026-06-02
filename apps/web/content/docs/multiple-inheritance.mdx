@@ -1,0 +1,141 @@
+---
+title: Multiple Inheritance
+description: Create errors that inherit from multiple parent error types in @deessejs/errors.
+---
+
+While single inheritance creates clear parent-child relationships, some errors naturally belong to multiple categories. @deessejs/errors supports multiple inheritance, allowing an error to inherit from several parent types simultaneously.
+
+## Basic Multiple Inheritance
+
+To inherit from multiple parents, pass an array of error factories to the `inherits` property:
+
+```ts title="basic.ts"
+import { error, is } from '@deessejs/errors';
+
+const NetworkError = error({ name: 'NetworkError' });
+const StorageError = error({ name: 'StorageError' });
+
+// Inherits from both NetworkError and StorageError
+const NetworkStorageError = error({
+  name: 'NetworkStorageError',
+  inherits: [NetworkError, StorageError],
+});
+```
+
+Now this error belongs to both categories in the hierarchy.
+
+## Type Checking with Multiple Parents
+
+When an error inherits from multiple parents, `is()` returns true for any of its parents:
+
+```ts title="checking.ts"
+const NetworkError = error({ name: 'NetworkError' });
+const StorageError = error({ name: 'StorageError' });
+
+const NetworkStorageError = error({
+  name: 'NetworkStorageError',
+  inherits: [NetworkError, StorageError],
+});
+
+const err = NetworkStorageError({});
+
+console.log(is(err, NetworkStorageError)); // true
+console.log(is(err, NetworkError)); // true
+console.log(is(err, StorageError)); // true
+```
+
+This flexibility lets you categorize errors from multiple angles.
+
+## Practical Example
+
+Consider a caching layer that sits between the network and storage. It might fail in ways that are both network-related and storage-related:
+
+```ts title="example.ts"
+import { error, raise, is } from '@deessejs/errors';
+
+const NetworkError = error({ name: 'NetworkError' });
+const StorageError = error({ name: 'StorageError' });
+
+const CacheError = error({
+  name: 'CacheError',
+  message: 'Cache operation failed',
+  inherits: [NetworkError, StorageError],
+});
+
+// Handler that deals with network issues
+function handleNetworkIssue(err: unknown) {
+  if (is(err, NetworkError)) {
+    console.log('Network problem detected:', err.message);
+  }
+}
+
+// Handler that deals with storage issues
+function handleStorageIssue(err: unknown) {
+  if (is(err, StorageError)) {
+    console.log('Storage problem detected:', err.message);
+  }
+}
+
+const cacheErr = CacheError({});
+
+handleNetworkIssue(cacheErr); // Logs (through NetworkError inheritance)
+handleStorageIssue(cacheErr); // Logs (through StorageError inheritance)
+```
+
+This pattern is useful for middleware and infrastructure code that needs to respond to errors based on their characteristics rather than their specific type.
+
+## Combining with Specific Error Data
+
+Multiple inheritance works seamlessly with typed fields:
+
+```ts title="with-fields.ts"
+import { error, is } from '@deessejs/errors';
+
+const NetworkError = error<{ endpoint: string }>({
+  name: 'NetworkError',
+  message: 'Network request to {endpoint} failed',
+});
+
+const StorageError = error<{ path: string }>({
+  name: 'StorageError',
+  message: 'Storage operation at {path} failed',
+});
+
+const CacheError = error<{ key: string; operation: string }>({
+  name: 'CacheError',
+  inherits: [NetworkError, StorageError],
+  message: 'Cache {operation} for key {key} failed',
+});
+
+// The error carries its own specific data
+const err = CacheError({ key: 'user:123', operation: 'read' });
+console.log(err.fields.key); // "user:123"
+console.log(err.message); // "Cache read for key user:123 failed"
+
+// But also inherits type checking for parents
+console.log(is(err, NetworkError)); // true
+console.log(is(err, StorageError)); // true
+```
+
+## When to Use Multiple Inheritance
+
+Multiple inheritance is appropriate when:
+
+**The error has multiple dimensions** — A timeout could be a network issue and a service issue simultaneously.
+
+**You're building middleware** — Libraries between the application and infrastructure often need to respond to multiple error categories.
+
+**You want flexible handling** — Code can catch errors by any of their characteristics, not just their exact type.
+
+Avoid using multiple inheritance just because you can. Prefer single inheritance for most errors, and only use multiple inheritance when the error genuinely belongs to multiple categories.
+
+## See Also
+
+<Cards>
+  <Card title="Single Inheritance" href="/docs/single-inheritance">
+    Learn about basic parent-child error hierarchies.
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Check error types including inherited ones.
+  </Card>
+</Cards>

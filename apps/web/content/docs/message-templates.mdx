@@ -1,0 +1,162 @@
+---
+title: Message Templates
+description: Use message templates with field placeholders and modifiers in @deessejs/errors.
+---
+
+Message templates let you create dynamic error messages that include runtime values. This makes errors more informative and easier to debug, as the message contains specific context about what went wrong.
+
+## Basic Placeholders
+
+Wrap field names in curly braces to create placeholders in your message:
+
+```ts title="basic.ts"
+import { error } from '@deessejs/errors';
+
+const ValidationError = error<{ field: string }>({
+  name: 'ValidationError',
+  message: 'Field "{field}" is invalid',
+});
+
+const err = ValidationError({ field: 'email' });
+console.log(err.message); // "Field "email" is invalid"
+```
+
+The placeholder is replaced with the actual value from the fields object at runtime.
+
+## Multiple Placeholders
+
+You can include multiple placeholders in a single message:
+
+```ts title="multiple.ts"
+import { error } from '@deessejs/errors';
+
+const FormatError = error<{ expected: string; actual: string }>({
+  name: 'FormatError',
+  message: 'Expected {expected}, got {actual}',
+});
+
+const err = FormatError({ expected: 'number', actual: 'string' });
+console.log(err.message); // "Expected number, got string"
+```
+
+Each placeholder is replaced with its corresponding field value.
+
+## Modifiers
+
+Modifiers transform the placeholder value before insertion. They follow the field name with a colon.
+
+### Uppercase Modifier
+
+The `:upper` modifier converts the value to uppercase:
+
+```ts title="upper.ts"
+import { error } from '@deessejs/errors';
+
+const UserCreatedError = error<{ userId: string }>({
+  name: 'UserCreatedError',
+  message: 'Created user: {userId:upper}',
+});
+
+const err = UserCreatedError({ userId: 'usr_abc123' });
+console.log(err.message); // "Created user: USR_ABC123"
+```
+
+This is useful for displaying IDs or codes that should be consistently formatted.
+
+### Lowercase Modifier
+
+The `:lower` modifier converts the value to lowercase:
+
+```ts title="lower.ts"
+import { error } from '@deessejs/errors';
+
+const PathError = error<{ path: string }>({
+  name: 'PathError',
+  message: 'Invalid path: {path:lower}',
+});
+
+const err = PathError({ path: '/USERS/DATA' });
+console.log(err.message); // "Invalid path: /users/data"
+```
+
+### JSON Modifier
+
+The `:json` modifier serializes complex values to JSON:
+
+```ts title="json.ts"
+import { error } from '@deessejs/errors';
+
+const DataError = error<{ data: { id: number; name: string } }>({
+  name: 'DataError',
+  message: 'Invalid data: {data:json}',
+});
+
+const err = DataError({ data: { id: 1, name: 'test' } });
+console.log(err.message); // "Invalid data: {"id":1,"name":"test"}"
+```
+
+The JSON modifier is particularly useful for debugging when you need to see the full value.
+
+## Combining Modifiers
+
+Modifiers can be combined with other fields:
+
+```ts title="combined.ts"
+import { error } from '@deessejs/errors';
+
+const ApiError = error<{
+  method: string;
+  endpoint: string;
+  statusCode: number;
+}>({
+  name: 'ApiError',
+  message: '{method:upper} {endpoint} failed with status {statusCode}',
+});
+
+const err = ApiError({
+  method: 'get',
+  endpoint: '/api/users',
+  statusCode: 404,
+});
+console.log(err.message); // "GET /api/users failed with status 404"
+```
+
+## Missing Field Values
+
+If a placeholder references a field that wasn't provided, the placeholder is left unchanged in the message:
+
+```ts title="missing.ts"
+import { error } from '@deessejs/errors';
+
+const ValidationError = error<{ field: string }>({
+  name: 'ValidationError',
+  message: 'Field "{field}" is required',
+});
+
+const err = ValidationError({}); // field not provided
+console.log(err.message); // "Field "{field}" is required"
+```
+
+This behavior is intentional — it helps you identify when expected data is missing.
+
+## Best Practices
+
+**Be specific** — Include enough context in the message to understand the error without looking at the code.
+
+**Keep messages readable** — While placeholders add information, don't overload the message with too many values.
+
+**Use modifiers appropriately** — Uppercase for codes and IDs, lowercase for paths, JSON for complex objects.
+
+## See Also
+
+<Cards>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Create error types with the error() function.
+  </Card>
+  <Card title="Fields and Schema" href="/docs/fields-schema">
+    Define structured fields for errors.
+  </Card>
+  <Card title="Recipes" href="/docs/recipes">
+    Practical examples of error definitions.
+  </Card>
+</Cards>

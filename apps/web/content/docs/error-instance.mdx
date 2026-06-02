@@ -1,0 +1,150 @@
+---
+title: Error Instance
+description: Understand the properties and methods available on error instances created by @deessejs/errors.
+---
+
+When you create an error using an error factory, you get an error instance. This instance extends the native JavaScript `Error` object with additional properties and methods specific to @deessejs/errors.
+
+## Standard Properties
+
+Error instances include all standard `Error` properties:
+
+```ts title="properties.ts"
+import { error } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError', message: 'Something went wrong' });
+const err = AppError({});
+
+console.log(err.name); // "AppError"
+console.log(err.message); // "Something went wrong"
+console.log(err.stack); // Stack trace string
+console.log(err instanceof Error); // true
+```
+
+These properties behave exactly like native errors, so they work with all existing error handling code and tools.
+
+## The fields Property
+
+The `fields` property contains the data you passed when creating the error. This is where you store structured context about what went wrong.
+
+```ts title="fields.ts"
+const ValidationError = error<{ field: string; value: unknown }>({
+  name: 'ValidationError',
+  message: 'Invalid value',
+});
+
+const err = ValidationError({ field: 'email', value: 'not-an-email' });
+
+console.log(err.fields.field); // "email"
+console.log(err.fields.value); // "not-an-email"
+```
+
+The fields object is typed based on what you defined in the error factory, providing full TypeScript support for accessing these values.
+
+## The from() Method
+
+The `from()` method chains another error as the cause of the current error. This is how you preserve the full context of what led to an error.
+
+```ts title="from-method.ts"
+import { error } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const validationErr = ValidationError({ field: 'email' });
+const appErr = AppError({});
+
+// Chain the validation error as a cause
+appErr.from(validationErr);
+
+console.log(appErr.cause === validationErr); // true
+console.log(appErr.causes.length); // 1
+```
+
+The `from()` method returns the error instance, allowing you to chain multiple calls or combine it with other operations.
+
+## The cause Property
+
+The `cause` property holds the direct cause of the error — the error passed to the most recent `from()` call.
+
+```ts title="cause.ts"
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(ValidationError({ field: 'name' }));
+
+console.log(appErr.cause instanceof ValidationError); // true
+```
+
+When no cause has been set, `cause` is `null`.
+
+## The causes Array
+
+The `causes` array contains the entire chain of errors, ordered from most recent to oldest. This gives you the full history of what happened.
+
+```ts title="causes-array.ts"
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+const appErr = AppError({});
+appErr.from(ValidationError({ field: 'email' }));
+appErr.from(new Error('Database connection failed'));
+
+console.log(appErr.causes.length); // 2
+console.log(appErr.causes[0].name); // "ValidationError" (most recent)
+console.log(appErr.causes[1].message); // "Database connection failed" (oldest)
+```
+
+When you chain multiple errors, the new cause is added to the front of the array, keeping chronological order.
+
+## The notes Property
+
+The `notes` property allows you to attach additional context to an error after it's created. This is useful for adding debugging information in catch blocks.
+
+```ts title="notes.ts"
+const AppError = error({ name: 'AppError' });
+const err = AppError({});
+
+// Add context notes
+err.notes.push('Caught in user controller');
+err.notes.push('User ID was usr_123');
+
+console.log(err.notes);
+// ["Caught in user controller", "User ID was usr_123"]
+```
+
+Notes are stored as an array of strings and can be modified at any time.
+
+## The context Property
+
+The `context` property holds additional data that was injected into the error. This is useful for framework integrations or middleware that need to attach extra information.
+
+```ts title="context.ts"
+const AppError = error({ name: 'AppError' });
+const err = AppError({});
+
+// Attach context data
+err.context = {
+  requestId: 'req_abc123',
+  timestamp: new Date().toISOString(),
+};
+
+console.log(err.context.requestId); // "req_abc123"
+```
+
+When no context has been set, `context` is `null`.
+
+## See Also
+
+<Cards>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Create error types with the error() function.
+  </Card>
+  <Card title="Exception Chaining" href="/docs/from-method">
+    Learn more about chaining errors with from().
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Check error types using the is() function.
+  </Card>
+</Cards>
