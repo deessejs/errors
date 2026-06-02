@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CodeBlockServer } from '@/components/code-block';
 
 // Floating squares data for blueprint aesthetic
 const floatingSquares = [
@@ -175,39 +176,8 @@ export default function HomePage() {
 
         {/* Hero Code Section */}
         <section className="relative z-10">
-          <div
-            className="max-w-6xl mx-auto px-6 py-16"
-            style={{
-              background:
-                'linear-gradient(to bottom, transparent 0%, transparent 50%, transparent 50%, transparent 100%)',
-            }}
-          >
-            <div className="border-fd-border rounded-none overflow-hidden shadow-lg bg-fd-card/70 backdrop-blur-sm">
-              {/* Code block chrome */}
-              <div className="flex items-stretch border-b border-fd-border bg-fd-secondary/60">
-                <div className="flex items-center gap-2 px-4 py-2.5 min-w-0">
-                  <svg
-                    className="w-3.5 h-3.5 text-blue-500 shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  <span className="font-mono text-[13px] text-fd-muted-foreground truncate">
-                    example.ts
-                  </span>
-                </div>
-              </div>
-              <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-transparent m-0 rounded-none">
-                <code className="font-mono text-fd-foreground">{HERO_CODE}</code>
-              </pre>
-            </div>
+          <div className="max-w-6xl mx-auto px-6 py-16">
+            <CodeBlockServer language="typescript" title="example.ts" code={HERO_CODE} />
           </div>
         </section>
 
@@ -314,28 +284,10 @@ export default function HomePage() {
 
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Before */}
-              <div className="border-fd-border rounded-none overflow-hidden">
-                <div className="border-b border-fd-border bg-fd-muted px-4 py-2.5">
-                  <span className="text-sm font-medium text-fd-destructive">
-                    Before
-                  </span>
-                </div>
-                <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-fd-background m-0 rounded-none">
-                  <code className="font-mono text-fd-muted-foreground">{BEFORE_CODE}</code>
-                </pre>
-              </div>
+              <CodeBlockServer language="typescript" title="before.ts" code={BEFORE_CODE} />
 
               {/* After */}
-              <div className="border-fd-border rounded-none overflow-hidden">
-                <div className="border-b border-fd-border bg-fd-accent/30 px-4 py-2.5">
-                  <span className="text-sm font-medium text-fd-primary">
-                    @deessejs/errors
-                  </span>
-                </div>
-                <pre className="p-6 text-sm leading-relaxed overflow-x-auto bg-fd-background m-0 rounded-none">
-                  <code className="font-mono text-fd-foreground">{AFTER_CODE}</code>
-                </pre>
-              </div>
+              <CodeBlockServer language="typescript" title="after.ts" code={AFTER_CODE} />
             </div>
           </div>
         </section>
