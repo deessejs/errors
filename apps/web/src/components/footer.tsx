@@ -70,7 +70,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.deessejs.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -84,7 +84,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.learn.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -98,7 +98,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.usecases.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -112,7 +112,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -130,7 +130,7 @@ export function Footer() {
                     href={link.href}
                     target={link.href.startsWith('http') ? '_blank' : undefined}
                     rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                    className="text-sm text-fd-muted hover:text-fd-foreground transition-colors"
+                    className="text-sm text-fd-primary hover:text-fd-foreground transition-colors"
                   >
                     {link.label}
                   </a>
@@ -150,7 +150,7 @@ export function Footer() {
               href="https://github.com/nesalia-inc/errors"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-fd-muted hover:text-fd-foreground transition-colors"
+              className="text-fd-primary hover:text-fd-foreground transition-colors"
               aria-label="GitHub"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
