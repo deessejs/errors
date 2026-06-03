@@ -57,10 +57,10 @@ export function Footer() {
                 <rect width="18" height="18" transform="matrix(-1 0 0 1 54 36)" fill="currentColor" />
                 <rect width="18" height="18" transform="matrix(-1 0 0 1 72 54)" fill="currentColor" />
               </svg>
-              <span className="text-lg font-bold text-fd-foreground">DeesseJS</span>
+              <span className="text-lg font-bold text-fd-foreground">Nesalia Inc.</span>
             </div>
             <p className="text-sm text-fd-muted-foreground max-w-xs">
-              TypeScript error handling library inspired by Python — exception chaining, hierarchical inheritance, and rich error semantics.
+              Making software development a commodity. DeesseJS — TypeScript error handling library inspired by Python.
             </p>
           </div>
 
@@ -70,7 +70,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.deessejs.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -84,7 +84,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.learn.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -98,7 +98,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.usecases.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -112,7 +112,7 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-primary hover:text-fd-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -130,7 +130,7 @@ export function Footer() {
                     href={link.href}
                     target={link.href.startsWith('http') ? '_blank' : undefined}
                     rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                    className="text-sm text-fd-primary hover:text-fd-foreground transition-colors"
+                    className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors"
                   >
                     {link.label}
                   </a>
@@ -143,9 +143,6 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-fd-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-sm text-fd-primary">
-            @deessejs/errors — MIT License
-          </span>
-          <span className="text-sm text-fd-muted">
             © {new Date().getFullYear()} Nesalia Inc. All rights reserved.
           </span>
           <div className="flex items-center gap-4">
