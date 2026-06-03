@@ -1,4 +1,5 @@
-import { createAgent, local } from '@flue/runtime';
+import { createAgent, registerProvider } from '@flue/runtime';
+import { local } from '@flue/runtime/node';
 import { type FlueContext, type WorkflowRouteHandler } from '@flue/runtime/routing';
 import * as v from 'valibot';
 import triageSkill from '../../.claude/skills/triage/SKILL.md' with { type: 'skill' };
