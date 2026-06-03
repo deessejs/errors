@@ -26,7 +26,7 @@ export function CtaCard() {
 
   return (
     <section className="bg-fd-background-secondary">
-      <div className="max-w-6xl mx-auto px-6 py-24">
+      <div className="max-w-6xl mx-auto px-6 pb-24">
         <div className="mt-10 border border-fd-border bg-fd-card rounded-none p-8">
           <h3 className="text-2xl font-bold text-fd-foreground">
             Ready to get started?
