@@ -48,12 +48,12 @@ export function Footer() {
               <img
                 src="/icon.svg"
                 alt="Nesalia Inc. logo"
-                className="w-6 h-6"
+                className="size-7"
               />
               <span className="text-lg font-bold text-fd-foreground">Nesalia Inc.</span>
             </div>
             <p className="text-sm text-fd-muted-foreground max-w-xs">
-              Making software development a commodity. DeesseJS — TypeScript error handling library inspired by Python.
+              Software engineering as a commodity: agents that code, workflows that scale, infrastructure that works. Built with the DeesseJS ecosystem.
             </p>
           </div>
 
