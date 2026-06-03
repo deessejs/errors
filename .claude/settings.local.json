@@ -28,8 +28,7 @@
       "Bash(xargs kill*)",
       "Bash(taskkill*)",
 
-      "Bash(git rebase *)",
-      "Bash(git reset --hard*)",
+            "Bash(git reset --hard*)",
       "Bash(git clean*)",
 
       "Bash(sudo *)",
