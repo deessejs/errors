@@ -45,18 +45,11 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <svg
+              <img
+                src="/icon.svg"
+                alt="Nesalia Inc. logo"
                 className="w-6 h-6"
-                viewBox="0 0 108 108"
-                fill="none"
-                aria-hidden="true"
-              >
-                <rect width="108" height="108" fill="currentColor" />
-                <rect width="18" height="18" transform="matrix(-1 0 0 1 72 18)" fill="currentColor" />
-                <rect width="18" height="18" transform="matrix(-1 0 0 1 54 72)" fill="currentColor" />
-                <rect width="18" height="18" transform="matrix(-1 0 0 1 54 36)" fill="currentColor" />
-                <rect width="18" height="18" transform="matrix(-1 0 0 1 72 54)" fill="currentColor" />
-              </svg>
+              />
               <span className="text-lg font-bold text-fd-foreground">Nesalia Inc.</span>
             </div>
             <p className="text-sm text-fd-muted-foreground max-w-xs">
