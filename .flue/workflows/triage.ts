@@ -1,6 +1,7 @@
-import { createAgent, type FlueContext, type WorkflowRouteHandler } from '@flue/runtime';
-import { local } from '@flue/runtime/node';
+import { createAgent, local } from '@flue/runtime';
+import { type FlueContext, type WorkflowRouteHandler } from '@flue/runtime/routing';
 import * as v from 'valibot';
+import triageSkill from '../../.claude/skills/triage/SKILL.md' with { type: 'skill' };
 
 export const route: WorkflowRouteHandler = async (_c, next) => next();
 
@@ -8,6 +9,7 @@ const agent = createAgent(() => ({
   model: 'minimax/MiniMax-M2.7',
   sandbox: local({ env: { GH_TOKEN: process.env.GH_TOKEN ?? '' } }),
   instructions: `You are a senior tech lead responsible for triaging GitHub issues.`,
+  skills: [triageSkill],
 }));
 
 export async function run({ init, payload, log }: FlueContext) {
