@@ -142,8 +142,11 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-fd-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm text-fd-muted">
+          <span className="text-sm text-fd-primary">
             @deessejs/errors — MIT License
+          </span>
+          <span className="text-sm text-fd-muted">
+            © {new Date().getFullYear()} Nesalia Inc. All rights reserved.
           </span>
           <div className="flex items-center gap-4">
             <a
