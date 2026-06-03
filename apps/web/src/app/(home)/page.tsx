@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CodeBlock } from '@/components/code-block';
+import { CtaCard } from '@/components/cta-card';
 
 // Floating squares data for blueprint aesthetic
 const floatingSquares = [
@@ -257,7 +258,7 @@ export default function HomePage() {
                 <h3 className="text-xl font-semibold tracking-tight text-fd-primary-foreground">
                   Explore the docs
                 </h3>
-                <p className="mt-1.5 text-base text-fd-secondary-foreground leading-relaxed">
+                <p className="mt-1.5 text-base text-fd-primary-foreground leading-relaxed">
                   Learn how to build robust error handling in your TypeScript
                   projects.
                 </p>
@@ -292,40 +293,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Install Section */}
-        <section className="bg-fd-background-secondary">
-          <div className="max-w-6xl mx-auto px-6 py-24">
-            <div className="max-w-2xl">
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] text-fd-foreground">
-                Get started in seconds.
-              </h2>
-              <p className="mt-4 text-lg text-fd-muted-foreground leading-relaxed">
-                Install the package and start building better errors today.
-              </p>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-4">
-              <div className="inline-flex items-center gap-3 bg-fd-primary text-fd-primary-foreground px-5 py-3 font-mono text-sm rounded-none">
-                <span className="text-fd-muted">$</span>
-                <span>npm install @deessejs/errors</span>
-              </div>
-              <div className="inline-flex items-center gap-3 bg-fd-background border-fd-border text-fd-muted-foreground px-5 py-3 font-mono text-sm rounded-none">
-                <span className="text-fd-muted">$</span>
-                <span>pnpm add @deessejs/errors</span>
-              </div>
-            </div>
-
-            <div className="mt-8">
-              <Link
-                href="/docs"
-                className="inline-flex items-center gap-2 text-sm font-medium text-fd-muted hover:text-fd-foreground transition-colors"
-              >
-                Read the full documentation
-                <span>&rarr;</span>
-              </Link>
-            </div>
-          </div>
-        </section>
+        {/* CTA Section */}
+        <CtaCard />
       </main>
 
       {/* Footer */}
