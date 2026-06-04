@@ -1,7 +1,50 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { CodeBlock } from '@/components/code-block';
 import { CtaCard } from '@/components/cta-card';
 import { Footer } from '@/components/footer';
+
+export const metadata: Metadata = {
+  title: '@deessejs/errors — Error Handling, Reimagined',
+  description:
+    '@deessejs/errors is a TypeScript library bringing Python-inspired error handling to JavaScript. Exception chaining, hierarchical inheritance, message templates, and rich error semantics through a function-based API.',
+  keywords: [
+    'typescript error handling',
+    'exception chaining typescript',
+    'python-style errors javascript',
+    'error factory typescript',
+    'structured errors typescript',
+    'hierarchical error inheritance',
+  ],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://errors.deessejs.com',
+    siteName: '@deessejs/errors',
+    title: '@deessejs/errors — Error Handling, Reimagined',
+    description:
+      'A TypeScript library bringing Python-inspired error handling to JavaScript. Exception chaining, hierarchical inheritance, and rich error semantics.',
+    images: [
+      {
+        url: 'https://errors.deessejs.com/og/home.png',
+        width: 1200,
+        height: 630,
+        alt: '@deessejs/errors — TypeScript Error Handling Library',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '@deessejs/errors — Error Handling, Reimagined',
+    description:
+      'A TypeScript library bringing Python-inspired error handling to JavaScript.',
+    images: ['https://errors.deessejs.com/og/home.png'],
+    creator: '@nesalia_inc',
+  },
+  alternates: {
+    canonical: 'https://errors.deessejs.com',
+  },
+};
 
 // Floating squares data for blueprint aesthetic
 const floatingSquares = [
