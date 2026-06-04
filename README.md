@@ -1,5 +1,9 @@
 # @deessejs/errors
 
+[![npm](https://img.shields.io/npm/v/@deessejs/errors)](https://www.npmjs.com/package/@deessejs/errors)
+[![TypeScript](https://img.shields.io/badge/typescript-%E2%9A%99%EF%B8%8F-blue)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A TypeScript error handling library with exception chaining, hierarchical inheritance, and rich error semantics — inspired by Python's error system.
 
 ## Features
@@ -115,6 +119,60 @@ for (const cause of causes(err3)) {
   console.log(cause.name);
 }
 // Output: Err2, Err1
+```
+
+## Why @deessejs/errors?
+
+Built-in JavaScript errors are limited. `@deessejs/errors` brings Python-style error handling to TypeScript.
+
+| Feature | Built-in `Error` | @deessejs/errors |
+|---------|------------------|-------------------|
+| Exception chaining | ❌ | ✅ |
+| Hierarchical inheritance | ❌ | ✅ |
+| Message templates | ❌ | ✅ |
+| Type-safe fields | ❌ | ✅ |
+| Standard Schema support | ❌ | ✅ |
+
+```typescript
+// Traditional approach — limited context
+throw new Error('Validation failed'); // ❌ Generic, no structure
+
+// @deessejs/errors — rich, maintainable errors
+const err = ValidationError({ field: 'email', reason: 'invalid format' });
+err.from(originalError); // ✅ Chain exceptions, preserve context
+```
+
+## FAQ
+
+### How do I create a custom error type?
+
+```typescript
+import { error } from '@deessejs/errors';
+
+const ValidationError = error({ name: 'ValidationError' });
+const err = ValidationError({ field: 'email' });
+```
+
+### How do I chain exceptions?
+
+```typescript
+import { error } from '@deessejs/errors';
+
+const validationErr = ValidationError({ field: 'email' });
+const processingErr = ProcessingError().from(validationErr);
+
+console.log(processingErr.cause); // validationErr
+```
+
+### How do I check if an error is of a specific type?
+
+```typescript
+import { error, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError', inherits: AppError });
+
+is(err, AppError); // true if err is ValidationError or any descendant
 ```
 
 ## Documentation
