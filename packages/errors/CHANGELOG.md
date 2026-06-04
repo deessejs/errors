@@ -1,5 +1,11 @@
 # @deessejs/errors
 
+## 1.1.0
+
+### Minor Changes
+
+- 65c9327: release v1.1.0: documentation overhaul, SEO improvements, CI enhancements
+
 ## 1.0.0
 
 ### Major Changes
