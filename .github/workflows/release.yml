@@ -35,6 +35,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Create versions from changesets
+        run: pnpm changeset version
+
+      - name: Commit version changes and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: apply changeset version bumps" || true
+          git push origin HEAD && git push --tags
+
       - name: Build
         run: pnpm build
 
