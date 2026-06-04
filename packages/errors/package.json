@@ -23,7 +23,13 @@
     "typescript",
     "errors",
     "exception",
-    "error-handling"
+    "error-handling",
+    "exception-chaining",
+    "hierarchical-errors",
+    "python-style-errors",
+    "custom-error-types",
+    "nodejs",
+    "npm-package"
   ],
   "author": "Nesalia Inc. <hello@nesalia.com>",
   "license": "MIT",
