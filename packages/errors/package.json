@@ -2,6 +2,7 @@
   "name": "@deessejs/errors",
   "version": "1.1.0",
   "description": "TypeScript error handling library inspired by Python — function-based API, exception chaining, hierarchical inheritance",
+  "homepage": "https://errors.deessejs.com",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
