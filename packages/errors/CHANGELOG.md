@@ -1,5 +1,23 @@
 # @deessejs/errors
 
+## 1.1.1
+
+### Patch Changes
+
+- Release v1.1.1: infrastructure improvements and SEO enhancements
+
+  ### Fixed
+
+  - Add changeset version step and tag push to release workflow
+  - Add display flex to all OG image divs for Satori compatibility
+
+  ### Changed
+
+  - Comprehensive SEO optimization for @deessejs/errors website
+  - Add banner image for OG social sharing
+  - Add homepage URL to package.json for npm SEO
+  - Add sitemap, robots.txt, homepage metadata and canonical URLs
+
 ## 1.1.0
 
 ### Minor Changes
