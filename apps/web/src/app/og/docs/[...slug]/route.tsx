@@ -95,6 +95,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
           {/* Page Title */}
           <div
             style={{
+              display: 'flex',
               fontSize: '42px',
               fontWeight: 'bold',
               color: '#f1f5f9',
@@ -108,6 +109,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
           {page.data.description && (
             <div
               style={{
+                display: 'flex',
                 fontSize: '18px',
                 color: '#94a3b8',
                 maxWidth: '800px',

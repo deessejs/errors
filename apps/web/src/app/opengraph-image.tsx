@@ -86,6 +86,7 @@ export default async function Image() {
           {/* Tagline */}
           <div
             style={{
+              display: 'flex',
               fontSize: '24px',
               color: '#94a3b8',
             }}

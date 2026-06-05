@@ -67,6 +67,7 @@ export default async function Image() {
           {/* Library Name */}
           <div
             style={{
+              display: 'flex',
               fontSize: '48px',
               fontWeight: 'bold',
               color: '#f1f5f9',
@@ -79,6 +80,7 @@ export default async function Image() {
           {/* Short Description */}
           <div
             style={{
+              display: 'flex',
               fontSize: '22px',
               color: '#94a3b8',
               textAlign: 'center',
@@ -90,6 +92,7 @@ export default async function Image() {
           {/* Hashtags */}
           <div
             style={{
+              display: 'flex',
               fontSize: '18px',
               color: '#64748b',
               marginTop: '16px',
