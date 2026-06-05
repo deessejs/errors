@@ -23,11 +23,11 @@ export function baseOptions(): BaseLayoutProps {
         active: 'nested-url',
       },
       {
-        type: 'icon',
         url: 'https://deessejs.com',
         label: 'Visit deessejs.com',
         text: 'deessejs.com',
         icon: <ExternalLinkIcon />,
+        external: true,
       },
     ],
   };
