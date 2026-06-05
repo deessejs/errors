@@ -1,4 +1,5 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import { BookIcon, FileTextIcon, ExternalLinkIcon } from 'lucide-react';
 import { appName, gitConfig } from './shared';
 
 export function baseOptions(): BaseLayoutProps {
@@ -8,5 +9,26 @@ export function baseOptions(): BaseLayoutProps {
       title: appName,
     },
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
+    links: [
+      {
+        icon: <FileTextIcon />,
+        text: 'Docs',
+        url: '/docs',
+        active: 'nested-url',
+      },
+      {
+        icon: <BookIcon />,
+        text: 'Blog',
+        url: '/blog',
+        active: 'nested-url',
+      },
+      {
+        url: 'https://deessejs.com',
+        label: 'Visit DeesseJS',
+        text: 'DeesseJS',
+        icon: <ExternalLinkIcon />,
+        external: true,
+      },
+    ],
   };
 }
