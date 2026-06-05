@@ -1,3 +1,4 @@
+import { baseUrl } from '@/lib/shared';
 import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
@@ -6,9 +7,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/search', '/llms.mdx'],
+        disallow: ['/api/', '/llms.txt', '/llms.mdx/'],
       },
     ],
-    sitemap: 'https://errors.deessejs.com/sitemap.xml',
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }

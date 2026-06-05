@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { CodeBlock } from '@/components/code-block';
 import { CtaCard } from '@/components/cta-card';
 import { Footer } from '@/components/footer';
+import { baseUrl } from '@/lib/shared';
 
 export const metadata: Metadata = {
   title: '@deessejs/errors — Error Handling, Reimagined',
@@ -123,9 +124,34 @@ catch (err) {
 }`;
 
 export default function HomePage() {
+  const softwareJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: '@deessejs/errors',
+    description:
+      'TypeScript error handling library with exception chaining, hierarchical inheritance, and rich error semantics through a function-based API.',
+    url: baseUrl,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Node.js 18+',
+    programmingLanguage: {
+      '@type': 'ComputerLanguage',
+      name: 'TypeScript',
+    },
+    license: 'MIT',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    downloadUrl: 'https://www.npmjs.com/package/@deessejs/errors',
+  };
+
   return (
     <>
-      {/* Blueprint grid background */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd).replace(/</g, '\\u003c') }}
+      />
       <div
         className="absolute left-0 right-0 top-0 h-[1000px] pointer-events-none overflow-hidden -z-10"
         aria-hidden="true"
