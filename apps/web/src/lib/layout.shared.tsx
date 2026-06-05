@@ -24,8 +24,8 @@ export function baseOptions(): BaseLayoutProps {
       },
       {
         url: 'https://deessejs.com',
-        label: 'Visit deessejs.com',
-        text: 'deessejs.com',
+        label: 'Visit DeesseJS',
+        text: 'DeesseJS',
         icon: <ExternalLinkIcon />,
         external: true,
       },
