@@ -61,6 +61,12 @@ export default function Layout({ children }: LayoutProps<'/'>) {
     <html lang="en" className={inter.className} suppressHydrationWarning>
       <head>
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="@deessejs/errors Blog"
+          href="/blog/rss.xml"
+        />
         <JsonLd />
       </head>
       <body className="flex flex-col min-h-screen">

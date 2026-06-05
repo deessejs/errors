@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@flue/runtime": "latest",
+    "feed": "^5.2.1",
     "hono": "^4.12.23",
     "valibot": "^0.40.0"
   },
