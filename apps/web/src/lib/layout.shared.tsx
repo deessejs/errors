@@ -28,7 +28,6 @@ export function baseOptions(): BaseLayoutProps {
         label: 'Visit deessejs.com',
         text: 'deessejs.com',
         icon: <ExternalLinkIcon />,
-        external: true,
       },
     ],
   };
