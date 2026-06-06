@@ -13,7 +13,7 @@ const footerLinks = {
     { label: 'Docs', href: '/docs' },
     { label: 'Blog', href: '#' },
     { label: 'Changelog', href: '#' },
-    { label: 'Academy', href: '#' },
+    { label: 'Academy', href: 'https://academy.nesalia.com' },
     { label: 'Community', href: '#' },
   ],
   usecases: [
