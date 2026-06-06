@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 const footerLinks = {
   deessejs: [
+    { label: 'Home', href: 'https://deessejs.com' },
     { label: 'Errors', href: '/docs' },
     { label: 'DRPC', href: '#' },
     { label: 'Collections', href: '#' },
