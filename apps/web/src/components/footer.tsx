@@ -24,6 +24,7 @@ const footerLinks = {
     { label: 'Content Creation', href: '#' },
   ],
   company: [
+    { label: 'Home', href: 'https://nesalia.com' },
     { label: 'About', href: '#' },
     { label: 'Help', href: '#' },
     { label: 'Legal', href: '#' },
