@@ -67,6 +67,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
           title="@deessejs/errors Blog"
           href="/blog/rss.xml"
         />
+        <meta name="google-site-verification" content="0RLsnP4YRHmMY4H36hDjwCJekCf62MsZpnNGZ1mJwww" />
         <JsonLd />
       </head>
       <body className="flex flex-col min-h-screen">
