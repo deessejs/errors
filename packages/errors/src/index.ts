@@ -6,11 +6,7 @@
 
 // Types
 export type { StandardSchemaV1 } from '@standard-schema/spec';
-export type {
-  ErrorFactory,
-  ErrorInstance,
-  ErrorInstanceCore,
-} from './error/types.js';
+export type { ErrorFactory, ErrorInstance, ErrorInstanceCore } from './error/types.js';
 
 // Error factory function
 export { error } from './error/error.js';

@@ -6,16 +6,16 @@ This folder contains all implementation tasks for v1.0.0 Core Foundation.
 
 ## Task List
 
-| ID | Task | Status |
-|----|------|--------|
-| 01 | error() factory | ✅ Complete |
-| 02 | raise() function | ✅ Complete |
-| 03 | is() function | ✅ Complete |
-| 04 | inherits option | ✅ Complete |
-| 05 | .from() method | ✅ Complete |
-| 06 | causes() function | ✅ Complete |
-| 07 | message templates | ✅ Complete |
-| 08 | ErrorInstance properties | ✅ Complete |
+| ID  | Task                     | Status      |
+| --- | ------------------------ | ----------- |
+| 01  | error() factory          | ✅ Complete |
+| 02  | raise() function         | ✅ Complete |
+| 03  | is() function            | ✅ Complete |
+| 04  | inherits option          | ✅ Complete |
+| 05  | .from() method           | ✅ Complete |
+| 06  | causes() function        | ✅ Complete |
+| 07  | message templates        | ✅ Complete |
+| 08  | ErrorInstance properties | ✅ Complete |
 
 ## Execution Order
 

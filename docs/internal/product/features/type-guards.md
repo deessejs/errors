@@ -8,8 +8,8 @@ Type guards allow TypeScript to narrow error types within conditional blocks, en
 
 ```typescript
 // Generated for each error type
-function isValidationError(err: unknown): err is ValidationError
-function isNotFoundError(err: unknown): err is NotFoundError
+function isValidationError(err: unknown): err is ValidationError;
+function isNotFoundError(err: unknown): err is NotFoundError;
 // ... for all predefined and custom errors
 ```
 
@@ -25,7 +25,7 @@ try {
 } catch (err) {
   if (errors.isValidationError(err)) {
     // TypeScript knows err is ValidationError here
-    console.error(err.fields.field);  // Safe access!
+    console.error(err.fields.field); // Safe access!
   }
 }
 ```
@@ -40,7 +40,7 @@ try {
 } catch (err) {
   if (is(err, errors.ValidationError)) {
     // TypeScript doesn't narrow - err is still unknown
-    console.error(err.fields.field);  // Error! Can't access fields
+    console.error(err.fields.field); // Error! Can't access fields
   }
 }
 ```
@@ -66,7 +66,7 @@ try {
 } catch (err) {
   if (isValidationError(err)) {
     // TypeScript narrows to ValidationError
-    console.error(err.fields.field);  // Works!
+    console.error(err.fields.field); // Works!
   }
 }
 ```
@@ -101,18 +101,19 @@ TypeScript doesn't automatically narrow types when functions return `boolean`. A
 ```typescript
 // is() returns boolean - TypeScript doesn't narrow
 if (is(err, ValidationError)) {
-  err.fields;  // Error: Property 'fields' does not exist on unknown
+  err.fields; // Error: Property 'fields' does not exist on unknown
 }
 
 // Type guard function narrows the type
 if (isValidationError(err)) {
-  err.fields;  // Works!
+  err.fields; // Works!
 }
 ```
 
 **Naming convention**
 
 Type guards follow the pattern `isXxxError` where `Xxx` is the error name:
+
 - `isValidationError` for `ValidationError`
 - `isNotFoundError` for `NotFoundError`
 - `isNetworkError` for `NetworkError`
@@ -125,7 +126,7 @@ import { errors } from '@deessejs/errors';
 // Predefined type guards
 errors.isValidationError(err);
 errors.isNotFoundError(err);
-errors.isTypeError(err);  // Avoids collision with native TypeError
+errors.isTypeError(err); // Avoids collision with native TypeError
 ```
 
 ## Related Features

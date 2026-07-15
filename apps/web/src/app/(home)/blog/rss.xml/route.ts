@@ -11,7 +11,8 @@ export function GET() {
     id: `${baseUrl}/blog`,
     link: `${baseUrl}/blog`,
     language: 'en',
-    description: 'Latest articles about TypeScript error handling, exception chaining, and best practices.',
+    description:
+      'Latest articles about TypeScript error handling, exception chaining, and best practices.',
     image: `${baseUrl}/banner.jpg`,
     favicon: `${baseUrl}/icon.svg`,
     copyright: `All rights reserved ${new Date().getFullYear()}, Nesalia Inc`,

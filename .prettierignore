@@ -4,4 +4,16 @@ dist/
 .turbo/
 .cache/
 .tmp/
+temp/
+
+# Agent tooling metadata (not project source)
+.claude/
+
+# Generated files
+apps/web/.source/
+apps/web/next-env.d.ts
+
+# Internal learning docs (informational, formatted manually)
+docs/learnings/
+
 *.log

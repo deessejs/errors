@@ -26,23 +26,14 @@ const AppError = error({ name: 'AppError' });
 try {
   processData(input);
 } catch (err) {
-  raise(
-    AppError().addNote('Processing failed at line 42')
-  );
+  raise(AppError().addNote('Processing failed at line 42'));
 }
 
 // Multiple notes supported
-raise(
-  AppError()
-    .addNote('Attempt 1 failed')
-    .addNote('Retrying...')
-    .addNote('Attempt 2 failed')
-);
+raise(AppError().addNote('Attempt 1 failed').addNote('Retrying...').addNote('Attempt 2 failed'));
 
 // Notes are preserved through chaining
-raise(
-  AppError().from(err).addNote('Wrapped with context')
-);
+raise(AppError().from(err).addNote('Wrapped with context'));
 ```
 
 ### Notes in Output
@@ -138,12 +129,14 @@ No migration required — this is purely additive. Existing code continues to wo
 ## v1.1.0 — Enhanced Developer Experience (YYYY-MM-DD)
 
 ### Added
+
 - `.addNote()` method for enriching errors with notes
 - Multiple notes support with order preservation
 - Notes display in development and production output
 - Enhanced documentation for `context` property
 
 ### Changed
+
 - ErrorInstance type documentation improved
 ```
 

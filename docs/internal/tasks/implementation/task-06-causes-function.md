@@ -11,6 +11,7 @@ Implement causes(err) function that returns array of all errors in the cause cha
 ## Implementation
 
 Implemented in:
+
 - `src/causes/index.ts` - causes() function
 - `src/index.ts` - exported for public API
 

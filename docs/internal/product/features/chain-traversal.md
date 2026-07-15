@@ -12,8 +12,8 @@ function causes(errorInstance: ErrorInstance): ErrorInstance[];
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter       | Type            | Description           |
+| --------------- | --------------- | --------------------- |
 | `errorInstance` | `ErrorInstance` | The error to traverse |
 
 ### Returns
@@ -34,11 +34,7 @@ const DatabaseError = error({ name: 'DatabaseError' });
 try {
   doSomething();
 } catch (err) {
-  throw DatabaseError().from(
-    NetworkError().from(
-      AppError().from(err)
-    )
-  );
+  throw DatabaseError().from(NetworkError().from(AppError().from(err)));
 }
 
 // Later
@@ -87,7 +83,7 @@ try {
   doSomething();
 } catch (err) {
   // Check if any error in the chain is a TimeoutError
-  const hasTimeout = causes(err).some(e => is(e, TimeoutError));
+  const hasTimeout = causes(err).some((e) => is(e, TimeoutError));
 
   if (hasTimeout) {
     // Handle timeout specially
@@ -99,7 +95,6 @@ try {
 
 ```typescript
 import { causes } from '@deessejs/errors';
-
 ```
 
 ## Property Access
@@ -120,6 +115,7 @@ See [Design Philosophy](../design-philosophy.md) for core principles.
 **Why most-recent-first ordering?**
 
 Most code needs to find the most relevant (most recent) error first:
+
 - Type checking: `err.causes.some(e => is(e, TimeoutError))`
 
 **Why different from `err.cause.cause.cause`?**

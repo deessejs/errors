@@ -28,9 +28,7 @@ export function CtaCard() {
     <section className="bg-fd-background-secondary">
       <div className="max-w-6xl mx-auto px-6 pb-24">
         <div className="mt-10 border border-fd-border bg-fd-card rounded-none p-8">
-          <h3 className="text-2xl font-bold text-fd-foreground">
-            Ready to get started?
-          </h3>
+          <h3 className="text-2xl font-bold text-fd-foreground">Ready to get started?</h3>
           <p className="mt-2 text-fd-muted-foreground">
             Install the package and start building better errors today.
           </p>

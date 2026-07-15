@@ -16,19 +16,18 @@ Implemented in `src/error/error.ts` - all properties are initialized with defaul
 
 Every error instance has these properties, all with defined values:
 
-| Property | Type | Default if not specified | Status |
-|----------|------|---------------------------|--------|
-| name | string | ✓ (required) | ✅ |
-| message | string | ✓ (required) | ✅ |
-| stack | string | ✓ (auto-generated) | ✅ |
-| fields | Record | {} | ✅ |
-| notes | string[] | [] | ✅ |
-| cause | Error \| null | null | ✅ |
-| causes | Error[] | [] | ✅ |
-| context | Record \| null | null | ✅ |
-| inherits | ErrorFactory \| ErrorFactory[] \| undefined | undefined | ✅ |
-| from() | method | ✓ | ✅ |
-
+| Property | Type                                        | Default if not specified | Status |
+| -------- | ------------------------------------------- | ------------------------ | ------ |
+| name     | string                                      | ✓ (required)             | ✅     |
+| message  | string                                      | ✓ (required)             | ✅     |
+| stack    | string                                      | ✓ (auto-generated)       | ✅     |
+| fields   | Record                                      | {}                       | ✅     |
+| notes    | string[]                                    | []                       | ✅     |
+| cause    | Error \| null                               | null                     | ✅     |
+| causes   | Error[]                                     | []                       | ✅     |
+| context  | Record \| null                              | null                     | ✅     |
+| inherits | ErrorFactory \| ErrorFactory[] \| undefined | undefined                | ✅     |
+| from()   | method                                      | ✓                        | ✅     |
 
 ## Acceptance Criteria
 

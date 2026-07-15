@@ -26,9 +26,7 @@ export default async function Page(props: PageProps<'/blog/[slug]'>) {
         </div>
         <div>
           <p className="mb-1 text-fd-muted-foreground">Published</p>
-          <p className="font-medium">
-            {new Date(page.data.date).toDateString()}
-          </p>
+          <p className="font-medium">{new Date(page.data.date).toDateString()}</p>
         </div>
       </div>
 
@@ -39,10 +37,7 @@ export default async function Page(props: PageProps<'/blog/[slug]'>) {
       {/* Actions */}
       <div className="flex flex-row gap-2 mb-8">
         <ShareButton url={page.url} />
-        <Link
-          href="/blog"
-          className="px-3 py-1.5 text-sm border rounded-md hover:bg-fd-accent"
-        >
+        <Link href="/blog" className="px-3 py-1.5 text-sm border rounded-md hover:bg-fd-accent">
           Back to Blog
         </Link>
       </div>

@@ -4,16 +4,22 @@ interface CodeBlockProps {
   code: string;
   language?: string;
   title?: string;
-  size?: "sm" | "lg"
-  tabs?: boolean
+  size?: 'sm' | 'lg';
+  tabs?: boolean;
 }
 
 const sizeClasses = {
-  sm: "p-3 text-xs",
-  lg: "p-6 text-sm",
-}
+  sm: 'p-3 text-xs',
+  lg: 'p-6 text-sm',
+};
 
-export async function CodeBlock({ code, language = 'typescript', title, size = "sm", tabs = true }: CodeBlockProps) {
+export async function CodeBlock({
+  code,
+  language = 'typescript',
+  title,
+  size = 'sm',
+  tabs = true,
+}: CodeBlockProps) {
   const html = await codeToHtml(code, {
     lang: language,
     theme: 'github-dark',

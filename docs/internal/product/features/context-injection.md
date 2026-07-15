@@ -7,15 +7,15 @@ The `withContext()` function injects contextual information into errors that are
 ## API
 
 ```typescript
-function withContext<T>(context: Record<string, unknown>, fn: () => T): T
+function withContext<T>(context: Record<string, unknown>, fn: () => T): T;
 ```
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `context` | `Record<string, unknown>` | Context key-value pairs to inject |
-| `fn` | `() => T` | Function to run within this context |
+| Parameter | Type                      | Description                         |
+| --------- | ------------------------- | ----------------------------------- |
+| `context` | `Record<string, unknown>` | Context key-value pairs to inject   |
+| `fn`      | `() => T`                 | Function to run within this context |
 
 ### Returns
 
@@ -51,11 +51,11 @@ try {
     raise(AppError());
   });
 } catch (err) {
-  err.fields.userId;      // '123'
-  err.fields.requestId;   // 'req-456'
-  err.context;            // { userId: '123', requestId: 'req-456' }
+  err.fields.userId; // '123'
+  err.fields.requestId; // 'req-456'
+  err.context; // { userId: '123', requestId: 'req-456' }
 
-  err.message;            // Formatted message with context
+  err.message; // Formatted message with context
 }
 ```
 
@@ -92,7 +92,7 @@ try {
     doSomething();
   });
 } catch (err) {
-  causes(err).forEach(cause => {
+  causes(err).forEach((cause) => {
     console.error({
       error: cause.name,
       context: cause.context,
@@ -109,23 +109,24 @@ Context injection relies on `AsyncLocalStorage` (Node.js) or equivalent mechanis
 
 ### Environment Support
 
-| Environment | Support | Notes |
-|-------------|---------|-------|
-| Node.js 16+ | ✅ Full | Native AsyncLocalStorage |
-| Node.js 12-14 | ⚠️ Polyfill | Requires manual AsyncLocalStorage polyfill |
-| Deno | ✅ Full | AsyncLocalStorage available |
-| Bun | ✅ Full | AsyncLocalStorage available |
-| Browsers | ⚠️ Partial | Works in modern browsers, not IE11 |
-| Next.js | ✅ Full | Server-side rendering supported |
-| Express/Koa | ✅ Full | Works in request handlers |
-| Cloudflare Workers | ❌ Limited | No AsyncLocalStorage |
-| AWS Lambda | ⚠️ Varies | Depends on runtime (Node.js vs custom) |
-| Vercel Edge | ❌ Limited | No AsyncLocalStorage |
-| Web Workers | ⚠️ Partial | Works in dedicated workers, not shared |
+| Environment        | Support     | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------ |
+| Node.js 16+        | ✅ Full     | Native AsyncLocalStorage                   |
+| Node.js 12-14      | ⚠️ Polyfill | Requires manual AsyncLocalStorage polyfill |
+| Deno               | ✅ Full     | AsyncLocalStorage available                |
+| Bun                | ✅ Full     | AsyncLocalStorage available                |
+| Browsers           | ⚠️ Partial  | Works in modern browsers, not IE11         |
+| Next.js            | ✅ Full     | Server-side rendering supported            |
+| Express/Koa        | ✅ Full     | Works in request handlers                  |
+| Cloudflare Workers | ❌ Limited  | No AsyncLocalStorage                       |
+| AWS Lambda         | ⚠️ Varies   | Depends on runtime (Node.js vs custom)     |
+| Vercel Edge        | ❌ Limited  | No AsyncLocalStorage                       |
+| Web Workers        | ⚠️ Partial  | Works in dedicated workers, not shared     |
 
 ### What Happens in Unsupported Environments?
 
 If `withContext()` is called in an environment without `AsyncLocalStorage`:
+
 1. The function runs normally
 2. No error is thrown
 3. `err.context` will be `null` on any raised errors
@@ -164,6 +165,7 @@ withContext({ userId: '123', requestId: 'req-456' }, () => {
 **How is context implemented?**
 
 Context is stored using `AsyncLocalStorage`. When an error is raised:
+
 1. The library checks for active context via the storage API
 2. If found, the context is attached to the error
 3. The error instance gets `context` property set
@@ -182,6 +184,7 @@ withContext({ userId: '123' }, () => {
 **Why not throw an error in unsupported environments?**
 
 Silent failure allows the code to work in supported and unsupported environments:
+
 - In supported environments: full context injection
 - In unsupported environments: code still runs, just without context
 

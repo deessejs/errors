@@ -58,9 +58,9 @@ const processingErr = ProcessingError();
 // Chain errors with .from()
 processingErr.from(validationErr);
 
-console.log(processingErr.message);      // "ProcessingError"
-console.log(processingErr.cause);         // validationErr
-console.log(processingErr.causes);        // [validationErr]
+console.log(processingErr.message); // "ProcessingError"
+console.log(processingErr.cause); // validationErr
+console.log(processingErr.causes); // [validationErr]
 ```
 
 ### Hierarchical Inheritance
@@ -97,8 +97,8 @@ const ValidationError = error({
 
 const err = ValidationError();
 
-is(err, ValidationError);  // true
-is(err, AppError);          // true (inherits from AppError)
+is(err, ValidationError); // true
+is(err, AppError); // true (inherits from AppError)
 ```
 
 ### Traverse Cause Chain
@@ -125,13 +125,13 @@ for (const cause of causes(err3)) {
 
 Built-in JavaScript errors are limited. `@deessejs/errors` brings Python-style error handling to TypeScript.
 
-| Feature | Built-in `Error` | @deessejs/errors |
-|---------|------------------|-------------------|
-| Exception chaining | ❌ | ✅ |
-| Hierarchical inheritance | ❌ | ✅ |
-| Message templates | ❌ | ✅ |
-| Type-safe fields | ❌ | ✅ |
-| Standard Schema support | ❌ | ✅ |
+| Feature                  | Built-in `Error` | @deessejs/errors |
+| ------------------------ | ---------------- | ---------------- |
+| Exception chaining       | ❌               | ✅               |
+| Hierarchical inheritance | ❌               | ✅               |
+| Message templates        | ❌               | ✅               |
+| Type-safe fields         | ❌               | ✅               |
+| Standard Schema support  | ❌               | ✅               |
 
 ```typescript
 // Traditional approach — limited context

@@ -7,17 +7,14 @@ The `is()` function checks if an error is an instance of a specific error type (
 ## API
 
 ```typescript
-function is<T extends ErrorFactory>(
-  error: unknown,
-  ErrorType: T
-): boolean
+function is<T extends ErrorFactory>(error: unknown, ErrorType: T): boolean;
 ```
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `error` | `unknown` | The error to check |
+| Parameter   | Type        | Description                     |
+| ----------- | ----------- | ------------------------------- |
+| `error`     | `unknown`   | The error to check              |
 | `ErrorType` | `ErrorType` | The error type to check against |
 
 ### Returns
@@ -74,10 +71,10 @@ const OperationError = error({
 
 const err = OperationError();
 
-is(err, NetworkError);           // true
-is(err, DatabaseError);          // true
-is(err, OperationError);         // true
-is(err, AppError);               // true (through any parent)
+is(err, NetworkError); // true
+is(err, DatabaseError); // true
+is(err, OperationError); // true
+is(err, AppError); // true (through any parent)
 ```
 
 ### Multiple Type Check
@@ -119,11 +116,11 @@ The function approach is more explicit about the two operands and reads naturall
 
 ## Comparison Table
 
-| Method | Native Errors | Custom Errors | Hierarchy | Syntax |
-|--------|--------------|---------------|----------|--------|
-| `instanceof` | ✓ | ✓ | ✓ | `err instanceof X` |
-| `is()` | ✓ | ✓ | ✓ | `is(err, X)` |
-| `err.name === 'X'` | ✓ | ✓ | ✗ | Manual string compare |
+| Method             | Native Errors | Custom Errors | Hierarchy | Syntax                |
+| ------------------ | ------------- | ------------- | --------- | --------------------- |
+| `instanceof`       | ✓             | ✓             | ✓         | `err instanceof X`    |
+| `is()`             | ✓             | ✓             | ✓         | `is(err, X)`          |
+| `err.name === 'X'` | ✓             | ✓             | ✗         | Manual string compare |
 
 ## Related Features
 

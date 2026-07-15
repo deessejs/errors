@@ -15,9 +15,9 @@ interface ErrorInstance {
 
 ### Method Signature
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `cause` | `Error \| ErrorInstance \| Error` | The error that caused this one |
+| Parameter | Type                              | Description                    |
+| --------- | --------------------------------- | ------------------------------ |
+| `cause`   | `Error \| ErrorInstance \| Error` | The error that caused this one |
 
 ### Returns
 
@@ -36,9 +36,7 @@ const HighLevelError = error({ name: 'HighLevelError' });
 try {
   lowLevel();
 } catch (err) {
-  raise(
-    HighLevelError().from(err)
-  );
+  raise(HighLevelError().from(err));
 }
 ```
 
@@ -54,11 +52,7 @@ const TopError = error({ name: 'TopError' });
 try {
   doSomething();
 } catch (err) {
-  throw TopError().from(
-    MiddleError().from(
-      AppError().from(err)
-    )
-  );
+  throw TopError().from(MiddleError().from(AppError().from(err)));
 }
 
 // Later, traverse the chain (most recent first)
@@ -77,7 +71,7 @@ const AppError = error({ name: 'AppError' });
 try {
   JSON.parse(invalidJson);
 } catch (err) {
-  raise(AppError().from(err));  // Works with SyntaxError
+  raise(AppError().from(err)); // Works with SyntaxError
 }
 ```
 
@@ -100,9 +94,9 @@ const firstError = errors[0];
 
 // The batch error contains info about all failures
 // But the cause chain only tracks the first one
-raise(
-  BatchError({ count: errors.length }).from(firstError)
-).addNote(`${errors.length} operations failed`);
+raise(BatchError({ count: errors.length }).from(firstError)).addNote(
+  `${errors.length} operations failed`
+);
 ```
 
 ## Design Rationale
@@ -113,7 +107,8 @@ See [Design Philosophy](../design-philosophy.md) for core principles.
 
 **Why not named `cause()` like the property?**
 
-`.from()` emphasizes the *action* of chaining, while `cause` is the *result*:
+`.from()` emphasizes the _action_ of chaining, while `cause` is the _result_:
+
 - `.from(err)` = "set cause to err"
 - `err.cause` = "get the cause"
 

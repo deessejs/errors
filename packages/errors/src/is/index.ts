@@ -10,13 +10,14 @@ import { FACTORY_SYMBOL } from '../error/error.js';
  *
  * @internal
  */
-type ExtractFields<T> = T extends ErrorFactory<infer F>
-  ? F
-  : T extends new ( ...args: unknown[] ) => infer E
-    ? E extends ErrorInstance<infer F>
-      ? F
-      : Record<string, unknown>
-    : Record<string, unknown>;
+type ExtractFields<T> =
+  T extends ErrorFactory<infer F>
+    ? F
+    : T extends new (...args: unknown[]) => infer E
+      ? E extends ErrorInstance<infer F>
+        ? F
+        : Record<string, unknown>
+      : Record<string, unknown>;
 
 /**
  * Checks if an error is an instance of a specific error type.
@@ -52,19 +53,19 @@ type ExtractFields<T> = T extends ErrorFactory<infer F>
  * }
  * ```
  */
-const is = <T extends ErrorFactory | ( new ( ...args: unknown[] ) => Error )>(
+const is = <T extends ErrorFactory | (new (...args: unknown[]) => Error)>(
   error: unknown,
   ErrorType: T
 ): error is ErrorInstance<ExtractFields<T>> => {
   // Handle null/undefined
-  if ( error == null ) {
+  if (error == null) {
     return false;
   }
 
   // Handle native errors - check prototype chain ends in Error
-  if ( typeof ErrorType === 'function' && 'prototype' in ErrorType ) {
+  if (typeof ErrorType === 'function' && 'prototype' in ErrorType) {
     try {
-      if ( error instanceof ErrorType ) {
+      if (error instanceof ErrorType) {
         return true;
       }
     } catch {
@@ -73,38 +74,38 @@ const is = <T extends ErrorFactory | ( new ( ...args: unknown[] ) => Error )>(
   }
 
   // Handle our ErrorFactory instances using Symbol-based reference
-  if ( typeof error === 'object' && error !== null ) {
+  if (typeof error === 'object' && error !== null) {
     const marker = error as Record<typeof FACTORY_SYMBOL, unknown>;
     const factory = marker[FACTORY_SYMBOL];
 
-    if ( factory !== undefined ) {
+    if (factory !== undefined) {
       // DFS walk of inheritance tree using stack (prevents GC pressure)
       const stack: ErrorFactory[] = [factory as ErrorFactory];
       const seen = new Set<ErrorFactory>();
 
-      while ( stack.length > 0 ) {
+      while (stack.length > 0) {
         const current = stack.pop()!;
 
         // Prevent infinite loops in cyclic inheritance
-        if ( seen.has( current ) ) {
+        if (seen.has(current)) {
           continue;
         }
-        seen.add( current );
+        seen.add(current);
 
         // Direct match
-        if ( current === ErrorType ) {
+        if (current === ErrorType) {
           return true;
         }
 
         // Add parents to stack
-        const inherits = ( current as ErrorFactory ).inherits;
-        if ( inherits !== undefined ) {
-          if ( Array.isArray( inherits ) ) {
-            for ( let i = 0; i < inherits.length; i++ ) {
-              stack.push( inherits[i] );
+        const inherits = (current as ErrorFactory).inherits;
+        if (inherits !== undefined) {
+          if (Array.isArray(inherits)) {
+            for (let i = 0; i < inherits.length; i++) {
+              stack.push(inherits[i]);
             }
           } else {
-            stack.push( inherits );
+            stack.push(inherits);
           }
         }
       }

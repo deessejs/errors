@@ -5,21 +5,27 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Blog',
-  description: 'Latest articles about TypeScript error handling, exception chaining, and best practices with @deessejs/errors.',
+  description:
+    'Latest articles about TypeScript error handling, exception chaining, and best practices with @deessejs/errors.',
   alternates: {
     canonical: `${baseUrl}/blog`,
   },
 };
 
 function getName(path: string) {
-  return path.split('/').pop()?.replace(/\.[^.]+$/, '') ?? path;
+  return (
+    path
+      .split('/')
+      .pop()
+      ?.replace(/\.[^.]+$/, '') ?? path
+  );
 }
 
 export default function Page() {
   const posts = [...blogSource.getPages()].sort(
     (a, b) =>
       new Date(b.data.date ?? getName(b.path)).getTime() -
-      new Date(a.data.date ?? getName(a.path)).getTime(),
+      new Date(a.data.date ?? getName(a.path)).getTime()
   );
 
   return (
@@ -29,7 +35,7 @@ export default function Page() {
         <h1 className="text-3xl font-semibold mb-2">@deessejs/errors Blog</h1>
         <p className="text-fd-muted-foreground">
           Latest articles about TypeScript error handling, exception chaining, and best practices.
-</p>
+        </p>
       </div>
 
       {/* Post Grid */}

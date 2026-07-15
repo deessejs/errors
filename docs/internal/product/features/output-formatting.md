@@ -8,10 +8,10 @@ The package automatically adapts error output based on the environment. Developm
 
 The library detects the environment via `NODE_ENV`:
 
-| Environment | `NODE_ENV` | Output Style |
-|-------------|------------|--------------|
-| Development | `development` or unset | Pretty, colored |
-| Production | `production` | Compact, efficient |
+| Environment | `NODE_ENV`             | Output Style       |
+| ----------- | ---------------------- | ------------------ |
+| Development | `development` or unset | Pretty, colored    |
+| Production  | `production`           | Compact, efficient |
 
 ## Development Mode
 
@@ -57,14 +57,14 @@ ValidationError: Field "email" expected email, got "user@" {"field":"email","exp
 All these properties are available on any error instance:
 
 ```typescript
-err.name;       // Error name
-err.message;    // Formatted message
-err.fields;    // User-defined fields
-err.notes;     // Array of notes
-err.cause;     // Direct cause
-err.causes;    // Full cause chain
-err.context;   // Injected context
-err.stack;     // Stack trace
+err.name; // Error name
+err.message; // Formatted message
+err.fields; // User-defined fields
+err.notes; // Array of notes
+err.cause; // Direct cause
+err.causes; // Full cause chain
+err.context; // Injected context
+err.stack; // Stack trace
 ```
 
 ## JSON Serialization
@@ -81,9 +81,7 @@ const AppError = error({
   },
 });
 
-const err = AppError({ code: 42 })
-  .addNote('User action')
-  .addNote('Retry attempt 3');
+const err = AppError({ code: 42 }).addNote('User action').addNote('Retry attempt 3');
 
 JSON.stringify(err);
 // {
@@ -112,7 +110,7 @@ JSON.stringify(err, null, 2);
 
 // Selective fields
 JSON.stringify(err, (key, value) => {
-  if (key === 'stack') return undefined;  // Exclude stack
+  if (key === 'stack') return undefined; // Exclude stack
   return value;
 });
 ```
@@ -129,9 +127,9 @@ import { error, formatError } from '@deessejs/errors';
 const err = AppError({ code: 42 });
 
 // Get formatted string in specific mode
-formatError(err, { mode: 'development' });  // Pretty
-formatError(err, { mode: 'production' });   // Compact
-formatError(err, { mode: 'json' });         // JSON object
+formatError(err, { mode: 'development' }); // Pretty
+formatError(err, { mode: 'production' }); // Compact
+formatError(err, { mode: 'json' }); // JSON object
 ```
 
 ### Global Configuration (Optional)
@@ -140,12 +138,13 @@ formatError(err, { mode: 'json' });         // JSON object
 import { setOutputMode } from '@deessejs/errors';
 
 // Change default mode
-setOutputMode('development');  // Always pretty
-setOutputMode('production');   // Always compact
-setOutputMode('auto');         // Follow NODE_ENV (default)
+setOutputMode('development'); // Always pretty
+setOutputMode('production'); // Always compact
+setOutputMode('auto'); // Follow NODE_ENV (default)
 ```
 
 **Warning:** `setOutputMode()` modifies global state. Be aware of:
+
 - Test pollution: mode set in one test may affect another
 - Serverless cold starts: mode persists across invocations
 - Async: no thread safety concerns in Node.js
@@ -187,18 +186,21 @@ const logger = pino();
 
 const err = catchError();
 
-logger.error({
-  err: {
-    name: err.name,
-    message: err.message,
-    stack: err.stack,
-    fields: err.fields,
-    notes: err.notes,
-    cause: err.cause ? { name: err.cause.name, message: err.cause.message } : null,
+logger.error(
+  {
+    err: {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      fields: err.fields,
+      notes: err.notes,
+      cause: err.cause ? { name: err.cause.name, message: err.cause.message } : null,
+    },
+    userId: err.context?.userId,
+    requestId: err.context?.requestId,
   },
-  userId: err.context?.userId,
-  requestId: err.context?.requestId,
-}, err.message);
+  err.message
+);
 ```
 
 ### Error Aggregation Services
@@ -230,6 +232,7 @@ datadogLogger.error(err.message, {
 **Why auto-detect?**
 
 Defaulting to development mode in development and production mode in production:
+
 1. **Zero config** — Works out of the box
 2. **Correct defaults** — Pretty for dev, efficient for prod
 3. **Forgettable** — You don't think about it until needed
@@ -237,6 +240,7 @@ Defaulting to development mode in development and production mode in production:
 **Why per-call formatting?**
 
 Per-call `formatError(err, { mode })` is preferred over global `setOutputMode()` because:
+
 - No test pollution
 - Works in serverless environments
 - Explicit intent in code

@@ -69,9 +69,7 @@ expect(err).toHaveCauseChain(['HighError', 'MidError', 'LowError']);
 import { errorSnapshot } from '@deessejs/errors/testing';
 
 test('error formats correctly', () => {
-  const err = ValidationError({ field: 'email' })
-    .addNote('Test note')
-    .from(NetworkError());
+  const err = ValidationError({ field: 'email' }).addNote('Test note').from(NetworkError());
 
   // Returns a formatted string suitable for snapshots
   expect(errorSnapshot(err)).toMatchSnapshot();
@@ -79,6 +77,7 @@ test('error formats correctly', () => {
 ```
 
 Output:
+
 ```
 ValidationError: Field "email" is invalid
   field: "email"
@@ -128,8 +127,8 @@ test('aggregates failures correctly', async () => {
   const errors = assertAllSettled(results);
 
   // Returns typed errors array
-  errors[0].name;           // 'ValidationError'
-  errors[0].fields.field;   // 'email'
+  errors[0].name; // 'ValidationError'
+  errors[0].fields.field; // 'email'
 
   // Can filter by type
   const validationErrors = errors.ofType(ValidationError);
@@ -167,12 +166,12 @@ import { testTypeGuards } from '@deessejs/errors/testing';
 
 // Ensure type guards work correctly
 testTypeGuards({
-  'ValidationError': {
+  ValidationError: {
     instance: ValidationError({ field: 'email' }),
     shouldMatch: [EmailValidationError({ value: 'x' })],
     shouldNotMatch: [NetworkError(), NotFoundError({ path: '/' })],
   },
-  'NotFoundError': {
+  NotFoundError: {
     instance: NotFoundError({ path: '/users' }),
     shouldMatch: [UserNotFoundError({ userId: '123' })],
     shouldNotMatch: [ValidationError({ field: 'x' })],
@@ -248,12 +247,10 @@ export function errorSnapshot(err: ErrorInstance): string {
 
 ```typescript
 // async.ts
-export function assertAllSettled<T>(
-  results: PromiseSettledResult<T>[]
-): ErrorInstance[] {
+export function assertAllSettled<T>(results: PromiseSettledResult<T>[]): ErrorInstance[] {
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-    .map(r => r.reason as ErrorInstance);
+    .map((r) => r.reason as ErrorInstance);
 
   if (errors.length === 0) {
     throw new Error('No errors found in settled results');
@@ -263,26 +260,23 @@ export function assertAllSettled<T>(
 }
 
 // Extend with type filtering
-export function filterByType<T extends ErrorInstance>(
-  errors: ErrorInstance[],
-  type: T
-): T[] {
-  return errors.filter(err => is(err, type)) as T[];
+export function filterByType<T extends ErrorInstance>(errors: ErrorInstance[], type: T): T[] {
+  return errors.filter((err) => is(err, type)) as T[];
 }
 ```
 
 ## Comparison with Alternatives
 
-| Feature | Vitest Built-in | @deessejs/errors/testing |
-|---------|-----------------|--------------------------|
-| toThrow | ✓ | ✓ (with full type narrowing) |
-| toHaveHttpStatus | ✗ | ✓ |
-| toHaveField | ✗ | ✓ |
-| toHaveCauseChain | ✗ | ✓ |
-| toHaveNote | ✗ | ✓ |
-| Context mocking | ✗ | ✓ |
-| Async aggregation | ✗ | ✓ |
-| Type guard testing | ✗ | ✓ |
+| Feature            | Vitest Built-in | @deessejs/errors/testing     |
+| ------------------ | --------------- | ---------------------------- |
+| toThrow            | ✓               | ✓ (with full type narrowing) |
+| toHaveHttpStatus   | ✗               | ✓                            |
+| toHaveField        | ✗               | ✓                            |
+| toHaveCauseChain   | ✗               | ✓                            |
+| toHaveNote         | ✗               | ✓                            |
+| Context mocking    | ✗               | ✓                            |
+| Async aggregation  | ✗               | ✓                            |
+| Type guard testing | ✗               | ✓                            |
 
 ## Related Features
 

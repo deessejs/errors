@@ -4,17 +4,18 @@ This document summarizes the release strategy for `@deessejs/errors` and provide
 
 ## Version Timeline
 
-| Version | Focus | Features | Target |
-|---------|-------|----------|--------|
-| **v1.0.0** | Core Foundation | error(), raise(), is(), inherits, .from(), causes, message formatting | MVP |
-| **v1.1.0** | Enhanced DX | .addNote(), context property documentation | After v1.0.0 |
-| **v1.2.0** | Type Safety | Type guards, predefined errors, errors namespace | After v1.1.0 |
-| **v1.3.0** | Production Ready 
-| **v2.0.0** | Advanced Context | withContext(), async patterns, AsyncLocalStorage | After v1.3.0 |
+| Version    | Focus            | Features                                                              | Target       |
+| ---------- | ---------------- | --------------------------------------------------------------------- | ------------ |
+| **v1.0.0** | Core Foundation  | error(), raise(), is(), inherits, .from(), causes, message formatting | MVP          |
+| **v1.1.0** | Enhanced DX      | .addNote(), context property documentation                            | After v1.0.0 |
+| **v1.2.0** | Type Safety      | Type guards, predefined errors, errors namespace                      | After v1.1.0 |
+| **v1.3.0** | Production Ready |
+| **v2.0.0** | Advanced Context | withContext(), async patterns, AsyncLocalStorage                      | After v1.3.0 |
 
 ## Feature Coverage by Version
 
 ### v1.0.0 — Core Foundation
+
 - [x] `error()` function for defining error types
 - [x] `raise()` function for throwing errors
 - [x] Native `throw` syntax support
@@ -26,16 +27,19 @@ This document summarizes the release strategy for `@deessejs/errors` and provide
 - [x] Message templates with `{field}` placeholders
 
 ### v1.1.0 — Enhanced Developer Experience
+
 - [x] `.addNote()` method for enriching errors with notes
 - [x] Multiple notes support with order preservation
 - [x] Notes display in development and production output
 
 ### v1.2.0 — Type Safety & Utilities
+
 - [x] `errors` namespace with predefined error types
 - [x] ValidationError, TypeError, NotFoundError, TimeoutError, UnauthorizedError, ForbiddenError
 - [x] Type guards: `isValidationError()`, `isTypeError()`, etc.
 
 ### v1.3.0 — Production Ready
+
 - [x] `formatError()` function for per-call formatting
 - [x] `setOutputMode()` for global configuration
 - [x] `stripLibraryFrames()` for cleaning stack traces
@@ -43,6 +47,7 @@ This document summarizes the release strategy for `@deessejs/errors` and provide
 - [x] JSON serialization
 
 ### v2.0.0 — Advanced Context
+
 - [x] `withContext()` for AsyncLocalStorage-based context injection
 - [x] Nested context support with automatic merging
 - [x] `errors.supportsContext()` for compatibility detection
@@ -74,6 +79,7 @@ v1.0.0 (Foundation)
 ### For v1.0.0 (MVP)
 
 Additional requirements:
+
 - [ ] Core API is stable (no planned breaking changes)
 - [ ] Basic migration path from native JS errors documented
 - [ ] Common patterns covered
@@ -81,6 +87,7 @@ Additional requirements:
 ### For v2.0.0 (Major)
 
 Additional requirements:
+
 - [ ] Migration guide for breaking changes
 - [ ] Compatibility matrix documented
 - [ ] Graceful degradation tested

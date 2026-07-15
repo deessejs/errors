@@ -11,7 +11,6 @@ html > body[data-scroll-locked] {
   --removed-body-scroll-bar-size: 0px !important;
 }
 
-
 @media (prefers-color-scheme: dark) {
   .shiki,
   .shiki span {

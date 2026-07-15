@@ -16,21 +16,21 @@ errors.NotFoundError({ path: '/users/123' });
 // Type guards (destructured for convenience)
 const { isValidationError, isNotFoundError, isTypeError } = errors;
 
-isValidationError(err);  // Type guard
+isValidationError(err); // Type guard
 ```
 
 ## Available Errors
 
 ### Core Errors
 
-| Export | Name | Fields | HTTP Status | Description |
-|--------|------|--------|-------------|-------------|
-| `errors.ValidationError` | `ValidationError` | `field: string, message: string` | 400 | Validation failure |
-| `errors.TypeError` | `TypeError` | `expected: string, actual: string` | 400 | Type mismatch |
-| `errors.NotFoundError` | `NotFoundError` | `path: string` | 404 | Resource not found |
-| `errors.TimeoutError` | `TimeoutError` | `ms: number` | 504 | Operation timed out |
-| `errors.UnauthorizedError` | `UnauthorizedError` | — | 401 | Authentication required |
-| `errors.ForbiddenError` | `ForbiddenError` | — | 403 | Permission denied |
+| Export                     | Name                | Fields                             | HTTP Status | Description             |
+| -------------------------- | ------------------- | ---------------------------------- | ----------- | ----------------------- |
+| `errors.ValidationError`   | `ValidationError`   | `field: string, message: string`   | 400         | Validation failure      |
+| `errors.TypeError`         | `TypeError`         | `expected: string, actual: string` | 400         | Type mismatch           |
+| `errors.NotFoundError`     | `NotFoundError`     | `path: string`                     | 404         | Resource not found      |
+| `errors.TimeoutError`      | `TimeoutError`      | `ms: number`                       | 504         | Operation timed out     |
+| `errors.UnauthorizedError` | `UnauthorizedError` | —                                  | 401         | Authentication required |
+| `errors.ForbiddenError`    | `ForbiddenError`    | —                                  | 403         | Permission denied       |
 
 ### Usage Examples
 
@@ -103,7 +103,7 @@ import { errors, error, is } from '@deessejs/errors';
 // Create a custom error that inherits from ValidationError
 const EmailValidationError = error({
   name: 'EmailValidationError',
-  inherits: errors.ValidationError,  // Pass the factory function
+  inherits: errors.ValidationError, // Pass the factory function
   fields: {
     value: { type: 'string' },
   },
@@ -142,11 +142,7 @@ import { errors, raise } from '@deessejs/errors';
 try {
   fetchData(url);
 } catch (err) {
-  raise(
-    errors.TimeoutError({ ms: 5000 })
-      .from(err)
-      .addNote('Failed to fetch user data')
-  );
+  raise(errors.TimeoutError({ ms: 5000 }).from(err).addNote('Failed to fetch user data'));
 }
 ```
 
@@ -180,10 +176,8 @@ export const RateLimitError = error({
 });
 
 // Type guards
-export const isConfigError = (err: unknown): err is ConfigError =>
-  is(err, ConfigError);
-export const isRateLimitError = (err: unknown): err is RateLimitError =>
-  is(err, RateLimitError);
+export const isConfigError = (err: unknown): err is ConfigError => is(err, ConfigError);
+export const isRateLimitError = (err: unknown): err is RateLimitError => is(err, RateLimitError);
 ```
 
 ### Usage
@@ -221,16 +215,17 @@ Both work; destructuring is preferred for cleaner code.
 **Why not prefix (`DeesseTypeError`)?**
 
 Prefixes are verbose and harder to read. Namespace is cleaner:
+
 - `errors.TypeError` vs `DeesseTypeError`
 - Same collision protection, better ergonomics
 
 **Why fields vary by error?**
 
-| Error | Fields | HTTP Status | Rationale |
-|-------|--------|-------------|-----------|
-| `NotFoundError` | `path` | 404 | The missing resource is key info |
-| `TimeoutError` | `ms` | 504 | How long we waited is useful |
-| `UnauthorizedError` | none | 401 | Why often varies by auth strategy |
+| Error               | Fields | HTTP Status | Rationale                         |
+| ------------------- | ------ | ----------- | --------------------------------- |
+| `NotFoundError`     | `path` | 404         | The missing resource is key info  |
+| `TimeoutError`      | `ms`   | 504         | How long we waited is useful      |
+| `UnauthorizedError` | none   | 401         | Why often varies by auth strategy |
 
 Error-specific fields capture the most useful information for that error type.
 
