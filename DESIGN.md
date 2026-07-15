@@ -2,7 +2,7 @@
 
 ## Overview
 
-Design system and visual guidelines for the `@deessejs/errors` documentation website. Inspired by [Flue Framework](https://flueframework.com) — minimal, developer-focused, blueprint aesthetic.
+Design system and visual guidelines for the `@deessejs/errors` documentation website. Minimal, developer-focused, blueprint aesthetic.
 
 ## Tech Stack
 
@@ -236,4 +236,3 @@ Update `components.json` to match our design tokens:
 ---
 
 **Last updated**: 2026-06-02
-**Inspiration**: [Flue Framework](https://flueframework.com)
