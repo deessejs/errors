@@ -4,4 +4,5 @@ dist/
 .turbo/
 .cache/
 .tmp/
+temp/
 *.log
