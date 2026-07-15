@@ -27,13 +27,10 @@ This is a **major version** release with potential breaking changes:
 import { withContext, raise } from '@deessejs/errors';
 
 async function handleRequest(req: Request) {
-  return withContext(
-    { requestId: req.id, userId: req.userId },
-    async () => {
-      const user = await fetchUser(req.userId);
-      return processUser(user);
-    }
-  );
+  return withContext({ requestId: req.id, userId: req.userId }, async () => {
+    const user = await fetchUser(req.userId);
+    return processUser(user);
+  });
   // Any error raised here automatically has context
 }
 ```
@@ -87,18 +84,18 @@ if (errors.supportsContext()) {
 
 ### Runtime Compatibility
 
-| Environment | Support | Notes |
-|-------------|---------|-------|
-| Node.js 16+ | Full | Native AsyncLocalStorage |
-| Node.js 12-14 | Polyfill | Requires manual AsyncLocalStorage polyfill |
-| Deno | Full | AsyncLocalStorage available |
-| Bun | Full | AsyncLocalStorage available |
-| Browsers | Partial | Works in modern browsers, not IE11 |
-| Next.js | Full | Server-side rendering supported |
-| Express/Koa | Full | Works in request handlers |
-| Cloudflare Workers | Limited | No AsyncLocalStorage |
-| AWS Lambda | Varies | Depends on runtime |
-| Vercel Edge | Limited | No AsyncLocalStorage |
+| Environment        | Support  | Notes                                      |
+| ------------------ | -------- | ------------------------------------------ |
+| Node.js 16+        | Full     | Native AsyncLocalStorage                   |
+| Node.js 12-14      | Polyfill | Requires manual AsyncLocalStorage polyfill |
+| Deno               | Full     | AsyncLocalStorage available                |
+| Bun                | Full     | AsyncLocalStorage available                |
+| Browsers           | Partial  | Works in modern browsers, not IE11         |
+| Next.js            | Full     | Server-side rendering supported            |
+| Express/Koa        | Full     | Works in request handlers                  |
+| Cloudflare Workers | Limited  | No AsyncLocalStorage                       |
+| AWS Lambda         | Varies   | Depends on runtime                         |
+| Vercel Edge        | Limited  | No AsyncLocalStorage                       |
 
 ### Error Handling Best Practices
 
@@ -107,6 +104,7 @@ See [Async Support Feature](../product/features/async-support.md) for detailed p
 ### Graceful Degradation
 
 In unsupported environments:
+
 1. `withContext()` runs the function normally
 2. No error is thrown
 3. `err.context` will be `null`
@@ -125,10 +123,7 @@ This release does not include:
 ### New Exports
 
 ```typescript
-export const withContext: <T>(
-  context: Record<string, unknown>,
-  fn: () => T
-) => T;
+export const withContext: <T>(context: Record<string, unknown>, fn: () => T) => T;
 
 export const errors: {
   // ... from v1.x ...
@@ -157,12 +152,14 @@ err.context; // Record<string, unknown> | null
 ### From v1.x
 
 1. Update import if using `withContext()`:
+
    ```typescript
    // No import changes needed
    import { withContext } from '@deessejs/errors';
    ```
 
 2. Check for compatibility if critical:
+
    ```typescript
    import { errors } from '@deessejs/errors';
 
@@ -180,9 +177,9 @@ err.context; // Record<string, unknown> | null
 
 ### Breaking Changes Summary
 
-| Change | Type | Mitigation |
-|--------|------|------------|
-| `context` may now be populated | Behavioral | Check `err.context ?? {}` |
+| Change                                             | Type       | Mitigation                     |
+| -------------------------------------------------- | ---------- | ------------------------------ |
+| `context` may now be populated                     | Behavioral | Check `err.context ?? {}`      |
 | `withContext()` silently fails in unsupported envs | Behavioral | Use `errors.supportsContext()` |
 
 ## Testing Requirements
@@ -203,20 +200,24 @@ err.context; // Record<string, unknown> | null
 ## v2.0.0 — Advanced Context (YYYY-MM-DD)
 
 ### Added
+
 - `withContext()` for AsyncLocalStorage-based context injection
 - Nested context support with automatic merging
 - `errors.supportsContext()` for compatibility detection
 - Context propagation through async call stacks
 
 ### Changed
+
 - ErrorInstance.context is now populated in supported environments
 - Error fields override context values (breaking)
 
 ### Breaking Changes
+
 - Context behavior may differ in unsupported environments
 - See migration guide for details
 
 ### Removed
+
 - (None)
 ```
 

@@ -28,9 +28,7 @@ async function fetchUser(id: string) {
     const user = await getUser(id);
     return user;
   } catch (err) {
-    raise(
-      AppError().from(err).addNote(`Failed to fetch user ${id}`)
-    );
+    raise(AppError().from(err).addNote(`Failed to fetch user ${id}`));
   }
 }
 ```
@@ -43,27 +41,23 @@ When multiple operations run concurrently, handle failures gracefully:
 import { errors, raise } from '@deessejs/errors';
 
 async function processAll(items: Item[]) {
-  const results = await Promise.allSettled(
-    items.map(item => processItem(item))
-  );
+  const results = await Promise.allSettled(items.map((item) => processItem(item)));
 
-  const failures = results
-    .filter(r => r.status === 'rejected')
-    .map(r => r.reason);
+  const failures = results.filter((r) => r.status === 'rejected').map((r) => r.reason);
 
   if (failures.length > 0) {
     raise(
-      errors.ValidationError({
-        field: 'batch',
-        message: `${failures.length}/${items.length} items failed`,
-      }).from(failures[0])
+      errors
+        .ValidationError({
+          field: 'batch',
+          message: `${failures.length}/${items.length} items failed`,
+        })
+        .from(failures[0])
     );
   }
 
   // Return successful results
-  return results
-    .filter(r => r.status === 'fulfilled')
-    .map(r => r.value);
+  return results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
 }
 ```
 
@@ -73,13 +67,10 @@ async function processAll(items: Item[]) {
 import { errors, raise, withContext } from '@deessejs/errors';
 
 async function handleRequest(req: Request) {
-  return withContext(
-    { requestId: req.id, userId: req.userId },
-    async () => {
-      const user = await fetchUser(req.userId);
-      return processUser(user);
-    }
-  );
+  return withContext({ requestId: req.id, userId: req.userId }, async () => {
+    const user = await fetchUser(req.userId);
+    return processUser(user);
+  });
   // Any error raised here has request context
 }
 ```
@@ -105,9 +96,9 @@ async function workflow() {
   } catch (err) {
     // Log the full chain
     console.error('Error chain:');
-    causes(err).forEach(cause => {
+    causes(err).forEach((cause) => {
       console.error(`  - ${cause.name}: ${cause.message}`);
-      cause.notes.forEach(note => console.error(`    Note: ${note}`));
+      cause.notes.forEach((note) => console.error(`    Note: ${note}`));
     });
     throw err;
   }
@@ -136,7 +127,7 @@ async function validateAndProcess(item: Item) {
       if (is(err, AppError)) {
         validationErrors.push(err as RequiredFieldError);
       } else {
-        throw err;  // Re-throw non-validation errors
+        throw err; // Re-throw non-validation errors
       }
     }
   }
@@ -195,6 +186,7 @@ await withErrorHandling(
 **Why no ExceptionGroup?**
 
 Python's `ExceptionGroup` bundles multiple errors for `except*` handling. In JS:
+
 1. **No `except*`** — JS lacks Python's `except*` syntax
 2. **Promise.allSettled** — Handles the common case well
 3. **Simplicity for v1** — One error at a time is simpler
@@ -204,6 +196,7 @@ For v1, we provide patterns that work with `Promise.allSettled` rather than addi
 **Async vs Sync API**
 
 All features work the same in sync and async contexts:
+
 - `.from()` chains regardless of how error was thrown
 - `.addNote()` enriches regardless of sync/async
 - `withContext()` works with async functions

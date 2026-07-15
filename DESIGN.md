@@ -6,14 +6,14 @@ Design system and visual guidelines for the `@deessejs/errors` documentation web
 
 ## Tech Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Next.js | 16.x | React framework |
-| Tailwind CSS | v4 | Styling |
-| Geist | (Vercel) | Typography (future) |
-| shadcn/ui | TBD | Component library |
-| FumaDocs | 16.x | Documentation framework |
-| lucide-react | 1.x | Icons |
+| Technology   | Version  | Purpose                 |
+| ------------ | -------- | ----------------------- |
+| Next.js      | 16.x     | React framework         |
+| Tailwind CSS | v4       | Styling                 |
+| Geist        | (Vercel) | Typography (future)     |
+| shadcn/ui    | TBD      | Component library       |
+| FumaDocs     | 16.x     | Documentation framework |
+| lucide-react | 1.x      | Icons                   |
 
 ## Typography
 
@@ -29,6 +29,7 @@ const geist = Geist({
 ```
 
 **Scale**:
+
 - Headings: `font-bold tracking-tight`
 - Body: `text-lg` for main content, `text-base` for details
 - Code: JetBrains Mono (monospace)
@@ -38,14 +39,14 @@ const geist = Geist({
 
 Using Tailwind's default palette with these semantic usages:
 
-| Token | Usage |
-|-------|-------|
-| `gray-950` | Primary text (`#030304`) |
-| `gray-500` | Secondary text / muted |
-| `gray-300` | Borders |
-| `gray-200` | Dividers, subtle backgrounds |
-| `white` | Cards, elevated surfaces |
-| `#f8f9fb` | Off-white body background |
+| Token                   | Usage                            |
+| ----------------------- | -------------------------------- |
+| `gray-950`              | Primary text (`#030304`)         |
+| `gray-500`              | Secondary text / muted           |
+| `gray-300`              | Borders                          |
+| `gray-200`              | Dividers, subtle backgrounds     |
+| `white`                 | Cards, elevated surfaces         |
+| `#f8f9fb`               | Off-white body background        |
 | `blue-500` / `blue-600` | Accent color (links, highlights) |
 
 ### Dark Mode
@@ -68,10 +69,10 @@ SVG-based grid pattern for hero sections:
 <svg viewBox="0 0 400 500" fill="none">
   <defs>
     <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#dddddd" stroke-width="1"/>
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#dddddd" stroke-width="1" />
     </pattern>
   </defs>
-  <rect width="100%" height="100%" fill="url(#grid)"/>
+  <rect width="100%" height="100%" fill="url(#grid)" />
 </svg>
 ```
 
@@ -92,13 +93,13 @@ SVG-based grid pattern for hero sections:
 ### Buttons
 
 **Primary** (dark):
+
 ```html
-<button class="bg-gray-950 hover:bg-gray-800 text-white">
-  Action
-</button>
+<button class="bg-gray-950 hover:bg-gray-800 text-white">Action</button>
 ```
 
 **Secondary** (outlined):
+
 ```html
 <button class="border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50">
   Action
@@ -112,7 +113,7 @@ Blueprint-style floating squares for visual interest:
 ```tsx
 const floatingSquares = [
   { x: 300, y: 120, opacity: 1.0, delay: 0.7, duration: 4 },
-  { x: 220, y: 60,  opacity: 0.8, delay: 0.3, duration: 4 },
+  { x: 220, y: 60, opacity: 0.8, delay: 0.3, duration: 4 },
   { x: 160, y: 160, opacity: 0.5, delay: 0.0, duration: 4 },
 ];
 ```
@@ -122,7 +123,9 @@ const floatingSquares = [
 Sharp corners, syntax highlighting, filename tabs:
 
 ```html
-<div class="border border-gray-300 rounded-none overflow-hidden shadow-lg bg-white/70 backdrop-blur-sm">
+<div
+  class="border border-gray-300 rounded-none overflow-hidden shadow-lg bg-white/70 backdrop-blur-sm"
+>
   <div class="border-b border-gray-200 bg-gray-50/60 px-4 py-2.5">
     <span class="font-mono text-[13px] text-gray-600">filename.ts</span>
   </div>
@@ -169,18 +172,19 @@ apps/web/src/
 ### Spacing Scale
 
 Use Tailwind's 4px incremental scale consistently:
+
 - `pt-20 lg:pt-28` for hero sections
 - `py-24` for section padding
 - `gap-12 lg:gap-20` for large grids
 
 ## Responsive Breakpoints
 
-| Breakpoint | Target |
-|------------|--------|
-| `sm` (640px) | Mobile landscape |
-| `md` (768px) | Tablets |
-| `lg` (1024px) | Laptops |
-| `xl` (1280px) | Desktops |
+| Breakpoint    | Target           |
+| ------------- | ---------------- |
+| `sm` (640px)  | Mobile landscape |
+| `md` (768px)  | Tablets          |
+| `lg` (1024px) | Laptops          |
+| `xl` (1280px) | Desktops         |
 
 ## shadcn/ui Integration
 
@@ -190,15 +194,15 @@ npx shadcn@latest init
 
 ### Core Components to Implement
 
-| Component | Purpose | Status |
-|-----------|---------|--------|
-| Button | Primary/secondary actions | TBD |
-| Card | Feature highlights, deployment options | TBD |
-| Callout | Notes, warnings, tips, errors | TBD |
-| Code | Syntax highlighted code blocks | TBD |
-| Tabs | API reference navigation | TBD |
-| Table | Parameter documentation | TBD |
-| Badge | Labels, version tags | TBD |
+| Component | Purpose                                | Status |
+| --------- | -------------------------------------- | ------ |
+| Button    | Primary/secondary actions              | TBD    |
+| Card      | Feature highlights, deployment options | TBD    |
+| Callout   | Notes, warnings, tips, errors          | TBD    |
+| Code      | Syntax highlighted code blocks         | TBD    |
+| Tabs      | API reference navigation               | TBD    |
+| Table     | Parameter documentation                | TBD    |
+| Badge     | Labels, version tags                   | TBD    |
 
 ### shadcn/ui Configuration
 

@@ -26,7 +26,7 @@ export type ErrorInstanceCore = {
  * Creates typed, structured errors with optional field definitions.
  */
 export type ErrorFactory<TFields extends Record<string, unknown> = Record<string, never>> = {
-  ( fields?: Partial<TFields> ): ErrorInstance<TFields>;
+  (fields?: Partial<TFields>): ErrorInstance<TFields>;
   name: string;
   inherits?: ErrorFactory | ErrorFactory[];
   schema?: StandardSchemaV1;
@@ -58,7 +58,7 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
      *   .from(new NetworkError('Connection failed'));
      * ```
      */
-    from( cause: Error | ErrorInstance ): ErrorInstance<TFields>;
+    from(cause: Error | ErrorInstance): ErrorInstance<TFields>;
     /** Direct cause of this error (from .from()) */
     cause: Error | null;
     /** Full cause chain from .from() calls */

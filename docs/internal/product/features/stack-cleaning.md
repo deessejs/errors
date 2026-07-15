@@ -7,13 +7,13 @@ The `stripLibraryFrames()` function removes internal `@deessejs/errors` frames f
 ## API
 
 ```typescript
-function stripLibraryFrames(errorInstance: ErrorInstance): ErrorInstance
+function stripLibraryFrames(errorInstance: ErrorInstance): ErrorInstance;
 ```
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter       | Type            | Description        |
+| --------------- | --------------- | ------------------ |
 | `errorInstance` | `ErrorInstance` | The error to clean |
 
 ### Returns
@@ -47,7 +47,7 @@ const AppError = error({ name: 'AppError' });
 
 const err = stripLibraryFrames(AppError());
 
-err.stack;  // Stack trace without @deessejs/errors frames
+err.stack; // Stack trace without @deessejs/errors frames
 ```
 
 ### In Defensive Wrappers
@@ -122,7 +122,7 @@ Stack traces are valuable but often include internal library frames that clutter
 stripLibraryFrames(err);
 
 // Not this
-sanitizeStack(err, ['lodash', 'express']);  // Too aggressive
+sanitizeStack(err, ['lodash', 'express']); // Too aggressive
 ```
 
 The library is opt-in; users explicitly choose to clean library frames. Removing all dependency frames would hide potentially useful debugging info.

@@ -11,6 +11,7 @@ Add inheritance support to error() config. Support both single parent and multip
 ## Implementation
 
 Implemented in:
+
 - `src/error/error.ts` - Factory creation with inherits support
 - `src/error/types.ts` - ErrorFactory type with inherits property
 - `src/is/index.ts` - DFS traversal for inheritance chain checking

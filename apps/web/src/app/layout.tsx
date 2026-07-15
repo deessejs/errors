@@ -24,7 +24,8 @@ function JsonLd() {
     '@type': 'WebSite',
     name: '@deessejs/errors',
     url: baseUrl,
-    description: 'TypeScript error handling library with exception chaining and hierarchical inheritance',
+    description:
+      'TypeScript error handling library with exception chaining and hierarchical inheritance',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -41,9 +42,7 @@ function JsonLd() {
     name: 'Nesalia Inc',
     url: 'https://nesalia.com',
     logo: `${baseUrl}/icon.svg`,
-    sameAs: [
-      `https://github.com/${gitConfig.user}`,
-    ],
+    sameAs: [`https://github.com/${gitConfig.user}`],
   };
 
   return (
@@ -67,7 +66,10 @@ export default function Layout({ children }: LayoutProps<'/'>) {
           title="@deessejs/errors Blog"
           href="/blog/rss.xml"
         />
-        <meta name="google-site-verification" content="0RLsnP4YRHmMY4H36hDjwCJekCf62MsZpnNGZ1mJwww" />
+        <meta
+          name="google-site-verification"
+          content="0RLsnP4YRHmMY4H36hDjwCJekCf62MsZpnNGZ1mJwww"
+        />
         <JsonLd />
       </head>
       <body className="flex flex-col min-h-screen">

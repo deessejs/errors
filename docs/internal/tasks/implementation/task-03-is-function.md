@@ -18,7 +18,7 @@ Implement `is(err, ErrorType)` function for type checking. Must work with inheri
 ## API
 
 ```typescript
-function is<T extends ErrorFactory>(err: unknown, ErrorType: T): boolean
+function is<T extends ErrorFactory>(err: unknown, ErrorType: T): boolean;
 ```
 
 ## Acceptance Criteria

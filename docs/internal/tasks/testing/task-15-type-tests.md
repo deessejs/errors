@@ -34,7 +34,7 @@ const FieldError = error({
 const err = FieldError({ field: 'test' }); // count is optional
 
 // Output type should include fields
-err.fields.field;  // string
+err.fields.field; // string
 err.fields.count; // number
 
 // Inheritance types
@@ -48,14 +48,14 @@ if (is(err, Child)) {
 
 // All properties exist
 const basic = Parent();
-basic.name;     // string
-basic.message;  // string
-basic.stack;    // string
-basic.fields;   // Record<string, unknown>
-basic.notes;    // string[]
-basic.cause;    // Error | null
-basic.causes;   // Error[]
-basic.context;  // Record | null
+basic.name; // string
+basic.message; // string
+basic.stack; // string
+basic.fields; // Record<string, unknown>
+basic.notes; // string[]
+basic.cause; // Error | null
+basic.causes; // Error[]
+basic.context; // Record | null
 ```
 
 ## Dependencies

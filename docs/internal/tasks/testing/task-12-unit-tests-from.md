@@ -44,7 +44,7 @@ expect((chain.cause as any).cause).toBe(cause);
 // Chaining returns the error instance for further chaining
 const instance = HighError();
 const result = instance.from(cause);
-expect(result).toBe(instance);  // Same instance, enables chaining
+expect(result).toBe(instance); // Same instance, enables chaining
 ```
 
 ## Dependencies

@@ -38,16 +38,16 @@ raise(ValidationError({ field: 'email' }));
 
 Every error instance has these guaranteed properties:
 
-| Property | Type | Always Exists | Description |
-|----------|------|---------------|-------------|
-| `name` | `string` | Yes | Error name |
-| `message` | `string` | Yes | Error message |
-| `stack` | `string` | Yes | Stack trace |
-| `fields` | `Record<string, unknown>` | Yes | User-defined fields (empty object if none) |
-| `notes` | `string[]` | Yes | Notes (empty array if none) |
-| `cause` | `Error \| null` | Yes | Direct cause (null if none) |
-| `causes` | `Error[]` | Yes | Full cause chain (may be empty) |
-| `context` | `Record<string, unknown> \| null` | Yes | Injected context (null if none) |
+| Property  | Type                              | Always Exists | Description                                |
+| --------- | --------------------------------- | ------------- | ------------------------------------------ |
+| `name`    | `string`                          | Yes           | Error name                                 |
+| `message` | `string`                          | Yes           | Error message                              |
+| `stack`   | `string`                          | Yes           | Stack trace                                |
+| `fields`  | `Record<string, unknown>`         | Yes           | User-defined fields (empty object if none) |
+| `notes`   | `string[]`                        | Yes           | Notes (empty array if none)                |
+| `cause`   | `Error \| null`                   | Yes           | Direct cause (null if none)                |
+| `causes`  | `Error[]`                         | Yes           | Full cause chain (may be empty)            |
+| `context` | `Record<string, unknown> \| null` | Yes           | Injected context (null if none)            |
 
 ### Exception Chaining: `.from()`
 
@@ -227,7 +227,7 @@ export type ErrorFactory<T extends Record<string, unknown> = Record<string, unkn
 // ErrorConfig uses Standard Schema for field definitions
 export type ErrorConfig<T extends Record<string, unknown> = Record<string, unknown>> = {
   name: string;
-  fields?: StandardSchemaV1;  // Standard Schema only
+  fields?: StandardSchemaV1; // Standard Schema only
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
 };
@@ -258,6 +258,7 @@ None — this is a standalone library.
 ## v1.0.0 — Core Foundation (YYYY-MM-DD)
 
 ### Added
+
 - `error()` function for defining error types
 - `raise()` function for throwing errors
 - Native `throw` syntax support

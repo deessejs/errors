@@ -52,6 +52,7 @@ fresh fetch https://react.dev/docs
 ```
 
 Available commands:
+
 - `fresh auth` - Authentication commands
 - `fresh search [options]` - Search the web using Exa.ai
 - `fresh fetch [options] <url>` - Fetch and extract content from a URL

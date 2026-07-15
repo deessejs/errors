@@ -47,15 +47,12 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <img
-                src="/icon.svg"
-                alt="Nesalia Inc. logo"
-                className="size-7"
-              />
+              <img src="/icon.svg" alt="Nesalia Inc. logo" className="size-7" />
               <span className="text-lg font-bold text-fd-foreground">Nesalia Inc.</span>
             </div>
             <p className="text-sm text-fd-muted-foreground max-w-xs">
-              Software engineering as a commodity: agents that code, workflows that scale, infrastructure that works. Built with the DeesseJS ecosystem.
+              Software engineering as a commodity: agents that code, workflows that scale,
+              infrastructure that works. Built with the DeesseJS ecosystem.
             </p>
           </div>
 
@@ -65,7 +62,10 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.deessejs.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -79,7 +79,10 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.learn.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -93,7 +96,10 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.usecases.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -107,7 +113,10 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors"
+                  >
                     {link.label}
                   </Link>
                 </li>

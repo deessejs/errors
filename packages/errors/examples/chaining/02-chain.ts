@@ -56,7 +56,9 @@ function logError(err: unknown) {
   if (chain.length > 0) {
     console.log('  Causes:');
     for (const cause of chain) {
-      console.log(`    - ${(cause as { name: string }).name}: ${(cause as { message: string }).message}`);
+      console.log(
+        `    - ${(cause as { name: string }).name}: ${(cause as { message: string }).message}`
+      );
     }
   }
   console.log();

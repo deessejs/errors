@@ -37,8 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '@deessejs/errors — Error Handling, Reimagined',
-    description:
-      'A TypeScript library bringing Python-inspired error handling to JavaScript.',
+    description: 'A TypeScript library bringing Python-inspired error handling to JavaScript.',
     images: ['https://errors.deessejs.com/og/home.png'],
     creator: '@nesalia_inc',
   },
@@ -150,70 +149,37 @@ export default function HomePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd).replace(/</g, '\\u003c') }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(softwareJsonLd).replace(/</g, '\\u003c'),
+        }}
       />
       <div
         className="absolute left-0 right-0 top-0 h-[1000px] pointer-events-none overflow-hidden -z-10"
         aria-hidden="true"
       >
         <div className="absolute top-[420px] left-1/2 transform -translate-y-1/3 rotate-12 scale-150 hidden lg:block">
-          <svg
-            width="700"
-            height="850"
-            viewBox="0 0 400 500"
-            fill="none"
-            overflow="visible"
-          >
+          <svg width="700" height="850" viewBox="0 0 400 500" fill="none" overflow="visible">
             <defs>
-              <pattern
-                id="grid"
-                width="20"
-                height="20"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 20 0 L 0 0 0 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                />
+              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="1" />
               </pattern>
-              <linearGradient
-                id="fadeLeft"
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="0%"
-              >
+              <linearGradient id="fadeLeft" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
                 <stop offset="35%" stopColor="currentColor" stopOpacity="0" />
                 <stop offset="70%" stopColor="currentColor" stopOpacity="1" />
                 <stop offset="90%" stopColor="currentColor" stopOpacity="0" />
               </linearGradient>
               <mask id="fadeMask">
-                <rect
-                  x="-200"
-                  y="-250"
-                  width="800"
-                  height="1000"
-                  fill="url(#fadeLeft)"
-                />
+                <rect x="-200" y="-250" width="800" height="1000" fill="url(#fadeLeft)" />
               </mask>
             </defs>
             <g mask="url(#fadeMask)">
-              <rect
-                x="-200"
-                y="-250"
-                width="800"
-                height="1000"
-                fill="url(#grid)"
-              />
+              <rect x="-200" y="-250" width="800" height="1000" fill="url(#grid)" />
             </g>
           </svg>
         </div>
       </div>
 
-      
       <main>
         {/* Hero Section */}
         <section className="relative overflow-hidden">
@@ -224,9 +190,9 @@ export default function HomePage() {
               Reimagined.
             </h1>
             <p className="mt-6 max-w-2xl text-xl text-fd-muted-foreground">
-              A TypeScript library that brings Python-inspired error handling to
-              JavaScript. Exception chaining, hierarchical inheritance, and rich
-              error semantics through a function-based API.
+              A TypeScript library that brings Python-inspired error handling to JavaScript.
+              Exception chaining, hierarchical inheritance, and rich error semantics through a
+              function-based API.
             </p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
@@ -290,8 +256,8 @@ export default function HomePage() {
                   Type Guards
                 </h3>
                 <p className="mt-1.5 text-[15px] text-fd-muted-foreground leading-relaxed">
-                  The <code className="text-sm bg-fd-muted px-1">is()</code>{' '}
-                  function provides type-safe error checking.
+                  The <code className="text-sm bg-fd-muted px-1">is()</code> function provides
+                  type-safe error checking.
                 </p>
               </Link>
 
@@ -315,8 +281,8 @@ export default function HomePage() {
                   Cause Traversal
                 </h3>
                 <p className="mt-1.5 text-[15px] text-fd-muted-foreground leading-relaxed">
-                  Use <code className="text-sm bg-fd-muted px-1">causes()</code> to
-                  iterate the full error chain.
+                  Use <code className="text-sm bg-fd-muted px-1">causes()</code> to iterate the full
+                  error chain.
                 </p>
               </Link>
 
@@ -329,11 +295,11 @@ export default function HomePage() {
                   Explore the docs
                 </h3>
                 <p className="mt-1.5 text-base text-fd-primary-foreground leading-relaxed">
-                  Learn how to build robust error handling in your TypeScript
-                  projects.
+                  Learn how to build robust error handling in your TypeScript projects.
                 </p>
                 <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-fd-primary-foreground">
-                  Read the docs <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
+                  Read the docs{' '}
+                  <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
                 </span>
               </Link>
             </div>
@@ -348,8 +314,8 @@ export default function HomePage() {
                 From fragile to robust.
               </h2>
               <p className="mt-4 text-lg text-fd-muted-foreground leading-relaxed">
-                Stop relying on fragile string matching. Get type-safe, structured
-                errors that make debugging a breeze.
+                Stop relying on fragile string matching. Get type-safe, structured errors that make
+                debugging a breeze.
               </p>
             </div>
 

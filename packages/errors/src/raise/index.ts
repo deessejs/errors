@@ -37,7 +37,7 @@ import type { ErrorInstance } from '../error/types.js';
  * raise(AppError().from(err).addNote('Context here'));
  * ```
  */
-const raise = ( error: ErrorInstance ): never => {
+const raise = (error: ErrorInstance): never => {
   throw error;
 };
 

@@ -60,11 +60,11 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 function error<T extends Record<string, unknown> = Record<string, unknown>>(
   config: ErrorConfig<T>
-): ErrorFactory<T>
+): ErrorFactory<T>;
 
 type ErrorConfig<T> = {
   name: string;
-  fields?: StandardSchemaV1;  // Standard Schema only
+  fields?: StandardSchemaV1; // Standard Schema only
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
 };

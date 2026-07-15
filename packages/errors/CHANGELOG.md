@@ -7,12 +7,10 @@
 - Release v1.1.1: infrastructure improvements and SEO enhancements
 
   ### Fixed
-
   - Add changeset version step and tag push to release workflow
   - Add display flex to all OG image divs for Satori compatibility
 
   ### Changed
-
   - Comprehensive SEO optimization for @deessejs/errors website
   - Add banner image for OG social sharing
   - Add homepage URL to package.json for npm SEO
@@ -33,7 +31,6 @@
   Initial release of `@deessejs/errors`, a function-based error handling library inspired by Python's error system.
 
   ### Added
-
   - `error()` function for defining error types with Standard Schema support
   - `raise()` function for throwing errors
   - Native `throw` syntax support
@@ -47,7 +44,6 @@
   - Standard Schema compliance for field definitions (Zod, Valibot, ArkType)
 
   ### TypeScript Support
-
   - Generic types: `ErrorFactory<T>`, `ErrorInstance<T>`
   - Full type inference with fields
   - No `any` — only generics and proper types

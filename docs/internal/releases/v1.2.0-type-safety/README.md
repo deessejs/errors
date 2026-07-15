@@ -11,6 +11,7 @@ Target: TBD (after v1.1.0)
 ## Motivation
 
 While v1.0.0 provides the core API, users need:
+
 1. **Type guards** — TypeScript can't narrow types from functions returning `boolean`
 2. **Predefined errors** — Common errors shouldn't require definition
 3. **Namespace** — Avoid collisions with native JavaScript `TypeError`
@@ -63,14 +64,14 @@ errors.ForbiddenError();
 
 ### Complete Predefined Error List
 
-| Export | Name | Fields | HTTP Status | Description |
-|--------|------|--------|-------------|-------------|
-| `errors.ValidationError` | `ValidationError` | `field: string, message: string` | 400 | Validation failure |
-| `errors.TypeError` | `TypeError` | `expected: string, actual: string` | 400 | Type mismatch |
-| `errors.NotFoundError` | `NotFoundError` | `path: string` | 404 | Resource not found |
-| `errors.TimeoutError` | `TimeoutError` | `ms: number` | 504 | Operation timed out |
-| `errors.UnauthorizedError` | `UnauthorizedError` | — | 401 | Authentication required |
-| `errors.ForbiddenError` | `ForbiddenError` | — | 403 | Permission denied |
+| Export                     | Name                | Fields                             | HTTP Status | Description             |
+| -------------------------- | ------------------- | ---------------------------------- | ----------- | ----------------------- |
+| `errors.ValidationError`   | `ValidationError`   | `field: string, message: string`   | 400         | Validation failure      |
+| `errors.TypeError`         | `TypeError`         | `expected: string, actual: string` | 400         | Type mismatch           |
+| `errors.NotFoundError`     | `NotFoundError`     | `path: string`                     | 404         | Resource not found      |
+| `errors.TimeoutError`      | `TimeoutError`      | `ms: number`                       | 504         | Operation timed out     |
+| `errors.UnauthorizedError` | `UnauthorizedError` | —                                  | 401         | Authentication required |
+| `errors.ForbiddenError`    | `ForbiddenError`    | —                                  | 403         | Permission denied       |
 
 ### Namespace Pattern
 
@@ -177,6 +178,7 @@ No migration required — this is purely additive. Existing code continues to wo
 ## v1.2.0 — Type Safety & Utilities (YYYY-MM-DD)
 
 ### Added
+
 - `errors` namespace with predefined error types
 - `errors.ValidationError` with `field` and `message` fields
 - `errors.TypeError` (namespaced to avoid native collision)
@@ -188,6 +190,7 @@ No migration required — this is purely additive. Existing code continues to wo
 - Inheritance support for predefined errors
 
 ### Changed
+
 - Enhanced `is()` function documentation
 ```
 

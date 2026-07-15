@@ -22,32 +22,32 @@ const MyError = error({
 
 // Message is automatically formatted
 const err = MyError({ field1: 'email', field2: 42 });
-err.message;  // 'Template with email and 42'
+err.message; // 'Template with email and 42'
 ```
 
 ### Access
 
 ```typescript
-err.message;  // Formatted message string
+err.message; // Formatted message string
 ```
 
 ### Placeholder Syntax
 
 Placeholders use `{fieldName}` syntax:
 
-| Placeholder | Output |
-|-------------|--------|
-| `{fieldName}` | Inserts the field value |
-| `{fieldName:upper}` | Uppercase the value |
-| `{fieldName:lower}` | Lowercase the value |
-| `{fieldName:json}` | JSON stringify the value |
+| Placeholder         | Output                   |
+| ------------------- | ------------------------ |
+| `{fieldName}`       | Inserts the field value  |
+| `{fieldName:upper}` | Uppercase the value      |
+| `{fieldName:lower}` | Lowercase the value      |
+| `{fieldName:json}`  | JSON stringify the value |
 
 ### Escaping
 
 Prepend `\` to escape:
 
 ```typescript
-message: 'Enter \{fieldName\} here'
+message: 'Enter \{fieldName\} here';
 // Output: 'Enter {fieldName} here'
 ```
 
@@ -67,7 +67,7 @@ const RequiredFieldError = error({
 });
 
 const err = RequiredFieldError({ field: 'email' });
-err.message;  // 'Field "email" is required'
+err.message; // 'Field "email" is required'
 ```
 
 ### Multiple Fields
@@ -91,7 +91,7 @@ const err = ValidationError({
   actual: 'string',
 });
 
-err.message;  // 'Field "age" expected number, got string'
+err.message; // 'Field "age" expected number, got string'
 ```
 
 ### Nested Fields
@@ -113,7 +113,7 @@ const err = ConfigError({
   path: 'config.json',
 });
 
-err.message;  // 'Config key "database.url" not found in config.json'
+err.message; // 'Config key "database.url" not found in config.json'
 ```
 
 ### Modifiers
@@ -130,7 +130,7 @@ const AppError = error({
 });
 
 const err = AppError({ userId: 'abc123' });
-err.message;  // 'User ID: ABC123'
+err.message; // 'User ID: ABC123'
 ```
 
 ### JSON Modifier
@@ -147,7 +147,7 @@ const DataError = error({
 });
 
 const err = DataError({ data: { id: 1, name: 'test' } });
-err.message;  // 'Invalid data: {"id":1,"name":"test"}'
+err.message; // 'Invalid data: {"id":1,"name":"test"}'
 ```
 
 ## Error Display
@@ -188,6 +188,7 @@ raise(ValidationError({ field: 'email' }));
 **Why placeholder syntax `{field}` not template literals?**
 
 Template literals in JavaScript are `` `hello ${world}` ``. The `{field}` syntax:
+
 - Matches Python's str.format()
 - Is explicit about which fields are in the message
 - Allows modifiers like `:upper`
@@ -195,6 +196,7 @@ Template literals in JavaScript are `` `hello ${world}` ``. The `{field}` syntax
 **Limitations**
 
 The template system is intentionally simple:
+
 - No conditionals (`{if cond}error{/if}`)
 - No loops
 - No custom formatters beyond `:upper`, `:lower`, `:json`
@@ -206,7 +208,7 @@ import { z } from 'zod';
 
 const err = AppError({
   field: 'email',
-  message: computeMessage('email', context),  // Custom logic
+  message: computeMessage('email', context), // Custom logic
 });
 ```
 

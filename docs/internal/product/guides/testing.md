@@ -16,7 +16,6 @@ npm install -D @deessejs/errors
 // errors/index.ts
 import { error } from '@deessejs/errors';
 
-
 export const ValidationError = error({
   name: 'ValidationError',
   fields: { field: { type: 'string' } },
@@ -276,8 +275,7 @@ describe('fetchUser', () => {
   it('has correct HTTP status', async () => {
     try {
       await fetchUser('nonexistent');
-    } catch (err) {
-    }
+    } catch (err) {}
   });
 });
 ```
@@ -297,12 +295,10 @@ describe('fetchUser', () => {
   });
 
   it('rejects with path field', async () => {
-    await expect(fetchUser('123'))
-      .rejects
-      .toMatchObject({
-        name: 'NotFoundError',
-        fields: { path: '/users/123' },
-      });
+    await expect(fetchUser('123')).rejects.toMatchObject({
+      name: 'NotFoundError',
+      fields: { path: '/users/123' },
+    });
   });
 });
 ```
@@ -326,14 +322,14 @@ describe('error chain', () => {
     // Check chain
     const chain = causes(caughtError);
     expect(chain).toHaveLength(3);
-    expect(chain[0].name).toBe('HighLevelError');      // Most recent
+    expect(chain[0].name).toBe('HighLevelError'); // Most recent
     expect(chain[1].name).toBe('MidLevelError');
-    expect(chain[2].name).toBe('LowLevelError');     // Original
+    expect(chain[2].name).toBe('LowLevelError'); // Original
   });
 
   it('first cause is most recent', () => {
     const chain = causes(caughtError);
-    expect(chain[0]).toBe(caughtError);  // First is the caught error
+    expect(chain[0]).toBe(caughtError); // First is the caught error
   });
 });
 ```
@@ -348,8 +344,7 @@ import { formatError } from '@deessejs/errors';
 
 describe('error formatting', () => {
   it('produces consistent output', () => {
-    const err = ValidationError({ field: 'email' })
-      .addNote('Test note');
+    const err = ValidationError({ field: 'email' }).addNote('Test note');
 
     const formatted = formatError(err, { mode: 'production' });
 
