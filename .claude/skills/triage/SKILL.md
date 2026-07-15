@@ -82,7 +82,7 @@ gh issue comment create <issueNumber> --body "## Triage Review
 This issue contains all required information and is ready to be picked up.
 
 ---
-*Triage by Flue Agent + MiniMax M2.7*"
+*Triage by Tech Lead Agent*"
 ```
 
 ### Template: `status: needs-info`
@@ -100,7 +100,7 @@ gh issue comment create <issueNumber> --body "## Triage Review
 Please update the issue with the missing information so it can be properly triaged.
 
 ---
-*Triage by Flue Agent + MiniMax M2.7*"
+*Triage by Tech Lead Agent*"
 ```
 
 ### Template: `type: duplicate`
@@ -115,7 +115,7 @@ gh issue comment create <issueNumber> --body "## Triage Review
 <If a related issue was found, mention it here>
 
 ---
-*Triage by Flue Agent + MiniMax M2.7*"
+*Triage by Tech Lead Agent*"
 ```
 
 ### Template: `type: wontfix`
@@ -130,7 +130,7 @@ gh issue comment create <issueNumber> --body "## Triage Review
 <Brief explanation of why it won't be addressed>
 
 ---
-*Triage by Flue Agent + MiniMax M2.7*"
+*Triage by Tech Lead Agent*"
 ```
 
 ### Template: `type: question`
@@ -147,7 +147,7 @@ gh issue comment create <issueNumber> --body "## Triage Review
 For questions, consider using GitHub Discussions instead of issues.
 
 ---
-*Triage by Flue Agent + MiniMax M2.7*"
+*Triage by Tech Lead Agent*"
 ```
 
 ### Template: `status: blocked`
@@ -165,7 +165,7 @@ gh issue comment create <issueNumber> --body "## Triage Review
 Once the blocking issue is resolved, this can be moved to \`status: ready\`.
 
 ---
-*Triage by Flue Agent + MiniMax M2.7*"
+*Triage by Tech Lead Agent*"
 ```
 
 ## Workflow
