@@ -2,7 +2,7 @@
 
 ## Status
 
-🎯 **Proposed** — awaiting release engineer approval.
+✅ **Approved and partially implemented on `staging`** — Phases 3, 4, 5 + Sections 7.1–7.2 are merged. Awaiting cherry-pick to `main` and the first clean release (Phase 2).
 
 ## Background
 
@@ -383,6 +383,8 @@ All four open questions are resolved:
 - [ ] At least one release under the new system has been verified on npm and on GitHub.
 - [ ] The release runbook (Section 6) is filled in with concrete values (who, when, where).
 - [ ] All four open questions are resolved (see Section "Open questions").
+- [ ] At least one release has been published via npm trusted publishing (OIDC) — see Section 7.1.
+- [ ] The GitHub `release` environment exists with at least one deployment record — see Section 7.2.
 
 ## Appendix A — Inventory checklist (Phase 0)
 
@@ -418,3 +420,89 @@ Confirmed at the time of the inventory (commit `569c96d` on `main`):
 | TBD  | The CI lint does NOT run on PRs to `main` (those are cherry-picks or hotfixes)                      | Avoid false positives on rebase commits                                                                             |
 | TBD  | Archive `dev`                                                                                       | `dev` is unused in the current flow                                                                                 |
 | TBD  | Update `CLAUDE.md` and `CONTRIBUTING.md` to describe the actual branching model                     | End the documentation drift                                                                                         |
+
+## 7. Trusted publishing & environment (post-plan additions)
+
+This section was added after the initial plan was validated. It captures two security and observability improvements that build on the foundation laid by Phases 3–6.
+
+### 7.1 — npm trusted publishing (OIDC)
+
+The release workflow no longer relies on `secrets.NPM_TOKEN`. Publishing uses **npm trusted publishing**, an OIDC-based trust relationship between npm and GitHub Actions. The job's existing `id-token: write` permission is the only requirement on the workflow side.
+
+**What npmjs.com requires:**
+
+On https://www.npmjs.com/package/@deessejs/errors → Settings → Trusted publishing → Add GitHub publisher:
+
+- Organization or user: `deessejs`
+- Repository: `errors`
+- Workflow filename: `release.yml`
+- Environment name: left blank for now. The trusted publisher binds to the workflow file only.
+- Allowed actions: `npm publish`
+
+**What the workflow changed:**
+
+The `Publish packages` step no longer passes `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}`. `pnpm changeset publish` uses the OIDC token minted by GitHub automatically. The actual diff:
+
+```yaml
+# before
+- name: Publish packages
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  run: pnpm changeset publish
+
+# after
+- name: Publish packages
+  run: pnpm changeset publish
+```
+
+`permissions: id-token: write` was already declared on the job, so nothing else needed to change.
+
+**Effects:**
+
+- Long-lived secret removed from GitHub. `secrets.NPM_TOKEN` can be revoked after the first OIDC publish succeeds.
+- npm automatically generates provenance attestations on every publish from a public repo. No `--provenance` flag needed. The package page on npmjs.com displays a provenance badge.
+- Publishing is now scoped to _this_ workflow file in _this_ repo. A leaked workflow file or token from elsewhere cannot publish.
+
+**Recommended hardening (post-OIDC-validated):**
+
+1. On npmjs.com: Settings → Publishing access → **"Require two-factor authentication and disallow tokens"**. This revokes any remaining token-based publish access. The OIDC trusted publisher is unaffected.
+2. On GitHub: repository Settings → Secrets → remove `NPM_TOKEN`.
+
+### 7.2 — GitHub environment `release`
+
+The release job is tagged with `environment: release`. Every run creates a deployment record, visible in the GitHub Deployments API and the GitHub UI's environment timeline.
+
+```yaml
+jobs:
+  release:
+    environment: release
+```
+
+No protection rules are attached yet — the trigger stays label-less / fire-on-every-merge. The environment is the natural place to harden later without changing this workflow:
+
+| Lever                      | Effect                                                     | Trade-off                                                                           |
+| -------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Required reviewers         | Job waits for human approval before publishing             | Adds a gate; incompatible with fire-on-every-merge automation                       |
+| Wait timer                 | Cooling-off period (e.g. 5 min) before publishing          | Lets a release engineer `git push --delete` the tag if they realize they were wrong |
+| Deployment branches        | Only `main` can trigger the env                            | Static guard against accidental publishes from another branch                       |
+| Environment secrets / vars | Scoped secrets, only available to jobs that target the env | Last-line defense if a leaked secret still exists                                   |
+
+Decisions on these levers are deferred until the team grows or until we have a concrete safety incident. The environment exists today and is ready.
+
+### 7.3 — What this added to the PR sequence
+
+| PR  | Title                                                                                                                    | Adds                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| #39 | `docs(release): add release system plan`                                                                                 | The plan itself (Phases 0–6)                               |
+| #40 | `ci(release): add changesets lint on PRs to staging` (and the workflow rewrite and the docs update, in a stacked commit) | Phase 4 (lint), Phase 3 (workflow rewrite), Phase 5 (docs) |
+| #41 | `ci(release): remove 'version bump' label gate, fire on every merge to main`                                             | Section 3 (label-less trigger)                             |
+| #42 | `ci(release): switch publish step to npm trusted publishing (OIDC)` and tag with `environment: release`                  | Section 7 (this section)                                   |
+
+## Appendix C — Post-plan decision log
+
+| Date | Decision                                                                                      | Rationale                                                                                        |
+| ---- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| TBD  | Drop `NODE_AUTH_TOKEN` from release.yml; rely on npm trusted publishing via `id-token: write` | Removes a long-lived secret from GitHub; automatic provenance; binding to a specific workflow    |
+| TBD  | Tag the release job with `environment: release` (no protection rules yet)                     | Establishes an audit trail via the Deployments API and a place to hang future hardening          |
+| TBD  | Trusted publisher on npmjs.com binds to workflow filename only, not environment name          | Keeps the contract minimal; environment name can be added later if we want it in the trust match |
+| TBD  | Do not enable `disallow tokens` on npmjs.com until one OIDC release is validated end-to-end   | Reduces risk during the migration window                                                         |
