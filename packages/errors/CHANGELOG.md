@@ -1,5 +1,21 @@
 # @deessejs/errors
 
+## 1.2.0
+
+### Minor Changes
+
+- d2a3411: Add CI lint that requires a changeset on every PR to `staging`. Part of the release system plan (Phase 4).
+
+### Patch Changes
+
+- 0ee2d14: Tag the release job with `environment: release` so the run is recorded as a deployment to the `release` GitHub environment. Future hardening (required reviewers, branch restrictions, wait timer) can attach to the same environment without further workflow changes. Provenance and trusted publishing are unaffected.
+- 5f55ce1: Update `docs/internal/engineering/plans/release-system.md` to reflect the post-plan additions: `Section 7 — Trusted publishing & environment` documents npm OIDC trusted publishing and the `release` GitHub environment. `Appendix C — Post-plan decision log` captures the new decisions. `Definition of done` adds two new items for OIDC publish and env record. `Status` moves from "Proposed" to "Approved and partially implemented on `staging`".
+- c79dc37: Update `CLAUDE.md` and `CONTRIBUTING.md` to reflect the actual branching model: devs land on `staging`, release engineer cherry-picks to `main` with a `version bump` label, hotfixes branch from `main`. The previous `main <- staging <- dev` model was documented but not practiced. Part of the release system plan (Phase 5).
+- 80a6f6c: Fix a bug in the release workflow: `git diff --quiet` (without `--cached`) compared the working tree to the index, which is in sync immediately after `git add -A`. This caused the version bump commit to be skipped, leaving the working tree in a `pnpm changeset publish`-able state but never pushed to `main`. Use `git diff --cached --quiet` so the comparison is against the last commit (HEAD), which is what we actually want.
+- 6f3b213: Rewrite the release workflow to detect pending changesets explicitly and gate all publish steps on detection. Tag is now pushed at the version bump commit (not the merge commit), fixing the `@deessejs/errors@1.1.1` tag drift. Adds `dry_run` and `packages` inputs to `workflow_dispatch`. Part of the release system plan (Phase 3).
+- 4d45002: Remove the `version bump` label gate from the release workflow. Every PR merged to `main` now produces a release if it contains `.changeset/*.md` files in its diff. The `has_changesets` detection step is the only condition. Simplifies the release engineer's job — no more remembering to label.
+- dc61cdd: Switch the release workflow to npm trusted publishing (OIDC) instead of `secrets.NPM_TOKEN`. The `id-token: write` permission, already declared on the job, is sufficient for GitHub to mint the OIDC token that npm exchanges for a short-lived publish credential. Provenance is generated automatically on public repos. The `NPM_TOKEN` secret can be revoked once the first OIDC publish succeeds.
+
 ## 1.1.1
 
 ### Patch Changes
