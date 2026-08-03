@@ -104,20 +104,13 @@ describe('error() factory function', () => {
         .addNote('Retrying...')
         .addNote('Attempt 2 failed');
 
-      expect(instance.notes).toEqual([
-        'Attempt 1 failed',
-        'Retrying...',
-        'Attempt 2 failed',
-      ]);
+      expect(instance.notes).toEqual(['Attempt 1 failed', 'Retrying...', 'Attempt 2 failed']);
     });
 
     it('should preserve notes through .from() chaining', () => {
       const AppError = error({ name: 'AppError' });
       const cause = new Error('underlying failure');
-      const instance = AppError()
-        .addNote('context A')
-        .from(cause)
-        .addNote('context B');
+      const instance = AppError().addNote('context A').from(cause).addNote('context B');
 
       expect(instance.notes).toEqual(['context A', 'context B']);
       expect(instance.cause).toBe(cause);
