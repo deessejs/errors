@@ -26,12 +26,11 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    # Only run when PR is merged into main and has version bump label OR manually triggered
+    # Run when a PR is merged into main OR manually triggered
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main' &&
-       contains(github.event.pull_request.labels.*.name, 'version bump'))
+       github.event.pull_request.base.ref == 'main')
 
     steps:
       - name: Checkout

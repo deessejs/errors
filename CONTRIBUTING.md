@@ -24,7 +24,7 @@ Thank you for your interest in contributing to this project!
 This project uses a **staging-first** branching model:
 
 - **`staging`** is the integration branch. Developers open their feature/fix/chore PRs targeting `staging`. Every PR to `staging` must include a `.changeset/*.md` file (enforced by the CI lint).
-- **`main`** is the release branch. The release engineer cherry-picks curated batches from `staging` into a `release/*` branch, opens a release PR targeting `main`, and applies the `version bump` label. Merging a `version bump` PR triggers the release workflow.
+- **`main`** is the release branch. The release engineer cherry-picks curated batches from `staging` into a `release/*` branch, opens a release PR targeting `main`, and merges. Merging a release PR to `main` triggers the release workflow. No label is required — every merge to `main` with at least one `.changeset/*.md` in the diff produces a release.
 - **`dev`** is deprecated and archived.
 
 ### Pull Requests
