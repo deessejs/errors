@@ -71,7 +71,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --quiet || git commit -m "chore(release): version packages"
+          # Use --cached: after `git add -A`, the diff against the index is empty.
+          # `git diff --quiet` (without --cached) compares the working tree to the
+          # index, which is already in sync, so the commit was never created.
+          git diff --cached --quiet || git commit -m "chore(release): version packages"
           git push origin HEAD
           git push --tags
 
