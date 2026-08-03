@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch staging
+        run: git fetch origin staging
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -18,7 +22,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Require changeset
         run: |
-          if ! git diff --name-only origin/staging...HEAD | grep -q '^\.changeset/.*\.md$'; then
+          changed=$(git diff --name-only origin/staging...HEAD)
+          if ! echo "$changed" | grep -q '^\.changeset/.*\.md$'; then
             echo "::error::This PR must include a changeset file (.changeset/<slug>.md)."
             exit 1
           fi
