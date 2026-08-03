@@ -119,6 +119,12 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
       return instance;
     };
 
+    // Add .addNote() method for runtime context (PEP 678)
+    instance.addNote = (note: string): ErrorInstance<T> => {
+      instance.notes.push(note);
+      return instance;
+    };
+
     // Mark this instance as created by this factory (for is() checks)
     // Use callable to avoid generic parameter conflicts
     (instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown>)[FACTORY_SYMBOL] =

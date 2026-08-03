@@ -36,16 +36,29 @@ export type ErrorFactory<TFields extends Record<string, unknown> = Record<string
 /**
  * Error instance returned by an ErrorFactory.
  * Contains all standard Error properties plus additional domain-specific fields.
- *
- * Note: .addNote() is implemented in a separate task.
  */
 export type ErrorInstance<TFields extends Record<string, unknown> = Record<string, never>> =
   ErrorInstanceCore & {
     /** User-defined fields from Standard Schema */
     fields: TFields;
-    // TODO: Implement .addNote() method (Task XX)
     /** Additional notes added via .addNote() */
     notes: string[];
+    /**
+     * Adds a note to this error instance.
+     *
+     * Notes provide runtime context that complements the structured fields.
+     * Patterned after Python 3.11's `BaseException.add_note()` (PEP 678).
+     *
+     * @param note - The note text to attach
+     * @returns This error instance for chaining
+     *
+     * @example
+     * ```typescript
+     * const err = AppError().addNote('Attempt 1 failed').addNote('Retrying...');
+     * // err.notes === ['Attempt 1 failed', 'Retrying...']
+     * ```
+     */
+    addNote(note: string): ErrorInstance<TFields>;
     /**
      * Chains a cause error to this error.
      *
