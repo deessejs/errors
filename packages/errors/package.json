@@ -3,6 +3,10 @@
   "version": "1.1.1",
   "description": "TypeScript error handling library inspired by Python — function-based API, exception chaining, hierarchical inheritance",
   "homepage": "https://errors.deessejs.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deessejs/errors.git"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
