@@ -15,9 +15,9 @@ interface ErrorInstance {
 
 ### Method Signature
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `note` | `string` | The note to add |
+| Parameter | Type     | Description     |
+| --------- | -------- | --------------- |
+| `note`    | `string` | The note to add |
 
 ### Returns
 
@@ -35,9 +35,7 @@ const AppError = error({ name: 'AppError' });
 try {
   processData(input);
 } catch (err) {
-  raise(
-    AppError().addNote('Processing failed')
-  );
+  raise(AppError().addNote('Processing failed'));
 }
 ```
 
@@ -51,12 +49,7 @@ const AppError = error({ name: 'AppError' });
 try {
   doSomething();
 } catch (err) {
-  raise(
-    AppError()
-      .addNote('Attempt 1 failed')
-      .addNote('Retrying...')
-      .addNote('Attempt 2 failed')
-  );
+  raise(AppError().addNote('Attempt 1 failed').addNote('Retrying...').addNote('Attempt 2 failed'));
 }
 
 // err.notes === ['Attempt 1 failed', 'Retrying...', 'Attempt 2 failed']
@@ -88,9 +81,7 @@ const AppError = error({ name: 'AppError' });
 try {
   doSomething();
 } catch (err) {
-  raise(
-    AppError().addNote(`User: ${err.context?.userId}`)
-  );
+  raise(AppError().addNote(`User: ${err.context?.userId}`));
 }
 ```
 
@@ -103,9 +94,7 @@ async function fetchUser(id: string) {
   try {
     return await getUser(id);
   } catch (err) {
-    raise(
-      AppError().from(err).addNote(`Failed to fetch user ${id}`)
-    );
+    raise(AppError().from(err).addNote(`Failed to fetch user ${id}`));
   }
 }
 ```
@@ -142,7 +131,7 @@ raise(AppError().addNote('note'));
 const AppError = error({ name: 'AppError', notes: ['note'] });
 ```
 
-1. **Deferred enrichment** — Notes are often added *after* catching, not at creation
+1. **Deferred enrichment** — Notes are often added _after_ catching, not at creation
 2. **Dynamic content** — Notes often depend on runtime context
 3. **Chainability** — `err.addNote('a').addNote('b')` reads naturally
 

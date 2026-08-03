@@ -13,10 +13,9 @@ import { TEMPLATE_PLACEHOLDER_REGEX } from './constants.js';
  * // => 'name' | 'age'
  * ```
  */
-type ExtractKeys<S extends string> =
-  S extends `${string}{${infer Key}}${infer Rest}`
-    ? (Key extends `${infer RealKey}:${string}` ? RealKey : Key) | ExtractKeys<Rest>
-    : never;
+type ExtractKeys<S extends string> = S extends `${string}{${infer Key}}${infer Rest}`
+  ? (Key extends `${infer RealKey}:${string}` ? RealKey : Key) | ExtractKeys<Rest>
+  : never;
 
 /**
  * Formats a message template by replacing {field} placeholders with values.
@@ -28,24 +27,24 @@ const formatTemplate = <S extends string>(
   template: S,
   data: Record<ExtractKeys<S>, unknown>
 ): string => {
-  return template.replace( /\{(\w+)(?::(\w+))?\}/g, ( fullMatch, fieldName, modifier ) => {
+  return template.replace(/\{(\w+)(?::(\w+))?\}/g, (fullMatch, fieldName, modifier) => {
     const value = data[fieldName as keyof typeof data];
-    if ( value === undefined ) {
+    if (value === undefined) {
       return fullMatch;
     }
 
-    if ( modifier === 'upper' ) {
-      return String( value ).toUpperCase();
+    if (modifier === 'upper') {
+      return String(value).toUpperCase();
     }
-    if ( modifier === 'lower' ) {
-      return String( value ).toLowerCase();
+    if (modifier === 'lower') {
+      return String(value).toLowerCase();
     }
-    if ( modifier === 'json' ) {
-      return JSON.stringify( value );
+    if (modifier === 'json') {
+      return JSON.stringify(value);
     }
 
-    return String( value );
-  } );
+    return String(value);
+  });
 };
 
 /**
@@ -53,9 +52,9 @@ const formatTemplate = <S extends string>(
  *
  * @internal
  */
-const hasTemplatePlaceholders = ( message: string ): boolean => {
+const hasTemplatePlaceholders = (message: string): boolean => {
   TEMPLATE_PLACEHOLDER_REGEX.lastIndex = 0;
-  return TEMPLATE_PLACEHOLDER_REGEX.test( message );
+  return TEMPLATE_PLACEHOLDER_REGEX.test(message);
 };
 
 export { formatTemplate, hasTemplatePlaceholders };

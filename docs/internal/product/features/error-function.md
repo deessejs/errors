@@ -14,17 +14,17 @@ function error(config: {
   fields?: StandardSchemaV1;
   inherits?: ErrorFactory | ErrorFactory[];
   message?: string;
-}): ErrorFactory
+}): ErrorFactory;
 ```
 
 ### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | `string` | Yes | Error name identifier |
-| `fields` | `StandardSchemaV1` | No | Schema fields (Zod, Valibot, ArkType, etc.) |
-| `inherits` | `ErrorFactory \| ErrorFactory[]` | No | Parent error factory to inherit from |
-| `message` | `string` | No | Message template with `{field}` placeholders |
+| Parameter  | Type                             | Required | Description                                  |
+| ---------- | -------------------------------- | -------- | -------------------------------------------- |
+| `name`     | `string`                         | Yes      | Error name identifier                        |
+| `fields`   | `StandardSchemaV1`               | No       | Schema fields (Zod, Valibot, ArkType, etc.)  |
+| `inherits` | `ErrorFactory \| ErrorFactory[]` | No       | Parent error factory to inherit from         |
+| `message`  | `string`                         | No       | Message template with `{field}` placeholders |
 
 ### Returns
 
@@ -61,8 +61,8 @@ const ValidationError = error({
 });
 
 const err = ValidationError({ field: 'email', reason: 'invalid format' });
-err.fields.field;    // 'email'
-err.fields.reason;   // 'invalid format'
+err.fields.field; // 'email'
+err.fields.reason; // 'invalid format'
 ```
 
 ### With Valibot
@@ -106,11 +106,11 @@ const AppError = error({ name: 'AppError' });
 
 const ValidationError = error({
   name: 'ValidationError',
-  inherits: AppError,  // Pass the factory function
+  inherits: AppError, // Pass the factory function
 });
 
-is(err, AppError);           // true if err is ValidationError
-is(err, ValidationError);    // true
+is(err, AppError); // true if err is ValidationError
+is(err, ValidationError); // true
 ```
 
 ### Multiple Inheritance
@@ -121,11 +121,11 @@ const NetworkError = error({ name: 'NetworkError' });
 
 const CombinedError = error({
   name: 'CombinedError',
-  inherits: [AppError, NetworkError],  // Array of factories
+  inherits: [AppError, NetworkError], // Array of factories
 });
 
-is(err, AppError);        // true if err is CombinedError
-is(err, NetworkError);     // true if err is CombinedError
+is(err, AppError); // true if err is CombinedError
+is(err, NetworkError); // true if err is CombinedError
 ```
 
 ### With Message Template
@@ -142,7 +142,7 @@ const RequiredFieldError = error({
 });
 
 const err = RequiredFieldError({ field: 'email' });
-err.message;  // 'Field "email" is required'
+err.message; // 'Field "email" is required'
 ```
 
 ### With HTTP Status
@@ -178,7 +178,7 @@ const ValidationError = error({
   }),
 });
 
-ValidationError.name;   // 'ValidationError'
+ValidationError.name; // 'ValidationError'
 // TypeScript infers types from the Zod schema
 ```
 
@@ -186,16 +186,16 @@ ValidationError.name;   // 'ValidationError'
 
 All errors have these guaranteed properties:
 
-| Property | Type | Always Exists | Description |
-|----------|------|---------------|-------------|
-| `name` | `string` | Yes | Error name |
-| `message` | `string` | Yes | Formatted message |
-| `stack` | `string` | Yes | Stack trace |
-| `fields` | `Record<string, unknown>` | Yes | User-defined fields (empty object if none) |
-| `notes` | `string[]` | Yes | Notes (empty array if none) |
-| `cause` | `Error \| null` | Yes | Direct cause (null if none) |
-| `causes` | `Error[]` | Yes | Full cause chain (may be empty) |
-| `context` | `Record<string, unknown> \| null` | Yes | Injected context (null if none) |
+| Property  | Type                              | Always Exists | Description                                |
+| --------- | --------------------------------- | ------------- | ------------------------------------------ |
+| `name`    | `string`                          | Yes           | Error name                                 |
+| `message` | `string`                          | Yes           | Formatted message                          |
+| `stack`   | `string`                          | Yes           | Stack trace                                |
+| `fields`  | `Record<string, unknown>`         | Yes           | User-defined fields (empty object if none) |
+| `notes`   | `string[]`                        | Yes           | Notes (empty array if none)                |
+| `cause`   | `Error \| null`                   | Yes           | Direct cause (null if none)                |
+| `causes`  | `Error[]`                         | Yes           | Full cause chain (may be empty)            |
+| `context` | `Record<string, unknown> \| null` | Yes           | Injected context (null if none)            |
 
 ### Field Access
 
@@ -215,8 +215,8 @@ const ValidationError = error({
 const err = ValidationError({ field: 'email', reason: 'invalid format' });
 
 // Correct
-err.fields.field;   // 'email'
-err.fields.reason;  // 'invalid format'
+err.fields.field; // 'email'
+err.fields.reason; // 'invalid format'
 
 // Why not err.field directly?
 // Because field names could collide with built-in properties like:
@@ -237,8 +237,7 @@ const ValidationError = error({
   fields: z.object({ field: z.string() }),
 });
 
-const err = ValidationError({ field: 'email' })
-  .addNote('Added at runtime');
+const err = ValidationError({ field: 'email' }).addNote('Added at runtime');
 
 JSON.stringify(err);
 // {
@@ -254,6 +253,7 @@ JSON.stringify(err);
 ```
 
 **Note:** Inheritance relationships are not serialized. When deserializing:
+
 - `is(err, ParentError)` will return `false` for re-parsed JSON
 - This is a known limitation; use error chaining for portable cause tracking
 
@@ -264,6 +264,7 @@ See [Design Philosophy](../design-philosophy.md) for core principles.
 **Why Standard Schema?**
 
 Standard Schema allows the library to integrate with any validation library:
+
 - **Zod**, **Valibot**, **ArkType**, and many others implement this interface
 - No additional runtime dependencies beyond your choice of validator
 - Integrate once, validate anywhere
@@ -282,10 +283,10 @@ const UserError = error({
 ```
 
 **Why `inherits` takes a factory function, not a string?**
+
 - Type-safe — TypeScript validates the inheritance
 - No circular dependency issues
 - IDE autocomplete works
-
 
 ## Related Features
 

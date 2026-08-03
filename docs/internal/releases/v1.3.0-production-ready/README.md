@@ -11,6 +11,7 @@ Target: TBD (after v1.2.0)
 ## Motivation
 
 For production use, errors need to:
+
 1. Output appropriately for different environments (pretty in dev, compact in prod)
 2. Provide clean, actionable stack traces
 
@@ -20,10 +21,10 @@ For production use, errors need to:
 
 The library automatically adapts output based on `NODE_ENV`:
 
-| Environment | `NODE_ENV` | Output Style |
-|-------------|------------|--------------|
-| Development | `development` or unset | Pretty, colored |
-| Production | `production` | Compact, efficient |
+| Environment | `NODE_ENV`             | Output Style       |
+| ----------- | ---------------------- | ------------------ |
+| Development | `development` or unset | Pretty, colored    |
+| Production  | `production`           | Compact, efficient |
 
 #### Development Mode (Pretty)
 
@@ -38,6 +39,7 @@ The library automatically adapts output based on `NODE_ENV`:
 ```
 
 Features:
+
 - Color coding (red for errors, yellow for notes, gray for fields)
 - Tree structure for nested data
 - Full context visible
@@ -49,6 +51,7 @@ ValidationError: Field "email" expected email, got "user@" {"field":"email","not
 ```
 
 Features:
+
 - Single line for log systems
 - JSON suffix for fields
 - Minimal colors
@@ -63,8 +66,8 @@ import { formatError } from '@deessejs/errors';
 const err = AppError({ code: 42 });
 
 formatError(err, { mode: 'development' }); // Pretty string
-formatError(err, { mode: 'production' });  // Compact string
-formatError(err, { mode: 'json' });        // JSON object
+formatError(err, { mode: 'production' }); // Compact string
+formatError(err, { mode: 'json' }); // JSON object
 ```
 
 ### setOutputMode() (Optional Global Configuration)
@@ -73,9 +76,9 @@ formatError(err, { mode: 'json' });        // JSON object
 import { setOutputMode } from '@deessejs/errors';
 
 // Change default mode
-setOutputMode('development');  // Always pretty
-setOutputMode('production');   // Always compact
-setOutputMode('auto');         // Follow NODE_ENV (default)
+setOutputMode('development'); // Always pretty
+setOutputMode('production'); // Always compact
+setOutputMode('auto'); // Follow NODE_ENV (default)
 ```
 
 **Warning:** `setOutputMode()` modifies global state. Use per-call `formatError()` in tests to avoid pollution.
@@ -119,8 +122,7 @@ Error: AppError
 All errors serialize to JSON automatically:
 
 ```typescript
-const err = AppError({ code: 42 })
-  .addNote('User action');
+const err = AppError({ code: 42 }).addNote('User action');
 
 JSON.stringify(err);
 // {
@@ -146,7 +148,7 @@ JSON.stringify(err, null, 2);
 
 // Custom filter
 JSON.stringify(err, (key, value) => {
-  if (key === 'stack') return undefined;  // Exclude stack
+  if (key === 'stack') return undefined; // Exclude stack
   return value;
 });
 ```
@@ -168,9 +170,7 @@ export const formatError: <T extends Record<string, unknown> = Record<string, un
   options?: { mode?: 'development' | 'production' | 'json' }
 ) => string | object;
 
-export const setOutputMode: (
-  mode: 'development' | 'production' | 'auto'
-) => void;
+export const setOutputMode: (mode: 'development' | 'production' | 'auto') => void;
 
 export const stripLibraryFrames: <T extends Record<string, unknown>>(
   errorInstance: ErrorInstance<T>
@@ -197,6 +197,7 @@ No migration required — this is purely additive. Existing code continues to wo
 ## v1.3.0 — Production Ready (YYYY-MM-DD)
 
 ### Added
+
 - Automatic environment detection (dev vs prod)
 - Pretty colored output in development mode
 - Compact single-line output in production mode
@@ -206,6 +207,7 @@ No migration required — this is purely additive. Existing code continues to wo
 - JSON serialization with `JSON.stringify()`
 
 ### Changed
+
 - Enhanced output formatting docs
 ```
 

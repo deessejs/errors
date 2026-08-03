@@ -9,6 +9,7 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `error({ name, fields })` instead of `class X extends Error`
 
 **Why:**
+
 - No `extends` chains to trace through code
 - Composition over inheritance
 - No `new` keyword, no `super()` calls
@@ -16,6 +17,7 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 - Errors are data, not objects with behavior
 
 **Tradeoff:**
+
 - Familiarity: JS developers know class syntax
 - Resolution: The function API is simple enough that familiarity isn't needed
 
@@ -24,11 +26,13 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `error.from(cause)` instead of `from(error, cause)`
 
 **Why:**
+
 - Method chaining reads in execution order
 - IDE autocomplete works naturally
 - "Object.action" is idiomatic
 
 **Tradeoff:**
+
 - Some prefer functional pipelines
 - Resolution: Methods are for actions on instances, functions are for utilities
 
@@ -37,11 +41,13 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `err.name` instead of `err.name()`
 
 **Why:**
+
 - Properties are for data, methods are for actions
 - Less verbose: `err.name` vs `err.name()`
 - Consistent with native Error: `err.message`, `err.stack`
 
 **Tradeoff:**
+
 - Some data requires computation (not applicable here)
 
 ### 4. Single Namespace for User Data
@@ -49,11 +55,13 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `err.fields` for all user-defined data
 
 **Why:**
+
 - Avoids collisions with built-in properties: `name`, `message`, `stack`, `cause`, `context`
 - Clear separation between library properties and user data
 - `fields` is always an object (never `undefined`)
 
 **Tradeoff:**
+
 - Double nesting: `err.fields.field` vs `err.field`
 - Resolution: Explicit is better than implicit; collisions are prevented
 
@@ -62,18 +70,21 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** Two separate mechanisms for adding data to errors
 
 **When to use fields:**
+
 - Data is specific to this error type
 - Field is meaningful for debugging this error
 - Field appears in the message template
 - Example: `{ field: 'email', reason: 'invalid format' }`
 
 **When to use context:**
+
 - Data is request-scoped or infrastructure-level
 - Same data appears across many different errors
 - Data is needed for correlation (requestId, traceId)
 - Example: `{ requestId: 'req-123', userId: 'user-456' }`
 
 **Why both?**
+
 - Fields: Error-specific data
 - Context: Cross-cutting data
 - Separation enables clear logging and analysis
@@ -83,12 +94,14 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `error({ name })` returns a factory, not a class
 
 **Why:**
+
 - TypeScript infers types from fields
 - No `new` required
 - Composition is natural
 - Works with `raise()` and `throw`
 
 **Tradeoff:**
+
 - Can't use `instanceof` (use `is()` instead)
 - Resolution: `is()` is the replacement
 
@@ -97,6 +110,7 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `error.name` is a property, not the return value
 
 **Why:**
+
 - Name is metadata, not instance data
 - Consistent with Standard Schema
 - Easier to introspect error types without instantiation
@@ -106,11 +120,13 @@ This document explains the core design principles behind `@deessejs/errors`. Eac
 **The choice:** `causes(err)` returns `[mostRecent, ..., root]`
 
 **Why:**
+
 - Most recent error is usually the most important for handling
 - Natural for finding error codes
 - Less common to need root-first ordering
 
 **Contrast with Python:**
+
 - Python's traceback shows root-first
 - We chose most-recent-first for practical reasons
 

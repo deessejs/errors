@@ -1,11 +1,12 @@
-export const appName = 'My App';
+export const appName = 'DeesseJS Errors';
+export const baseUrl = 'https://errors.deessejs.com';
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';
+export const siteUrl = 'https://errors.deessejs.com';
 
-// fill this with your actual GitHub info, for example:
 export const gitConfig = {
-  user: 'fuma-nama',
-  repo: 'fumadocs',
+  user: 'nesalia-inc',
+  repo: 'errors',
   branch: 'main',
 };

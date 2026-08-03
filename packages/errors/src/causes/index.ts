@@ -27,15 +27,15 @@ import type { ErrorInstance } from '../error/types.js';
  * // (err.cause is NetworkError, err.cause.cause is Error)
  * ```
  */
-const causes = ( error: unknown ): Error[] => {
-  if ( error == null ) {
+const causes = (error: unknown): Error[] => {
+  if (error == null) {
     return [];
   }
 
   // Get the causes array from the error
   const instance = error as ErrorInstance;
 
-  if ( Array.isArray( instance.causes ) ) {
+  if (Array.isArray(instance.causes)) {
     return instance.causes;
   }
 

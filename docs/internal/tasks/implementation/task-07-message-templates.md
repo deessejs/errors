@@ -11,6 +11,7 @@ Implement message template parsing with {field} placeholders and modifiers.
 ## Implementation
 
 Implemented in:
+
 - `src/error/format.ts` - formatTemplate and hasTemplatePlaceholders functions
 - Integrated into `src/error/error.ts` during error factory invocation
 

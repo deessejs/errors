@@ -20,7 +20,7 @@ import { formatTemplate, hasTemplatePlaceholders } from './format.js';
  *
  * @internal
  */
-const FACTORY_SYMBOL = Symbol.for( '@deessejs/errors/factory' );
+const FACTORY_SYMBOL = Symbol.for('@deessejs/errors/factory');
 
 // ============================================================================
 // Error Factory
@@ -73,35 +73,33 @@ const FACTORY_SYMBOL = Symbol.for( '@deessejs/errors/factory' );
  * });
  * ```
  */
-export const error = <const T extends Record<string, unknown> = Record<string, never>>(
-  config: {
-    name: string;
-    fields?: StandardSchemaV1;
-    inherits?: ErrorFactory | ErrorFactory[];
-    message?: string;
-  }
-): ErrorFactory<T> => {
+export const error = <const T extends Record<string, unknown> = Record<string, never>>(config: {
+  name: string;
+  fields?: StandardSchemaV1;
+  inherits?: ErrorFactory | ErrorFactory[];
+  message?: string;
+}): ErrorFactory<T> => {
   const { name, fields, inherits, message } = config;
 
   /**
    * Error factory function - creates error instances.
    */
-  const ErrorFactoryInstance = ( input?: Partial<T> ): ErrorInstance<T> => {
-    const fieldsData = ( input || {} ) as T;
+  const ErrorFactoryInstance = (input?: Partial<T>): ErrorInstance<T> => {
+    const fieldsData = (input || {}) as T;
 
     // Format message if template has placeholders
     let errorMessage = name;
-    if ( message && hasTemplatePlaceholders( message ) ) {
-      errorMessage = formatTemplate( message, fieldsData );
-    } else if ( message ) {
+    if (message && hasTemplatePlaceholders(message)) {
+      errorMessage = formatTemplate(message, fieldsData);
+    } else if (message) {
       errorMessage = message;
     }
 
     // Capture stack trace
-    const stack = captureStack( errorMessage );
+    const stack = captureStack(errorMessage);
 
     // Create error instance using native Error
-    const instance = new Error( errorMessage ) as ErrorInstance<T>;
+    const instance = new Error(errorMessage) as ErrorInstance<T>;
     instance.name = name;
     instance.fields = fieldsData;
     instance.notes = [];
@@ -112,12 +110,10 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
     instance.stack = stack;
 
     // Add .from() method for exception chaining
-    instance.from = ( cause: Error ): ErrorInstance<T> => {
+    instance.from = (cause: Error): ErrorInstance<T> => {
       // Build new causes array: [new cause] + [cause's causes] + [existing causes of instance]
       // This maintains chronological order: newest first
-      const causeCauses = 'causes' in cause && Array.isArray( cause.causes )
-        ? cause.causes
-        : [];
+      const causeCauses = 'causes' in cause && Array.isArray(cause.causes) ? cause.causes : [];
       instance.causes = [cause, ...causeCauses, ...instance.causes];
       instance.cause = cause;
       return instance;
@@ -125,29 +121,30 @@ export const error = <const T extends Record<string, unknown> = Record<string, n
 
     // Mark this instance as created by this factory (for is() checks)
     // Use callable to avoid generic parameter conflicts
-    ( instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown> )[FACTORY_SYMBOL] = ErrorFactoryInstance;
+    (instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown>)[FACTORY_SYMBOL] =
+      ErrorFactoryInstance;
 
     return instance;
   };
 
   // Attach metadata to the factory function
-  Object.defineProperty( ErrorFactoryInstance, 'name', {
+  Object.defineProperty(ErrorFactoryInstance, 'name', {
     value: name,
     writable: false,
     enumerable: false,
     configurable: false,
-  } );
+  });
 
-  if ( inherits !== undefined ) {
-    ( ErrorFactoryInstance as ErrorFactory<T> ).inherits = inherits;
+  if (inherits !== undefined) {
+    (ErrorFactoryInstance as ErrorFactory<T>).inherits = inherits;
   }
 
-  if ( fields !== undefined ) {
-    ( ErrorFactoryInstance as ErrorFactory<T> ).schema = fields;
+  if (fields !== undefined) {
+    (ErrorFactoryInstance as ErrorFactory<T>).schema = fields;
   }
 
-  if ( message !== undefined ) {
-    ( ErrorFactoryInstance as ErrorFactory<T> ).rawMessage = message;
+  if (message !== undefined) {
+    (ErrorFactoryInstance as ErrorFactory<T>).rawMessage = message;
   }
 
   return ErrorFactoryInstance as ErrorFactory<T>;

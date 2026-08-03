@@ -1,0 +1,23 @@
+{
+  "title": "@deessejs/errors",
+  "pages": [
+    "index",
+    "installation",
+    "---Core Concepts---",
+    "error-factory",
+    "error-instance",
+    "fields-schema",
+    "---Chaining---",
+    "from-method",
+    "causes-function",
+    "---Inheritance---",
+    "single-inheritance",
+    "multiple-inheritance",
+    "type-checking",
+    "---Advanced---",
+    "message-templates",
+    "---Reference---",
+    "api-reference",
+    "recipes"
+  ]
+}

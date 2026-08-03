@@ -9,9 +9,9 @@ Errors can inherit from one or more parent errors, enabling hierarchical error t
 ```typescript
 const MyError = error({
   name: 'MyError',
-  inherits: ParentError,              // Single parent
+  inherits: ParentError, // Single parent
   // or
-  inherits: [ParentError1, ParentError2],  // Multiple parents
+  inherits: [ParentError1, ParentError2], // Multiple parents
 });
 ```
 
@@ -55,9 +55,9 @@ const CombinedError = error({
 // Now CombinedError is ALL of them
 const err = CombinedError();
 
-is(err, AppError);       // true
-is(err, NetworkError);   // true
-is(err, StorageError);   // true
+is(err, AppError); // true
+is(err, NetworkError); // true
+is(err, StorageError); // true
 ```
 
 ### Deep inheritance
@@ -92,10 +92,10 @@ const RequiredFieldError = error({
 //       └── ValidationError
 //           └── RequiredFieldError
 
-is(err, RequiredFieldError);  // true
-is(err, ValidationError);     // true
-is(err, DomainError);         // true
-is(err, AppError);            // true
+is(err, RequiredFieldError); // true
+is(err, ValidationError); // true
+is(err, DomainError); // true
+is(err, AppError); // true
 ```
 
 ### Control Flow with Inheritance
@@ -117,7 +117,7 @@ try {
   } else if (is(err, AppError)) {
     // Generic app error handling
   } else {
-    throw err;  // Re-throw unknown errors
+    throw err; // Re-throw unknown errors
   }
 }
 ```
@@ -145,6 +145,7 @@ class ValidationError extends AppError {
 ```
 
 **Advantages of inheritance approach:**
+
 - No class syntax needed
 - Inherit from multiple parents
 - Errors are just data, not classes
@@ -175,6 +176,7 @@ const MyError = error({ name: 'MyError' });
 **Why the `inherits` property?**
 
 Runtime inheritance metadata enables:
+
 - `is()` to traverse the hierarchy
 - JSON serialization to preserve type info
 - IDE/type support for code completion

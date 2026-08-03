@@ -1,0 +1,80 @@
+---
+title: "Getting Started with @deessejs/errors"
+description: "Learn how to implement Python-inspired error handling in TypeScript with exception chaining, hierarchical inheritance, and rich error semantics."
+author: "Nesalia Inc"
+date: "2026-06-05"
+---
+
+## Introduction
+
+`@deessejs/errors` brings Python's powerful error handling system to TypeScript. If you've ever wished JavaScript had the same expressive error handling as Python, this library is for you.
+
+## Installation
+
+```bash
+npm install @deessejs/errors
+```
+
+## Creating Your First Error
+
+Unlike traditional JavaScript errors that use classes, `@deessejs/errors` uses a function-based API:
+
+```ts
+import { error } from '@deessejs/errors';
+
+// Create an error factory
+const ValidationError = error({
+  name: 'ValidationError',
+  message: 'Validation failed for field "{field}"',
+});
+
+// Use it
+const err = ValidationError({ field: 'email' });
+console.log(err.message); // "Validation failed for field "email""
+```
+
+## Exception Chaining
+
+The `.from()` method lets you chain errors together, preserving the full context of what went wrong:
+
+```ts
+import { error, raise } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+try {
+  // Something fails
+  raise(ValidationError({ field: 'email' }));
+} catch (e) {
+  // Chain the error
+  AppError({}).from(e);
+}
+```
+
+## Hierarchical Inheritance
+
+Build error hierarchies that let you catch errors at different levels:
+
+```ts
+import { error, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+
+// Now you can catch any AppError
+if (is(err, AppError)) {
+  // Handles both ValidationError and AppError
+}
+```
+
+## Next Steps
+
+- Read the [Error Factory documentation](/docs/error-factory) to learn about message templates
+- Explore [Exception Chaining](/docs/from-method) for advanced error handling
+- Check out [Recipes](/docs/recipes) for common patterns
+
+Happy error handling!

@@ -1,7 +1,8 @@
 {
   "name": "@deessejs/errors",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "TypeScript error handling library inspired by Python — function-based API, exception chaining, hierarchical inheritance",
+  "homepage": "https://errors.deessejs.com",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -23,7 +24,13 @@
     "typescript",
     "errors",
     "exception",
-    "error-handling"
+    "error-handling",
+    "exception-chaining",
+    "hierarchical-errors",
+    "python-style-errors",
+    "custom-error-types",
+    "nodejs",
+    "npm-package"
   ],
   "author": "Nesalia Inc. <hello@nesalia.com>",
   "license": "MIT",

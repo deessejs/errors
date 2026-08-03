@@ -1,0 +1,191 @@
+---
+title: API Reference
+description: Complete API reference for all exports from @deessejs/errors.
+---
+
+This page documents all public exports from @deessejs/errors. Use this as a comprehensive reference for the library's API.
+
+## error()
+
+Creates an error factory function for defining typed, structured errors.
+
+```ts title="title="${f%.mdx}.ts""
+const errorFactory = error<T>(config)
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `config.name` | `string` | Error name identifier (required) |
+| `config.message` | `string` | Message template with `{field}` placeholders |
+| `config.fields` | `StandardSchemaV1` | Field schema for validation (Zod, Valibot, etc.) |
+| `config.inherits` | `ErrorFactory \| ErrorFactory[]` | Parent error(s) to inherit from |
+
+### Returns
+
+An `ErrorFactory` function that creates error instances. The factory has these properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | The error name |
+| `inherits` | `ErrorFactory \| ErrorFactory[] \| undefined` | Parent error types |
+| `schema` | `StandardSchemaV1 \| undefined` | Field validation schema |
+| `rawMessage` | `string \| undefined` | Original message template |
+
+### Example
+
+```ts title="title="${f%.mdx}.ts""
+import { error } from '@deessejs/errors';
+
+const ValidationError = error<{ field: string }>({
+  name: 'ValidationError',
+  message: 'Field "{field}" is invalid',
+  inherits: AppError,
+});
+
+const err = ValidationError({ field: 'email' });
+```
+
+---
+
+## raise()
+
+Throws an error instance. This is the primary mechanism for throwing errors in @deessejs/errors.
+
+```ts title="title="${f%.mdx}.ts""
+raise(error: ErrorInstance): never
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `error` | `ErrorInstance` | The error to throw |
+
+### Returns
+
+`never` — This function always throws.
+
+### Example
+
+```ts title="title="${f%.mdx}.ts""
+import { error, raise } from '@deessejs/errors';
+
+const ValidationError = error({ name: 'ValidationError' });
+
+raise(ValidationError({}));
+```
+
+---
+
+## is()
+
+Type guard function to check if an error is an instance of a specific error type.
+
+```ts title="title="${f%.mdx}.ts""
+const result = is(error, ErrorType)
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `error` | `unknown` | The error to check |
+| `ErrorType` | `ErrorFactory \| ErrorClass` | The error type to check against |
+
+### Returns
+
+`boolean` — `true` if the error matches or inherits from the type.
+
+### Example
+
+```ts title="title="${f%.mdx}.ts""
+import { error, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const ValidationError = error({
+  name: 'ValidationError',
+  inherits: AppError,
+});
+
+const err = ValidationError({});
+
+is(err, ValidationError); // true
+is(err, AppError); // true (through inheritance)
+```
+
+---
+
+## causes()
+
+Returns all causes in an error chain.
+
+```ts title="title="${f%.mdx}.ts""
+const chain = causes(error: unknown): Error[]
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `error` | `unknown` | The error to get causes from |
+
+### Returns
+
+`Error[]` — Array of errors in the cause chain, ordered newest to oldest. Returns an empty array for null, undefined, or errors without causes.
+
+### Example
+
+```ts title="title="${f%.mdx}.ts""
+import { error, causes } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const appErr = AppError({});
+appErr.from(new Error('Original error'));
+
+const chain = causes(appErr);
+console.log(chain.length); // 1
+```
+
+---
+
+## ErrorInstance
+
+The type of object returned by error factories. It extends the native `Error` type.
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Error name identifier |
+| `message` | `string` | Human-readable error message |
+| `stack` | `string` | Stack trace string |
+| `fields` | `T` | User-defined fields |
+| `notes` | `string[]` | Additional notes |
+| `cause` | `Error \| null` | Direct cause of this error |
+| `causes` | `Error[]` | Full cause chain |
+| `context` | `Record<string, unknown> \| null` | Injected context data |
+| `inherits` | `ErrorFactory \| ErrorFactory[] \| undefined` | Parent error factories |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `from(cause: Error)` | Chains a cause error to this error |
+
+---
+
+## See Also
+
+<Cards>
+  <Card title="Error Factory" href="/docs/error-factory">
+    Create custom error types.
+  </Card>
+  <Card title="Type Checking" href="/docs/type-checking">
+    Use is() for type guards.
+  </Card>
+  <Card title="Exception Chaining" href="/docs/from-method">
+    Chain errors with from().
+  </Card>
+</Cards>

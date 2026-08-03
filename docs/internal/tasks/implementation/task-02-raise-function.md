@@ -17,7 +17,7 @@ Implement `raise()` function that throws errors. Must also support native `throw
 ## API
 
 ```typescript
-function raise(errorInstance: ErrorInstance): never
+function raise(errorInstance: ErrorInstance): never;
 ```
 
 ## Acceptance Criteria

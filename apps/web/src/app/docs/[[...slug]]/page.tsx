@@ -11,7 +11,7 @@ import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { gitConfig } from '@/lib/shared';
+import { gitConfig, baseUrl } from '@/lib/shared';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -21,26 +21,99 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
 
+  // Generate page-specific JSON-LD
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Docs',
+        item: `${baseUrl}/docs`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: page.data.title,
+        item: `${baseUrl}${page.url}`,
+      },
+    ],
+  };
+
+  const techArticleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    name: page.data.title,
+    description: page.data.description,
+    about: {
+      '@type': 'SoftwareApplication',
+      name: '@deessejs/errors',
+    },
+    author: {
+      '@type': 'Organization',
+      name: 'Nesalia Inc',
+    },
+    datePublished: new Date().toISOString(),
+    keywords: ['TypeScript', 'error handling', 'exceptions'],
+  };
+
+  // Add APIReference schema for API reference page
+  const isApiReference = params.slug?.join('/') === 'api-reference';
+  const apiReferenceJsonLd = isApiReference
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'APIReference',
+        name: '@deessejs/errors API Reference',
+        description: 'Complete API reference for @deessejs/errors',
+        assemblyVersion: '1.0.0',
+        targetPlatform: 'Node.js',
+        about: {
+          '@type': 'SoftwareApplication',
+          name: '@deessejs/errors',
+        },
+        author: {
+          '@type': 'Organization',
+          name: 'Nesalia Inc',
+        },
+      }
+    : null;
+
+  const schemas = isApiReference
+    ? [breadcrumbJsonLd, techArticleJsonLd, apiReferenceJsonLd]
+    : [breadcrumbJsonLd, techArticleJsonLd];
+
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
-      <div className="flex flex-row gap-2 items-center border-b pb-6">
-        <MarkdownCopyButton markdownUrl={markdownUrl} />
-        <ViewOptionsPopover
-          markdownUrl={markdownUrl}
-          githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/docs/${page.path}`}
-        />
-      </div>
-      <DocsBody>
-        <MDX
-          components={getMDXComponents({
-            // this allows you to link to other pages with relative file paths
-            a: createRelativeLink(source, page),
-          })}
-        />
-      </DocsBody>
-    </DocsPage>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas).replace(/</g, '\\u003c') }}
+      />
+      <DocsPage toc={page.data.toc} full={page.data.full}>
+        <DocsTitle>{page.data.title}</DocsTitle>
+        <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
+        <div className="flex flex-row gap-2 items-center border-b pb-6">
+          <MarkdownCopyButton markdownUrl={markdownUrl} />
+          <ViewOptionsPopover
+            markdownUrl={markdownUrl}
+            githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/docs/${page.path}`}
+          />
+        </div>
+        <DocsBody>
+          <MDX
+            components={getMDXComponents({
+              a: createRelativeLink(source, page),
+            })}
+          />
+        </DocsBody>
+      </DocsPage>
+    </>
   );
 }
 
@@ -56,6 +129,9 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {
+      canonical: `${baseUrl}${page.url}`,
+    },
     openGraph: {
       images: getPageImage(page).url,
     },

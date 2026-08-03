@@ -7,6 +7,7 @@ This guide walks you through migrating from native JavaScript error handling to 
 ### Basic Error Classes
 
 **Before (Native JS)**
+
 ```typescript
 class ValidationError extends Error {
   constructor(field: string, message: string) {
@@ -21,6 +22,7 @@ throw new ValidationError('email', 'Invalid format');
 ```
 
 **After (@deessejs/errors)**
+
 ```typescript
 import { error, raise } from '@deessejs/errors';
 
@@ -41,6 +43,7 @@ throw ValidationError({ field: 'email', message: 'Invalid format' });
 ### Error Inheritance
 
 **Before (Native JS)**
+
 ```typescript
 class AppError extends Error {
   constructor(message: string) {
@@ -59,6 +62,7 @@ class ValidationError extends AppError {
 ```
 
 **After (@deessejs/errors)**
+
 ```typescript
 import { error, raise } from '@deessejs/errors';
 
@@ -76,17 +80,19 @@ const ValidationError = error({
 ### Exception Chaining
 
 **Before (Native JS)**
+
 ```typescript
 try {
   lowLevelOperation();
 } catch (err) {
   const newError = new HighLevelError('Failed');
-  newError.cause = err;  // Manual
+  newError.cause = err; // Manual
   throw newError;
 }
 ```
 
 **After (@deessejs/errors)**
+
 ```typescript
 try {
   lowLevelOperation();
@@ -98,6 +104,7 @@ try {
 ### Catching Errors
 
 **Before (Native JS)**
+
 ```typescript
 try {
   doSomething();
@@ -111,6 +118,7 @@ try {
 ```
 
 **After (@deessejs/errors)**
+
 ```typescript
 import { is, errors } from '@deessejs/errors';
 const { isValidationError } = errors;
@@ -136,6 +144,7 @@ try {
 ### Pattern 1: Not Found
 
 **Before**
+
 ```typescript
 class NotFoundError extends Error {
   constructor(resource: string, id: string) {
@@ -150,6 +159,7 @@ throw new NotFoundError('User', userId);
 ```
 
 **After**
+
 ```typescript
 import { errors, raise } from '@deessejs/errors';
 
@@ -168,6 +178,7 @@ raise(NotFoundError({ resource: 'User', id: userId }));
 ### Pattern 2: Validation
 
 **Before**
+
 ```typescript
 class ValidationError extends Error {
   constructor(errors: Array<{ field: string; message: string }>) {
@@ -184,6 +195,7 @@ throw new ValidationError([
 ```
 
 **After**
+
 ```typescript
 import { errors, raise } from '@deessejs/errors';
 
@@ -199,17 +211,20 @@ const ValidationError = error({
   },
 });
 
-raise(ValidationError({
-  errors: [
-    { field: 'email', message: 'Invalid format' },
-    { field: 'password', message: 'Too short' },
-  ],
-}));
+raise(
+  ValidationError({
+    errors: [
+      { field: 'email', message: 'Invalid format' },
+      { field: 'password', message: 'Too short' },
+    ],
+  })
+);
 ```
 
 ### Pattern 3: Error with Context
 
 **Before**
+
 ```typescript
 async function handleRequest(req: Request) {
   try {
@@ -224,6 +239,7 @@ async function handleRequest(req: Request) {
 ```
 
 **After**
+
 ```typescript
 import { errors, raise, withContext } from '@deessejs/errors';
 
@@ -239,6 +255,7 @@ async function handleRequest(req: Request) {
 ### Pattern 4: Third-Party Error Wrapping
 
 **Before**
+
 ```typescript
 try {
   JSON.parse(input);
@@ -250,16 +267,19 @@ try {
 ```
 
 **After**
+
 ```typescript
 import { errors, raise } from '@deessejs/errors';
 
 try {
   JSON.parse(input);
 } catch (err) {
-  throw errors.ValidationError({
-    field: 'input',
-    message: 'Invalid JSON',
-  }).from(err);
+  throw errors
+    .ValidationError({
+      field: 'input',
+      message: 'Invalid JSON',
+    })
+    .from(err);
 }
 ```
 
@@ -300,10 +320,14 @@ export { errors };
 ### Step 3: Replace Error Classes
 
 **Before**
+
 ```typescript
 // src/errors.ts
 export class ValidationError extends Error {
-  constructor(public field: string, public message: string) {
+  constructor(
+    public field: string,
+    public message: string
+  ) {
     super(message);
     this.name = 'ValidationError';
   }
@@ -311,6 +335,7 @@ export class ValidationError extends Error {
 ```
 
 **After**
+
 ```typescript
 // src/errors.ts
 import { error } from '@deessejs/errors';
@@ -327,6 +352,7 @@ export const ValidationError = error({
 ### Step 4: Update Imports
 
 **Before**
+
 ```typescript
 import { ValidationError } from './errors';
 
@@ -334,6 +360,7 @@ throw new ValidationError('email', 'Invalid');
 ```
 
 **After**
+
 ```typescript
 import { ValidationError, raise } from './errors';
 
@@ -345,6 +372,7 @@ throw ValidationError({ field: 'email', message: 'Invalid' });
 ### Step 5: Update Catch Blocks
 
 **Before**
+
 ```typescript
 try {
   doSomething();
@@ -358,6 +386,7 @@ try {
 ```
 
 **After**
+
 ```typescript
 import { is, errors, causes } from '@deessejs/errors';
 const { isValidationError } = errors;
@@ -389,9 +418,11 @@ import { errors, raise } from '@deessejs/errors';
 try {
   await db.query(sql);
 } catch (err) {
-  throw errors.DatabaseError({
-    message: 'Query failed',
-  }).from(err);
+  throw errors
+    .DatabaseError({
+      message: 'Query failed',
+    })
+    .from(err);
 }
 ```
 
@@ -414,6 +445,7 @@ if (isValidationError(err)) { ... }
 ### Custom Error Properties
 
 **Before**
+
 ```typescript
 class CustomError extends Error {
   customProp: string;
@@ -427,6 +459,7 @@ err.customProp; // TypeScript knows this exists
 ```
 
 **After**
+
 ```typescript
 const CustomError = error({
   name: 'CustomError',

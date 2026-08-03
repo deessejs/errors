@@ -6,16 +6,16 @@ This folder contains all testing-related tasks for v1.0.0 Core Foundation.
 
 ## Task List
 
-| ID | Task | Status |
-|----|------|--------|
-| 09 | Unit tests for error() factory | ✅ Complete |
-| 10 | Unit tests for raise() | ✅ Complete |
-| 11 | Unit tests for is() | ✅ Complete |
-| 12 | Unit tests for .from() | ✅ Complete |
-| 13 | Unit tests for causes() | ✅ Complete |
-| 14 | Unit tests for messages | ✅ Complete |
-| 15 | Type tests for TypeScript | ✅ Complete |
-| 18 | Integration tests | ✅ Complete |
+| ID  | Task                           | Status      |
+| --- | ------------------------------ | ----------- |
+| 09  | Unit tests for error() factory | ✅ Complete |
+| 10  | Unit tests for raise()         | ✅ Complete |
+| 11  | Unit tests for is()            | ✅ Complete |
+| 12  | Unit tests for .from()         | ✅ Complete |
+| 13  | Unit tests for causes()        | ✅ Complete |
+| 14  | Unit tests for messages        | ✅ Complete |
+| 15  | Type tests for TypeScript      | ✅ Complete |
+| 18  | Integration tests              | ✅ Complete |
 
 ## Test Framework
 
