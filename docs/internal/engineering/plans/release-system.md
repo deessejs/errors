@@ -90,10 +90,10 @@ Keep Changesets. The configuration changes, not the tool.
 
 The release workflow is the _only_ place that touches tags and `npm publish`. It runs on two triggers:
 
-1. A PR merged into `main` that carries the `version bump` label — this is the normal release path. The release engineer cherry-picks a batch of commits from `staging`, opens a PR to `main`, applies the `version bump` label, and merges. The workflow then versions and publishes the changesets included in that PR.
-2. `workflow_dispatch` — for hotfixes, dry runs, and selective re-publishes.
+1. **Any PR merged into `main`** — this is the normal release path. The release engineer cherry-picks a batch of commits from `staging`, opens a PR to `main`, and merges. The workflow then versions and publishes the changesets included in that PR. There is no label gate; the changeset detection step is the only condition.
+2. `workflow_dispatch` — for dry runs, selective re-publishes, and emergency hotfixes that need to bypass the staging queue.
 
-The `version bump` label is the release engineer's explicit gate. Without it, a merge to `main` is silent. This is the current behaviour and it is **kept deliberately** — it keeps the human in the loop and prevents accidental releases.
+Any merge to `main` with at least one `.changeset/*.md` in the diff triggers a release. A merge without changesets is a no-op (the workflow's `has_changesets` step short-circuits the publish). This keeps the human in the loop: the release engineer still cherry-picks intentionally, but they no longer need to remember a label.
 
 ```yaml
 # .github/workflows/release.yml (new version)
@@ -126,8 +126,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main' &&
-       contains(github.event.pull_request.labels.*.name, 'version bump'))
+       github.event.pull_request.base.ref == 'main')
 
     steps:
       - name: Checkout
@@ -208,8 +207,8 @@ jobs:
 
 Key changes from the current workflow:
 
-- **Trigger kept hybrid** — `workflow_dispatch` + PR `closed` on `main` with label `version bump`. This is the current behaviour; it is preserved because it gives the release engineer explicit control.
-- **Explicit changeset detection** — the job walks the diff of the merge commit and toggles `has_changesets` accordingly. All subsequent steps are gated on this. If a `version bump` PR somehow contains no changesets (or the changesets were dropped during cherry-pick), the workflow becomes a no-op and does not publish.
+- **Trigger** — `workflow_dispatch` + PR `closed` on `main`. No label required. Any merge to `main` with changesets publishes a release.
+- **Explicit changeset detection** — the job walks the diff of the merge commit and toggles `has_changesets` accordingly. All subsequent steps are gated on this. If a PR to `main` somehow contains no changesets (or the changesets were dropped during cherry-pick), the workflow becomes a no-op and does not publish.
 - **Tag points at the version bump commit** — the `chore(release): version packages` commit is what pushes the tag, not the cherry-pick merge commit. This fixes the `@deessejs/errors@1.1.1` tag drift.
 - **`pnpm build` and `pnpm test` after versioning** — kept from the current workflow. They run against the bumped sources, not the pre-bump ones.
 - **`body_path` keeps `packages/errors/CHANGELOG.md`** — using the freshly generated changelog rather than GitHub auto-notes, so the GitHub Release body matches what was actually published to npm.
@@ -253,7 +252,7 @@ jobs:
 - CI / workflow changes (paths under `.github/`)
 - PRs labeled `no-changeset-required` by a maintainer
 
-**Note on `main`**: the lint does not run on PRs to `main`. Those are cherry-pick PRs from the release engineer; they are either label-gated (`version bump`) or hotfixes, both of which the release engineer handles explicitly. Re-linting them would only cause false positives for rebase commits.
+**Note on `main`**: the lint does not run on PRs to `main`. Those are cherry-pick PRs from the release engineer or hotfixes. Re-linting them would only cause false positives for rebase commits. The changeset detection in the release workflow (`has_changesets` step) is the safety net for accidental empty merges.
 
 ### 5. Documentation updates
 
@@ -278,7 +277,7 @@ Release loop (release engineer, in batches):
   2. Cherry-pick them into a release/* branch off main
   3. Open a PR release/* → main
   4. PR body lists the changesets being released (auto-generated from the cherry-picked files)
-  5. Apply the `version bump` label to the PR
+  5. Approve and merge the PR (no label required; the changeset diff is the trigger)
   6. Approve and merge the PR
   7. The release workflow fires on the merge event:
      - Detects pending changesets in the merge commit diff
@@ -390,7 +389,7 @@ All four open questions are resolved:
 Confirmed at the time of the inventory (commit `569c96d` on `main`):
 
 - [x] `.changeset/config.json` committed on `main`. `baseBranch: "main"`, `access: "public"`, `commit: false`. OK.
-- [x] `.github/workflows/release.yml` committed on `main`. Hybrid trigger (`workflow_dispatch` + PR `closed` with label `version bump`). To be rewritten per Section 3.
+- [x] `.github/workflows/release.yml` committed on `main`. Hybrid trigger (`workflow_dispatch` + PR `closed` on `main` with label `version bump`). To be rewritten per Section 3 (label removed in a follow-up).
 - [ ] `.github/workflows/ci.yml` does not exist. To be created per Section 4.
 - [x] `packages/errors/package.json` has `version: "1.1.1"`. No `publishConfig` block — `access: "public"` is propagated by Changesets instead. OK.
 - [x] `packages/errors/CHANGELOG.md` exists and is generated by Changesets (`@changesets/cli/changelog`). Format.
@@ -404,18 +403,18 @@ Confirmed at the time of the inventory (commit `569c96d` on `main`):
 
 ## Appendix B — Decision log
 
-| Date | Decision                                                                                                     | Rationale                                                                                                     |
-| ---- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| TBD  | Keep Changesets; do not migrate to `release-please`                                                          | Tool is fine; the issues are configuration and branch drift                                                   |
-| TBD  | `staging` is the integration branch; `main` is release-only                                                  | Matches the actual release engineer's workflow                                                                |
-| TBD  | `feature/*` → `staging` via PR; `staging` → `main` via cherry-pick PR                                        | Specified by the release engineer; this plan adopts it                                                        |
-| TBD  | Release workflow keeps the `version bump` label gate on PRs to `main`                                        | Current behaviour; the release engineer is the explicit gate. Without the label, a merge to `main` is silent. |
-| TBD  | Release workflow also accepts `workflow_dispatch` for hotfixes, dry runs, selective re-publishes             | Operational escape hatch                                                                                      |
-| TBD  | Each `version bump` PR → one release per package with pending changesets                                     | Specified by the release engineer; multiple changesets become one bump per package                            |
-| TBD  | Hotfixes branch from `main` as `release/hotfix-<slug>`, PR directly to `main` with `[hotfix]` label          | Bypass the staging queue for urgent fixes                                                                     |
-| TBD  | The release workflow detects changesets in the merge commit diff before publishing                           | A `version bump` PR with no changesets is a no-op                                                             |
-| TBD  | The tag points at the version bump commit, not at the cherry-pick merge commit                               | Fixes the `@deessejs/errors@1.1.1` tag drift                                                                  |
-| TBD  | Add a CI lint `ci.yml` that requires `.changeset/*.md` on every PR to `staging` (unless exempted)            | Force the contract; reduce release-day surprises                                                              |
-| TBD  | The CI lint does NOT run on PRs to `main` (those are cherry-picks or hotfixes)                               | Avoid false positives on rebase commits                                                                       |
-| TBD  | Archive `dev`                                                                                                | `dev` is unused in the current flow                                                                           |
-| TBD  | Update `CLAUDE.md` and `CONTRIBUTING.md` to describe the actual branching model and the `version bump` label | End the documentation drift                                                                                   |
+| Date | Decision                                                                                            | Rationale                                                                                                           |
+| ---- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| TBD  | Keep Changesets; do not migrate to `release-please`                                                 | Tool is fine; the issues are configuration and branch drift                                                         |
+| TBD  | `staging` is the integration branch; `main` is release-only                                         | Matches the actual release engineer's workflow                                                                      |
+| TBD  | `feature/*` → `staging` via PR; `staging` → `main` via cherry-pick PR                               | Specified by the release engineer; this plan adopts it                                                              |
+| TBD  | Release workflow fires on every PR merged to `main` (no label required)                             | Simplified: the changeset detection step is the only condition. Removes the cognitive load of remembering to label. |
+| TBD  | Release workflow also accepts `workflow_dispatch` for hotfixes, dry runs, selective re-publishes    | Operational escape hatch                                                                                            |
+| TBD  | Each merge to `main` with changesets → one release per package                                      | Specified by the release engineer; multiple changesets become one bump per package                                  |
+| TBD  | Hotfixes branch from `main` as `release/hotfix-<slug>`, PR directly to `main` with `[hotfix]` label | Bypass the staging queue for urgent fixes                                                                           |
+| TBD  | The release workflow detects changesets in the merge commit diff before publishing                  | A merge without changesets is a no-op (no empty releases)                                                           |
+| TBD  | The tag points at the version bump commit, not at the cherry-pick merge commit                      | Fixes the `@deessejs/errors@1.1.1` tag drift                                                                        |
+| TBD  | Add a CI lint `ci.yml` that requires `.changeset/*.md` on every PR to `staging` (unless exempted)   | Force the contract; reduce release-day surprises                                                                    |
+| TBD  | The CI lint does NOT run on PRs to `main` (those are cherry-picks or hotfixes)                      | Avoid false positives on rebase commits                                                                             |
+| TBD  | Archive `dev`                                                                                       | `dev` is unused in the current flow                                                                                 |
+| TBD  | Update `CLAUDE.md` and `CONTRIBUTING.md` to describe the actual branching model                     | End the documentation drift                                                                                         |
