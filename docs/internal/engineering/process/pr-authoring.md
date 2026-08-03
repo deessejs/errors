@@ -2,7 +2,7 @@
 
 **What:** Standards for the description and body of a pull request opened against `@deessejs/errors`. Companion to `implementing-an-issue.md` (which covers the work itself) and `releasing-a-new-version.md` (which covers the release flow).
 
-**Why it matters:** A PR is the contract you sign with the reviewer and the release engineer. The diff shows the change, but only the body answers the questions a reviewer asks first: *what changed, why, is it safe, how do I use it*. Standardizing the body raises the floor without slowing anyone down.
+**Why it matters:** A PR is the contract you sign with the reviewer and the release engineer. The diff shows the change, but only the body answers the questions a reviewer asks first: _what changed, why, is it safe, how do I use it_. Standardizing the body raises the floor without slowing anyone down.
 
 ## Roles
 
@@ -111,15 +111,15 @@ If your PR has zero risk, write "Low. This change is purely additive and existin
 
 Title format: `<type>(<scope>): <subject>`.
 
-| Type | Use for |
-| ---- | ------- |
-| `feat` | new capability |
-| `fix` | bug fix |
-| `chore` | non-functional maintenance |
-| `ci` | GitHub Actions workflows |
-| `docs` | documentation under `docs/` |
+| Type       | Use for                                      |
+| ---------- | -------------------------------------------- |
+| `feat`     | new capability                               |
+| `fix`      | bug fix                                      |
+| `chore`    | non-functional maintenance                   |
+| `ci`       | GitHub Actions workflows                     |
+| `docs`     | documentation under `docs/`                  |
 | `refactor` | internal restructuring, no public-API change |
-| `test` | tests only |
+| `test`     | tests only                                   |
 
 The scope is the area affected (`errors`, `release`, `cli`). If unsure, omit — `feat(errors): ...` is fine, `feat: ...` is fine too.
 
@@ -184,8 +184,8 @@ const err = AppError();
 After:
 \`\`\`typescript
 const err = AppError()
-  .addNote("Attempt 1 failed")
-  .addNote("Retrying...");
+.addNote("Attempt 1 failed")
+.addNote("Retrying...");
 \`\`\`
 
 ## Verified locally

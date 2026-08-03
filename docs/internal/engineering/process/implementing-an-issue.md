@@ -62,13 +62,13 @@ git checkout -b <prefix>/<slug>
 
 Prefixes used in this repo, observed in `git log --oneline`:
 
-| Prefix | When | Examples |
-| ------ | ---- | -------- |
-| `feat/` | new feature or capability | `feat/extract-async-errors` |
-| `fix/` | bug fix | `fix/from-method-no-cause` |
-| `chore/` | non-functional maintenance (deps, scripts, tooling) | `chore/upgrade-pnpm` |
-| `ci/` | GitHub Actions workflows and CI logic | `ci/release-workflow-rewrite` |
-| `docs/` | documentation under `docs/` | `docs/release-process` |
+| Prefix   | When                                                | Examples                      |
+| -------- | --------------------------------------------------- | ----------------------------- |
+| `feat/`  | new feature or capability                           | `feat/extract-async-errors`   |
+| `fix/`   | bug fix                                             | `fix/from-method-no-cause`    |
+| `chore/` | non-functional maintenance (deps, scripts, tooling) | `chore/upgrade-pnpm`          |
+| `ci/`    | GitHub Actions workflows and CI logic               | `ci/release-workflow-rewrite` |
+| `docs/`  | documentation under `docs/`                         | `docs/release-process`        |
 
 Branch names are reviewed in the PR. Keep them short and indicative of intent, not of an issue number. `feat/extract-async-errors` reads better than `fix-1234`.
 
