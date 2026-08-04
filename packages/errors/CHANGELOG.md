@@ -1,5 +1,11 @@
 # @deessejs/errors
 
+## 1.3.2
+
+### Patch Changes
+
+- 64eb926: Release @deessejs/errors@1.3.1 (post-merge changeset to drive release workflow)
+
 ## 1.3.1
 
 ### Patch Changes
