@@ -92,7 +92,7 @@ jobs:
           NPM_CONFIG_PROVENANCE: 'true'
         run: |
           if [ -n "${{ inputs.packages }}" ]; then
-            pnpm changeset publish --packages=$(echo "${{ inputs.packages }}" | tr ',' ' ')
+            pnpm changeset publish
           else
             pnpm changeset publish
           fi
