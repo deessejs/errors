@@ -86,6 +86,46 @@ describe('error() factory function', () => {
     });
   });
 
+  describe('.addNote()', () => {
+    it('should attach a single note to a fresh instance', () => {
+      const AppError = error({ name: 'AppError' });
+      const instance = AppError();
+
+      const returned = instance.addNote('first attempt failed');
+
+      expect(returned).toBe(instance);
+      expect(instance.notes).toEqual(['first attempt failed']);
+    });
+
+    it('should append multiple notes in order', () => {
+      const AppError = error({ name: 'AppError' });
+      const instance = AppError()
+        .addNote('Attempt 1 failed')
+        .addNote('Retrying...')
+        .addNote('Attempt 2 failed');
+
+      expect(instance.notes).toEqual(['Attempt 1 failed', 'Retrying...', 'Attempt 2 failed']);
+    });
+
+    it('should preserve notes through .from() chaining', () => {
+      const AppError = error({ name: 'AppError' });
+      const cause = new Error('underlying failure');
+      const instance = AppError().addNote('context A').from(cause).addNote('context B');
+
+      expect(instance.notes).toEqual(['context A', 'context B']);
+      expect(instance.cause).toBe(cause);
+    });
+
+    it('should isolate notes between sibling instances', () => {
+      const AppError = error({ name: 'AppError' });
+      const a = AppError().addNote('only on a');
+      const b = AppError();
+
+      expect(a.notes).toEqual(['only on a']);
+      expect(b.notes).toEqual([]);
+    });
+  });
+
   describe('inherits option', () => {
     it('should support single inheritance', () => {
       const AppError = error({ name: 'AppError' });
