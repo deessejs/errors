@@ -182,6 +182,12 @@ Before submitting a PR:
 2. Add a `.changeset/<topic>.md` if the change is user-facing (patch / minor / major).
 3. Update `docs/internal/product/README.md` if the API surface changes.
 
+
+## Acknowledgements
+
+The README layout and monorepo tooling for this project are based on the [deessejs/package-template](https://github.com/deessejs/package-template). The shipped README borrows its structure from the [deessejs/fp README](https://github.com/deessejs/fp), adapted for the @deessejs/errors API surface.
+
+
 ## License
 
 [MIT](./LICENSE). See the LICENSE file for details.
