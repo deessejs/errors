@@ -173,7 +173,7 @@ class ArgsValidationError extends Error
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | source | string | Name of the originating factory |
-| issues | ReadonlyArray<{ message: string; path?: ReadonlyArray<PropertyKey> }> | Read-only array of validator issues |
+| issues | ReadonlyArray&lt;StandardSchemaV1.Issue&gt; | Read-only array of validator issues (per Standard Schema spec) |
 | vendor | string | Vendor identifier (e.g. zod, valibot, arktype) |
 
 ### Instance properties
@@ -181,7 +181,7 @@ class ArgsValidationError extends Error
 | Property | Type | Description |
 |----------|------|-------------|
 | source | string | The originating factory name |
-| issues | ReadonlyArray<{ message: string; path?: ReadonlyArray<PropertyKey> }> | Validator issues |
+| issues | ReadonlyArray&lt;StandardSchemaV1.Issue&gt; | Validator issues |
 | vendor | string | Vendor identifier |
 
 ### Message format
@@ -229,7 +229,7 @@ The type of object returned by error factories. It extends the native Error type
 | notes | string[] | Additional notes (PEP 678) |
 | cause | Error or null | Direct cause of this error |
 | causes | Error[] | Full cause chain |
-| context | Record<string, unknown> or null | Injected context data |
+| context | Record&lt;string, unknown&gt; or null | Injected context data |
 | inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error factories |
 
 ### Methods
