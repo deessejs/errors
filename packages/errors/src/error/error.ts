@@ -6,10 +6,7 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type {
-  ErrorFactory,
-  ErrorInstance,
-} from './types.js';
+import type { ErrorFactory, ErrorInstance } from './types.js';
 import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
@@ -52,7 +49,8 @@ const FACTORY_SYMBOL = Symbol.for('@deessejs/errors/factory');
  */
 const warnedLegacyCallSites = new Set<string>();
 function warnLegacy(callSite: string): void {
-  const legacyGate = (process as { env?: Record<string, string | undefined> } | undefined)?.env?.DEESSEJS_ERRORS_LEGACY_TEMPLATES;
+  const legacyGate = (process as { env?: Record<string, string | undefined> } | undefined)?.env
+    ?.DEESSEJS_ERRORS_LEGACY_TEMPLATES;
   if (legacyGate === '1') return;
   if (warnedLegacyCallSites.has(callSite)) return;
   warnedLegacyCallSites.add(callSite);
@@ -60,7 +58,7 @@ function warnLegacy(callSite: string): void {
     `[@deessejs/errors] Legacy string-template form in \`error({...})\` is deprecated and will be removed in 2.0.0. ` +
       `Migrate to \`fields: standardSchema + message: (data) => string\`. ` +
       `See https://github.com/deessejs/errors/blob/main/docs/internal/engineering/rfcs/0001-standard-schema-fields.md. ` +
-      `(Site: ${callSite})`,
+      `(Site: ${callSite})`
   );
 }
 
@@ -79,10 +77,8 @@ function warnLegacy(callSite: string): void {
  */
 function runSchema(
   schema: StandardSchemaV1,
-  input: unknown,
-):
-  | { ok: true; value: unknown }
-  | { ok: false; issues: ReadonlyArray<unknown> } {
+  input: unknown
+): { ok: true; value: unknown } | { ok: false; issues: ReadonlyArray<unknown> } {
   const handle = schema;
   const result = handle['~standard'].validate(input) as unknown;
   if (result && typeof (result as Promise<unknown>).then === 'function') {
@@ -90,7 +86,7 @@ function runSchema(
       `Async schemas are not supported in \`error({...})\`. ` +
         `Use \`schema\` directly (await) before instantiating.`,
       [{ message: 'Async validation not supported in error()' }],
-      handle['~standard'].vendor ?? 'unknown',
+      handle['~standard'].vendor ?? 'unknown'
     );
   }
   const r = result as { value?: unknown; issues?: unknown };
@@ -146,9 +142,7 @@ export class ArgsValidationError extends Error {
   public readonly issues: ReadonlyArray<unknown>;
   /** Internal constructor, but exported as a class so consumers can `instanceof`. */
   public constructor(source: string, issues: ReadonlyArray<unknown>, vendor: string) {
-    super(
-      `Argument validation failed for "${source}": ${JSON.stringify(issues, null, 2)}`,
-    );
+    super(`Argument validation failed for "${source}": ${JSON.stringify(issues, null, 2)}`);
     this.name = 'ArgsValidationError';
     this.source = source;
     this.issues = issues;
@@ -245,7 +239,7 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
         throw new ArgsValidationError(
           name,
           result.issues as ReadonlyArray<unknown>,
-          fields['~standard'].vendor,
+          fields['~standard'].vendor
         );
       }
       fieldsData = (result.value as Record<string, unknown>) ?? {};

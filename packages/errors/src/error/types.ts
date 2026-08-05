@@ -21,9 +21,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
  * // T === { id: string }
  * ```
  */
-export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, infer O>
-  ? O
-  : never;
+export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never;
 
 /**
  * Core properties present on every error instance.
@@ -117,7 +115,10 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
  * Only enabled when both `fields` and a function-form `message` are supplied.
  * The legacy config (no `fields`, string `message`) lives in `LegacyErrorConfig`.
  */
-export type StandardErrorConfig<S extends StandardSchemaV1, M extends (data: InferStandardSchemaOutput<S>) => string> = {
+export type StandardErrorConfig<
+  S extends StandardSchemaV1,
+  M extends (data: InferStandardSchemaOutput<S>) => string,
+> = {
   /** Error name identifier */
   name: string;
   /** Standard Schema field definitions (zod, valibot, arktype, etc.) */
@@ -156,5 +157,8 @@ export type LegacyErrorConfig = {
  *   a deprecation warning; removed in 2.0.0.
  */
 export type ErrorConfig =
-  | StandardErrorConfig<StandardSchemaV1, (data: InferStandardSchemaOutput<StandardSchemaV1>) => string>
+  | StandardErrorConfig<
+      StandardSchemaV1,
+      (data: InferStandardSchemaOutput<StandardSchemaV1>) => string
+    >
   | LegacyErrorConfig;

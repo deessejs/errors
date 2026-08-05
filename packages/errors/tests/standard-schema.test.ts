@@ -15,7 +15,7 @@ import type { StandardSchemaV1 } from '../src/index.js';
 // `safeParse` shape: returns either `{ value }` or `{ issues }`.
 const schema = <T>(
   predicate: (input: unknown) => input is T,
-  validator: string = 'mock',
+  validator: string = 'mock'
 ): StandardSchemaV1 => ({
   '~standard': {
     version: 1,
@@ -82,7 +82,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     it('renders the message from the function', () => {
       const Fields = schema<{ name: string }>(
         (v): v is { name: string } =>
-          typeof v === 'object' && v !== null && typeof (v as { name: unknown }).name === 'string',
+          typeof v === 'object' && v !== null && typeof (v as { name: unknown }).name === 'string'
       );
       const GreetingError = error({
         name: 'GreetingError',
@@ -97,7 +97,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     it('exposes the schema on the factory', () => {
       const Fields = schema<{ x: number }>(
         (v): v is { x: number } =>
-          typeof v === 'object' && v !== null && typeof (v as { x: unknown }).x === 'number',
+          typeof v === 'object' && v !== null && typeof (v as { x: unknown }).x === 'number'
       );
       const E = error({
         name: 'E',
@@ -110,10 +110,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
 
   describe('standard form with a failing schema', () => {
     it('throws ArgsValidationError on a bad input', () => {
-      const Fields = schema<{ ok: true }>(
-        (): v is { ok: true } => false,
-        'test-validator',
-      );
+      const Fields = schema<{ ok: true }>((): v is { ok: true } => false, 'test-validator');
       const E = error({
         name: 'BadInputError',
         fields: Fields,
@@ -123,9 +120,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     });
 
     it('exposes the source name and issues on the thrown error', () => {
-      const Fields = schema<{ ok: true }>(
-        (): v is { ok: true } => false,
-      );
+      const Fields = schema<{ ok: true }>((): v is { ok: true } => false);
       const E = error({
         name: 'BadInputError',
         fields: Fields,
@@ -144,10 +139,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     });
 
     it('exposes the validator vendor', () => {
-      const Fields = schema<{ ok: true }>(
-        (): v is { ok: true } => false,
-        'arcane-vendor',
-      );
+      const Fields = schema<{ ok: true }>((): v is { ok: true } => false, 'arcane-vendor');
       const E = error({
         name: 'V',
         fields: Fields,
@@ -202,7 +194,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
       // the legacy path so introspection tools still work.
       const Fields = schema<{ name: string }>(
         (v): v is { name: string } =>
-          typeof v === 'object' && v !== null && typeof (v as { name: unknown }).name === 'string',
+          typeof v === 'object' && v !== null && typeof (v as { name: unknown }).name === 'string'
       );
       const E = error({
         name: 'MixedError',
