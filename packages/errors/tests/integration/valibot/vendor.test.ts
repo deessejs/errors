@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import { ArgsValidationError, error } from "../../src/error/error.js";
+import { ArgsValidationError, error } from "../../../src/error/error.js";
 
 describe("valibot 1", () => {
   it("renders the message on a passing input", () => {

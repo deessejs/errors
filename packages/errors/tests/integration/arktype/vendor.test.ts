@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 import { type } from "@ark/type";
-import { ArgsValidationError, error } from "../../src/error/error.js";
+import { ArgsValidationError, error } from "../../../src/error/error.js";
 
 describe("arktype 2", () => {
   it("renders the message on a passing input", () => {
