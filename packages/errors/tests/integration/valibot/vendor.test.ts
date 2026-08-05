@@ -6,40 +6,39 @@
  * through error().
  */
 
-import { describe, it, expect } from "vitest";
-import * as v from "valibot";
-import { ArgsValidationError, error } from "../../../src/error/error.js";
+import { describe, it, expect } from 'vitest';
+import * as v from 'valibot';
+import { ArgsValidationError, error } from '../../../src/error/error.js';
 
-describe("valibot 1", () => {
-  it("renders the message on a passing input", () => {
+describe('valibot 1', () => {
+  it('renders the message on a passing input', () => {
     const E = error({
-      name: "ValibotError",
+      name: 'ValibotError',
       fields: v.object({
-        tag: v.picklist(["info", "warn", "error"]),
+        tag: v.picklist(['info', 'warn', 'error']),
         message: v.string(),
       }),
-      message: (data: { tag: string; message: string }) =>
-        `[${data.tag}] ${data.message}`,
+      message: (data: { tag: string; message: string }) => `[${data.tag}] ${data.message}`,
     });
-    const instance = E({ tag: "info", message: "hello" });
-    expect(instance.message).toBe("[info] hello");
-    expect(instance.fields).toEqual({ tag: "info", message: "hello" });
+    const instance = E({ tag: 'info', message: 'hello' });
+    expect(instance.message).toBe('[info] hello');
+    expect(instance.fields).toEqual({ tag: 'info', message: 'hello' });
   });
 
-  it("throws ArgsValidationError on a failing input", () => {
+  it('throws ArgsValidationError on a failing input', () => {
     const E = error({
-      name: "ValibotError",
+      name: 'ValibotError',
       fields: v.object({
-        tag: v.picklist(["info", "warn", "error"]),
+        tag: v.picklist(['info', 'warn', 'error']),
       }),
       message: (data: { tag: string }) => data.tag,
     });
-    expect(() => E({ tag: "weird" })).toThrow(ArgsValidationError);
+    expect(() => E({ tag: 'weird' })).toThrow(ArgsValidationError);
   });
 
-  it("exposes the issues and vendor on failure", () => {
+  it('exposes the issues and vendor on failure', () => {
     const E = error({
-      name: "ValibotIssue",
+      name: 'ValibotIssue',
       fields: v.object({
         count: v.pipe(v.number(), v.minValue(0)),
       }),
@@ -53,7 +52,7 @@ describe("valibot 1", () => {
     }
     expect(caught).toBeInstanceOf(ArgsValidationError);
     const ae = caught as ArgsValidationError;
-    expect(ae.vendor).toBe("valibot");
+    expect(ae.vendor).toBe('valibot');
     expect(ae.issues.length).toBeGreaterThan(0);
   });
 });

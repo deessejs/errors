@@ -6,46 +6,43 @@
  * through error().
  */
 
-import { describe, it, expect } from "vitest";
-import { z } from "zod";
-import { ArgsValidationError, error } from "../../../src/error/error.js";
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import { ArgsValidationError, error } from '../../../src/error/error.js';
 
-describe("zod 4", () => {
-  it("renders the message on a passing input", () => {
+describe('zod 4', () => {
+  it('renders the message on a passing input', () => {
     const E = error({
-      name: "ZodValidationError",
+      name: 'ZodValidationError',
       fields: z.object({
         email: z.string().email(),
         age: z.number().int().min(0),
       }),
-      message: (data: { email: string; age: number }) =>
-        `Field "${data.email}" age ${data.age}`,
+      message: (data: { email: string; age: number }) => `Field "${data.email}" age ${data.age}`,
     });
-    const instance = E({ email: "jane@example.com", age: 30 });
+    const instance = E({ email: 'jane@example.com', age: 30 });
     expect(instance.message).toBe('Field "jane@example.com" age 30');
     expect(instance.fields).toEqual({
-      email: "jane@example.com",
+      email: 'jane@example.com',
       age: 30,
     });
-    expect(instance.name).toBe("ZodValidationError");
+    expect(instance.name).toBe('ZodValidationError');
   });
 
-  it("throws ArgsValidationError on a failing input", () => {
+  it('throws ArgsValidationError on a failing input', () => {
     const E = error({
-      name: "ZodValidationError",
+      name: 'ZodValidationError',
       fields: z.object({
         email: z.string().email(),
       }),
       message: (data: { email: string }) => `Field "${data.email}"`,
     });
-    expect(() => E({ email: "not-an-email" })).toThrow(
-      ArgsValidationError,
-    );
+    expect(() => E({ email: 'not-an-email' })).toThrow(ArgsValidationError);
   });
 
-  it("exposes the issues and vendor on failure", () => {
+  it('exposes the issues and vendor on failure', () => {
     const E = error({
-      name: "ZodError",
+      name: 'ZodError',
       fields: z.object({
         email: z.string().email(),
       }),
@@ -53,27 +50,27 @@ describe("zod 4", () => {
     });
     let caught: unknown = null;
     try {
-      E({ email: "bogus" });
+      E({ email: 'bogus' });
     } catch (err) {
       caught = err;
     }
     expect(caught).toBeInstanceOf(ArgsValidationError);
     const ae = caught as ArgsValidationError;
-    expect(ae.vendor).toBe("zod");
+    expect(ae.vendor).toBe('zod');
     expect(ae.issues.length).toBeGreaterThan(0);
-    expect(ae.source).toBe("ZodError");
+    expect(ae.source).toBe('ZodError');
   });
 
-  it("preserves transforms in the output type", () => {
+  it('preserves transforms in the output type', () => {
     const E = error({
-      name: "ZodTransform",
+      name: 'ZodTransform',
       fields: z.object({
         value: z.coerce.number(),
       }),
       message: (data: { value: number }) => String(data.value),
     });
-    const instance = E({ value: "42" });
-    expect(typeof instance.fields.value).toBe("number");
+    const instance = E({ value: '42' });
+    expect(typeof instance.fields.value).toBe('number');
     expect(instance.fields.value).toBe(42);
   });
 });
