@@ -3,57 +3,62 @@ title: API Reference
 description: Complete API reference for all exports from @deessejs/errors.
 ---
 
-This page documents all public exports from @deessejs/errors. Use this as a comprehensive reference for the library's API.
+This page documents all public exports from @deessejs/errors.
 
 ## error()
 
 Creates an error factory function for defining typed, structured errors.
 
-```ts title="title="${f%.mdx}.ts""
-const errorFactory = error<T>(config)
+```ts title="factory.ts"
+const errorFactory = error<TFields>(config)
 ```
 
 ### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `config.name` | `string` | Error name identifier (required) |
-| `config.message` | `string` | Message template with `{field}` placeholders |
-| `config.fields` | `StandardSchemaV1` | Field schema for validation (Zod, Valibot, etc.) |
-| `config.inherits` | `ErrorFactory \| ErrorFactory[]` | Parent error(s) to inherit from |
+| config.name | string | Error name identifier (required) |
+| config.message | string or function | Legacy template, or a function (data) => string taking the validated fields |
+| config.fields | StandardSchemaV1 | Field validation schema (Zod, Valibot, ArkType, etc.) |
+| config.inherits | ErrorFactory or ErrorFactory[] | Parent error(s) to inherit from |
+
+When fields is supplied, the input is validated against the schema at every call. Invalid inputs throw an ArgsValidationError. When message is a function, it receives the parsed (post-transform) data as its argument.
 
 ### Returns
 
-An `ErrorFactory` function that creates error instances. The factory has these properties:
+An ErrorFactory function that creates error instances. The factory has these properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `name` | `string` | The error name |
-| `inherits` | `ErrorFactory \| ErrorFactory[] \| undefined` | Parent error types |
-| `schema` | `StandardSchemaV1 \| undefined` | Field validation schema |
-| `rawMessage` | `string \| undefined` | Original message template |
+| name | string | The error name |
+| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error types |
+| fields | StandardSchemaV1 or undefined | The validation schema (exposed via the factory) |
+| rawMessage | string or undefined | Original message template, only set when message is a string |
 
 ### Example
 
-```ts title="title="${f%.mdx}.ts""
-import { error } from '@deessejs/errors';
+```ts title="factory.ts"
+import { z } from "zod";
+import { error } from "@deessejs/errors";
 
-const ValidationError = error<{ field: string }>({
-  name: 'ValidationError',
-  message: 'Field "{field}" is invalid',
+const ValidationError = error({
+  name: "ValidationError",
+  fields: z.object({ field: z.string() }),
+  message: (data) => 'Field "' + data.field + '" is invalid',
   inherits: AppError,
 });
 
-const err = ValidationError({ field: 'email' });
+const err = ValidationError({ field: "email" });
 ```
+
 
 ---
 
 ## raise()
 
-Throws an error instance. This is the primary mechanism for throwing errors in @deessejs/errors.
+Throws an error instance. The primary mechanism for throwing errors in @deessejs/errors.
 
-```ts title="title="${f%.mdx}.ts""
+```ts title="raise.ts"
 raise(error: ErrorInstance): never
 ```
 
@@ -61,18 +66,18 @@ raise(error: ErrorInstance): never
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `error` | `ErrorInstance` | The error to throw |
+| error | ErrorInstance | The error to throw |
 
 ### Returns
 
-`never` — This function always throws.
+never - this function always throws.
 
 ### Example
 
-```ts title="title="${f%.mdx}.ts""
-import { error, raise } from '@deessejs/errors';
+```ts title="raise.ts"
+import { error, raise } from "@deessejs/errors";
 
-const ValidationError = error({ name: 'ValidationError' });
+const ValidationError = error({ name: "ValidationError" });
 
 raise(ValidationError({}));
 ```
@@ -81,47 +86,51 @@ raise(ValidationError({}));
 
 ## is()
 
-Type guard function to check if an error is an instance of a specific error type.
+Type guard function to check if an error is an instance of a specific error type. Supports single and multiple inheritance hierarchies.
 
-```ts title="title="${f%.mdx}.ts""
-const result = is(error, ErrorType)
+```ts title="is.ts"
+const result = is(error: unknown, ErrorType): error is ErrorInstance
 ```
 
 ### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `error` | `unknown` | The error to check |
-| `ErrorType` | `ErrorFactory \| ErrorClass` | The error type to check against |
+| error | unknown | The error to check |
+| ErrorType | ErrorFactory or ErrorClass | The error type to check against |
 
 ### Returns
 
-`boolean` — `true` if the error matches or inherits from the type.
+boolean - true if the error matches or inherits from the type. Narrows the input type for TypeScript.
 
 ### Example
 
-```ts title="title="${f%.mdx}.ts""
-import { error, is } from '@deessejs/errors';
+```ts title="is.ts"
+import { error, is } from "@deessejs/errors";
 
-const AppError = error({ name: 'AppError' });
+const AppError = error({ name: "AppError" });
 const ValidationError = error({
-  name: 'ValidationError',
+  name: "ValidationError",
   inherits: AppError,
 });
 
 const err = ValidationError({});
 
-is(err, ValidationError); // true
-is(err, AppError); // true (through inheritance)
+if (is(err, ValidationError)) {
+  console.log("ValidationError matched");
+}
+if (is(err, AppError)) {
+  console.log("AppError matched via inheritance");
+}
 ```
 
 ---
 
 ## causes()
 
-Returns all causes in an error chain.
+Returns all causes in an error chain, ordered newest to oldest.
 
-```ts title="title="${f%.mdx}.ts""
+```ts title="causes.ts"
 const chain = causes(error: unknown): Error[]
 ```
 
@@ -129,50 +138,106 @@ const chain = causes(error: unknown): Error[]
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `error` | `unknown` | The error to get causes from |
+| error | unknown | The error to get causes from |
 
 ### Returns
 
-`Error[]` — Array of errors in the cause chain, ordered newest to oldest. Returns an empty array for null, undefined, or errors without causes.
+Error[] - array of errors in the cause chain. Returns an empty array for null, undefined, or errors without causes.
 
 ### Example
 
-```ts title="title="${f%.mdx}.ts""
-import { error, causes } from '@deessejs/errors';
+```ts title="causes.ts"
+import { error, causes } from "@deessejs/errors";
 
-const AppError = error({ name: 'AppError' });
+const AppError = error({ name: "AppError" });
 const appErr = AppError({});
-appErr.from(new Error('Original error'));
+appErr.from(new Error("Original error"));
 
 const chain = causes(appErr);
-console.log(chain.length); // 1
+console.log(chain.length);
+```
+
+
+---
+
+## ArgsValidationError
+
+Thrown when input data fails a Standard Schema validator attached to fields. The error carries the original validator failure information, branded as an @deessejs/errors instance.
+
+```ts title="args-validation.ts"
+class ArgsValidationError extends Error
+```
+
+### Constructor
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| source | string | Name of the originating factory |
+| issues | ReadonlyArray<{ message: string; path?: ReadonlyArray<PropertyKey> }> | Read-only array of validator issues |
+| vendor | string | Vendor identifier (e.g. zod, valibot, arktype) |
+
+### Instance properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| source | string | The originating factory name |
+| issues | ReadonlyArray<{ message: string; path?: ReadonlyArray<PropertyKey> }> | Validator issues |
+| vendor | string | Vendor identifier |
+
+### Message format
+
+```
+Argument validation failed for "<source>": see .issues
+```
+
+### Example
+
+```ts title="args-validation.ts"
+import { z } from "zod";
+import { error, ArgsValidationError } from "@deessejs/errors";
+
+const ValidationError = error({
+  name: "ValidationError",
+  fields: z.object({ field: z.string().min(1) }),
+  message: (data) => "Field " + data.field,
+});
+
+try {
+  ValidationError({ field: "" });
+} catch (err) {
+  if (err instanceof ArgsValidationError) {
+    console.log(err.vendor);
+    console.log(err.issues);
+  }
+}
 ```
 
 ---
 
 ## ErrorInstance
 
-The type of object returned by error factories. It extends the native `Error` type.
+The type of object returned by error factories. It extends the native Error type.
 
 ### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `name` | `string` | Error name identifier |
-| `message` | `string` | Human-readable error message |
-| `stack` | `string` | Stack trace string |
-| `fields` | `T` | User-defined fields |
-| `notes` | `string[]` | Additional notes |
-| `cause` | `Error \| null` | Direct cause of this error |
-| `causes` | `Error[]` | Full cause chain |
-| `context` | `Record<string, unknown> \| null` | Injected context data |
-| `inherits` | `ErrorFactory \| ErrorFactory[] \| undefined` | Parent error factories |
+| name | string | Error name identifier |
+| message | string | Human-readable error message |
+| stack | string | Stack trace string |
+| fields | T | Validated fields |
+| notes | string[] | Additional notes (PEP 678) |
+| cause | Error or null | Direct cause of this error |
+| causes | Error[] | Full cause chain |
+| context | Record<string, unknown> or null | Injected context data |
+| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error factories |
 
 ### Methods
 
 | Method | Description |
 |--------|-------------|
-| `from(cause: Error)` | Chains a cause error to this error |
+| from(cause: Error or ErrorInstance) | Chains a cause error to this error. Returns this for chaining. |
+| addNote(note: string) | Appends a runtime context note (PEP 678). Returns this for chaining. |
 
 ---
 
@@ -187,5 +252,8 @@ The type of object returned by error factories. It extends the native `Error` ty
   </Card>
   <Card title="Exception Chaining" href="/docs/from-method">
     Chain errors with from().
+  </Card>
+  <Card title="Fields and Schema" href="/docs/fields-schema">
+    Field validation with Standard Schema.
   </Card>
 </Cards>

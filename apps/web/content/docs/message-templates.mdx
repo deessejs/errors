@@ -1,162 +1,118 @@
 ---
-title: Message Templates
-description: Use message templates with field placeholders and modifiers in @deessejs/errors.
+title: Message Rendering
+description: Render error messages from validated fields in @deessejs/errors.
 ---
 
-Message templates let you create dynamic error messages that include runtime values. This makes errors more informative and easier to debug, as the message contains specific context about what went wrong.
+When you attach a `fields` schema to an error factory, the message is computed from the **parsed** data, not the raw input. This lets you format fields that have been transformed, validated, or branded by your schema.
 
-## Basic Placeholders
+## Function form (recommended)
 
-Wrap field names in curly braces to create placeholders in your message:
+Pass a function that takes the parsed fields and returns the message. The data you receive is the Standard Schema output, with all transforms already applied:
 
-```ts title="basic.ts"
-import { error } from '@deessejs/errors';
+```ts title="function.ts"
+import { z } from "zod";
+import { error } from "@deessejs/errors";
 
-const ValidationError = error<{ field: string }>({
-  name: 'ValidationError',
-  message: 'Field "{field}" is invalid',
+const ValidationError = error({
+  name: "ValidationError",
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+  }),
+  message: (data) => `Field "${data.field}" is invalid: ${data.reason}`,
 });
 
-const err = ValidationError({ field: 'email' });
-console.log(err.message); // "Field "email" is invalid"
+const err = ValidationError({ field: "email", reason: "invalid format" });
+console.log(err.message); // 'Field "email" is invalid: invalid format'
 ```
 
-The placeholder is replaced with the actual value from the fields object at runtime.
+The function receives the **Standard Schema output** type. After a `z.coerce.number()`, `z.brand()`, or any transform, you see the final shape.
 
-## Multiple Placeholders
+### With Valibot
 
-You can include multiple placeholders in a single message:
+```ts title="valibot.ts"
+import * as v from "valibot";
+import { error } from "@deessejs/errors";
 
-```ts title="multiple.ts"
-import { error } from '@deessejs/errors';
-
-const FormatError = error<{ expected: string; actual: string }>({
-  name: 'FormatError',
-  message: 'Expected {expected}, got {actual}',
+const FormatError = error({
+  name: "FormatError",
+  fields: v.object({
+    expected: v.string(),
+    actual: v.string(),
+  }),
+  message: (data) => `Expected ${data.expected}, got ${data.actual}`,
 });
 
-const err = FormatError({ expected: 'number', actual: 'string' });
+const err = FormatError({ expected: "number", actual: "string" });
 console.log(err.message); // "Expected number, got string"
 ```
 
-Each placeholder is replaced with its corresponding field value.
+### With ArkType
 
-## Modifiers
+```ts title="arktype.ts"
+import { type } from "@ark/type";
+import { error } from "@deessejs/errors";
 
-Modifiers transform the placeholder value before insertion. They follow the field name with a colon.
-
-### Uppercase Modifier
-
-The `:upper` modifier converts the value to uppercase:
-
-```ts title="upper.ts"
-import { error } from '@deessejs/errors';
-
-const UserCreatedError = error<{ userId: string }>({
-  name: 'UserCreatedError',
-  message: 'Created user: {userId:upper}',
+const ApiError = error({
+  name: "ApiError",
+  fields: type({
+    method: "string",
+    endpoint: "string",
+    statusCode: "number",
+  }),
+  message: (data) => `${data.method.toUpperCase()} ${data.endpoint} failed with status ${data.statusCode}`,
 });
-
-const err = UserCreatedError({ userId: 'usr_abc123' });
-console.log(err.message); // "Created user: USR_ABC123"
 ```
 
-This is useful for displaying IDs or codes that should be consistently formatted.
+### Modifiers via the function body
 
-### Lowercase Modifier
+The function form replaces the legacy `:upper` / `:lower` / `:json` modifiers. Implement them inline with the JS string APIs you already know:
 
-The `:lower` modifier converts the value to lowercase:
-
-```ts title="lower.ts"
-import { error } from '@deessejs/errors';
-
-const PathError = error<{ path: string }>({
-  name: 'PathError',
-  message: 'Invalid path: {path:lower}',
+```ts title="modifiers.ts"
+const err = error({
+  name: "UserCreatedError",
+  fields: z.object({ userId: z.string() }),
+  message: (data) => `Created user: ${data.userId.toUpperCase()}`,
 });
-
-const err = PathError({ path: '/USERS/DATA' });
-console.log(err.message); // "Invalid path: /users/data"
 ```
 
-### JSON Modifier
-
-The `:json` modifier serializes complex values to JSON:
+`JSON.stringify` replaces `:json`:
 
 ```ts title="json.ts"
-import { error } from '@deessejs/errors';
-
-const DataError = error<{ data: { id: number; name: string } }>({
-  name: 'DataError',
-  message: 'Invalid data: {data:json}',
+const DataError = error({
+  name: "DataError",
+  fields: z.object({ payload: z.object({ id: z.number(), name: z.string() }) }),
+  message: (data) => `Invalid data: ${JSON.stringify(data.payload)}`,
 });
-
-const err = DataError({ data: { id: 1, name: 'test' } });
-console.log(err.message); // "Invalid data: {"id":1,"name":"test"}"
 ```
 
-The JSON modifier is particularly useful for debugging when you need to see the full value.
+## Legacy: string template
 
-## Combining Modifiers
+The legacy string-template form (`message: "Field {field} is invalid"`) still works in the current major. It is deprecated and will be removed in the next major. New code should prefer the function form above.
 
-Modifiers can be combined with other fields:
-
-```ts title="combined.ts"
-import { error } from '@deessejs/errors';
-
-const ApiError = error<{
-  method: string;
-  endpoint: string;
-  statusCode: number;
-}>({
-  name: 'ApiError',
-  message: '{method:upper} {endpoint} failed with status {statusCode}',
+```ts title="legacy.ts"
+const ValidationError = error({
+  name: "ValidationError",
+  message: "Field {field} is invalid",
 });
 
-const err = ApiError({
-  method: 'get',
-  endpoint: '/api/users',
-  statusCode: 404,
-});
-console.log(err.message); // "GET /api/users failed with status 404"
+const err = ValidationError({ field: "email" });
+console.log(err.message); // "Field email is invalid"
 ```
 
-## Missing Field Values
+Behavior summary:
 
-If a placeholder references a field that wasn't provided, the placeholder is left unchanged in the message:
-
-```ts title="missing.ts"
-import { error } from '@deessejs/errors';
-
-const ValidationError = error<{ field: string }>({
-  name: 'ValidationError',
-  message: 'Field "{field}" is required',
-});
-
-const err = ValidationError({}); // field not provided
-console.log(err.message); // "Field "{field}" is required"
-```
-
-This behavior is intentional — it helps you identify when expected data is missing.
-
-## Best Practices
-
-**Be specific** — Include enough context in the message to understand the error without looking at the code.
-
-**Keep messages readable** — While placeholders add information, don't overload the message with too many values.
-
-**Use modifiers appropriately** — Uppercase for codes and IDs, lowercase for paths, JSON for complex objects.
+- Placeholders without a value are left as-is in the output, making missing data easy to spot.
+- Modifier suffixes `:upper`, `:lower`, `:json` are still parsed and applied on top of the raw input.
+- Schema validation, when supplied, runs before template rendering; failed validation throws `ArgsValidationError`.
 
 ## See Also
 
 <Cards>
-  <Card title="Error Factory" href="/docs/error-factory">
-    Create error types with the error() function.
-  </Card>
   <Card title="Fields and Schema" href="/docs/fields-schema">
-    Define structured fields for errors.
+    Define fields with Standard Schema validators.
   </Card>
-  <Card title="Recipes" href="/docs/recipes">
-    Practical examples of error definitions.
+  <Card title="API Reference" href="/docs/api-reference">
+    Full signature of `error()` and `ArgsValidationError`.
   </Card>
 </Cards>

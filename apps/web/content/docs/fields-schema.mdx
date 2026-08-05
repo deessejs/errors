@@ -3,39 +3,37 @@ title: Fields and Schema
 description: Define structured fields and validation schemas for error types in @deessejs/errors.
 ---
 
-Errors become much more useful when they carry structured data about what went wrong. @deessejs/errors lets you define fields on your error factories and optionally validate them using Standard Schema compatible libraries.
+Errors become much more useful when they carry structured data about what went wrong. @deessejs/errors lets you define fields on your error factories and optionally validate them using any Standard Schema compatible library.
 
 ## Defining Fields
 
 When you create an error factory, you can specify a generic type that defines the shape of the fields object:
 
 ```ts title="basic.ts"
-import { error } from '@deessejs/errors';
+import { error } from "@deessejs/errors";
 
 const ValidationError = error<{
   field: string;
   reason: string;
   value?: unknown;
 }>({
-  name: 'ValidationError',
-  message: 'Validation failed',
+  name: "ValidationError",
+  message: "Validation failed",
 });
 ```
 
 Now when you create an error instance, TypeScript ensures you provide the required fields:
 
 ```ts title="usage.ts"
-// All required fields provided
 const err = ValidationError({
-  field: 'email',
-  reason: 'invalid format',
+  field: "email",
+  reason: "invalid format",
 });
 
-// Optional field omitted (valid)
 const err2 = ValidationError({
-  field: 'email',
-  reason: 'invalid format',
-  value: 'not-an-email',
+  field: "email",
+  reason: "invalid format",
+  value: "not-an-email",
 });
 ```
 
@@ -46,84 +44,92 @@ The fields object is always accessible on the error instance, giving you a consi
 Once an error is caught, you can access its fields to provide meaningful feedback or logging:
 
 ```ts title="access.ts"
-import { error } from '@deessejs/errors';
-import { raise } from '@deessejs/errors';
+import { error, raise } from "@deessejs/errors";
 
 const ValidationError = error<{ field: string; reason: string }>({
-  name: 'ValidationError',
-  message: 'Validation failed',
+  name: "ValidationError",
+  message: "Validation failed",
 });
 
 try {
-  raise(ValidationError({ field: 'email', reason: 'not a valid email address' }));
+  raise(ValidationError({ field: "email", reason: "not a valid email address" }));
 } catch (err) {
-  // TypeScript knows the shape of fields
-  const fields = (err as { fields: { field: string; reason: string } }).fields;
-  console.log(`Error in field "${fields.field}": ${fields.reason}`);
-  // Output: Error in field "email": not a valid email address
+  // TypeScript knows the shape of fields once you narrow via is()
+  if (is(err, ValidationError)) {
+    console.log(`Error in field "${err.fields.field}": ${err.fields.reason}`);
+  }
 }
 ```
 
-For full type inference in catch blocks, use the `is()` function with type narrowing.
+For full type inference in catch blocks, use the [`is()`](/docs/type-checking) function with type narrowing.
 
-## Schema Validation
+## Runtime Validation via Standard Schema
 
-For production applications, you may want to validate field values when errors are created. @deessejs/errors supports Standard Schema, which means you can use any compatible validation library like Zod, Valibot, or ArkType.
+For production-grade error definitions, attach a [Standard Schema](https://standardschema.dev/) validator to `fields`. Any conforming library works — Zod, Valibot, ArkType, and any future implementation.
 
-### Using Zod
+Inputs that don't validate throw an `ArgsValidationError` carrying the vendor name and the failure issues:
 
-```ts title="zod.ts"
-import { z } from 'zod';
-import { error } from '@deessejs/errors';
+```ts title="runtime-validation.ts"
+import { z } from "zod";
+import { ArgsValidationError, error } from "@deessejs/errors";
 
 const ValidationError = error({
-  name: 'ValidationError',
+  name: "ValidationError",
   fields: z.object({
     field: z.string().min(1),
     reason: z.string().min(1),
   }),
+  message: (data) => `Field "${data.field}": ${data.reason}`,
 });
 
-// Valid error creation
-const err = ValidationError({ field: 'email', reason: 'invalid' });
+// Valid input -> rendered message
+const ok = ValidationError({ field: "email", reason: "invalid" });
+console.log(ok.message); // 'Field "email": invalid'
 
-// Invalid creation - throws ZodError
+// Invalid input -> ArgsValidationError
 try {
-  ValidationError({ field: '', reason: 'invalid' });
-} catch (e) {
-  console.log(e instanceof Error); // true
+  ValidationError({ field: "", reason: "invalid" });
+} catch (err) {
+  if (err instanceof ArgsValidationError) {
+    console.log(err.vendor);  // "zod"
+    console.log(err.issues);  // StandardSchemaV1.FailureResult['issues']
+  }
 }
 ```
 
 ### Using Valibot
 
 ```ts title="valibot.ts"
-import { valibot } from 'fumadocs-core/source';
-import { error } from '@deessejs/errors';
+import * as v from "valibot";
+import { error } from "@deessejs/errors";
 
 const ValidationError = error({
-  name: 'ValidationError',
-  fields: valibot({
-    field: 'string',
-    reason: 'string',
+  name: "ValidationError",
+  fields: v.object({
+    field: v.pipe(v.string(), v.minLength(1)),
+    reason: v.pipe(v.string(), v.minLength(1)),
   }),
+  message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 ```
 
 ### Using ArkType
 
 ```ts title="arktype.ts"
-import { error } from '@deessejs/errors';
-import { t } from 'arktype';
+import { type } from "@ark/type";
+import { error } from "@deessejs/errors";
 
 const ValidationError = error({
-  name: 'ValidationError',
-  fields: t.type({
-    field: 'string',
-    reason: 'string',
+  name: "ValidationError",
+  fields: type({
+    field: "string",
+    reason: "string",
   }),
+  message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 ```
+
+> If you don't pass a `message` function, the schema's **output** type is still validated at construction time, but `err.message` will be a JSON dump of the parsed data.
 
 ## Why Use Schema Validation?
 
@@ -135,32 +141,31 @@ Schema validation in error factories provides several benefits:
 
 **Consistent data** — All errors of a given type have the same structure, making logging and monitoring easier.
 
+**Vendor-neutral** — Switch between Zod, Valibot, ArkType, or any future Standard Schema implementation without changing your error definitions.
+
 ## Common Field Patterns
 
 Here are some common patterns for error fields:
 
 ```ts title="patterns.ts"
-// Database errors
 const DatabaseError = error<{
   query: string;
   table?: string;
   code?: string;
-}>({ name: 'DatabaseError' });
+}>({ name: "DatabaseError" });
 
-// API errors
 const ApiError = error<{
   endpoint: string;
   statusCode: number;
   response?: unknown;
-}>({ name: 'ApiError' });
+}>({ name: "ApiError" });
 
-// Validation errors
 const ValidationError = error<{
   field: string;
   reason: string;
   value?: unknown;
   constraints?: Record<string, unknown>;
-}>({ name: 'ValidationError' });
+}>({ name: "ValidationError" });
 ```
 
 Design your fields to capture what's useful for debugging and logging, not just what's required to identify the error.
@@ -170,6 +175,9 @@ Design your fields to capture what's useful for debugging and logging, not just 
 <Cards>
   <Card title="Error Factory" href="/docs/error-factory">
     Create error types with the error() function.
+  </Card>
+  <Card title="API Reference" href="/docs/api-reference">
+    Full surface of `error()` and `ArgsValidationError`.
   </Card>
   <Card title="Recipes" href="/docs/recipes">
     See practical examples of error definitions for common scenarios.
