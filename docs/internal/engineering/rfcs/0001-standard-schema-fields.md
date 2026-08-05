@@ -226,22 +226,15 @@ This document. Reviewer: maintainer only. Merge directly to `main`.
 - `releasing-a-new-version.md` and this RFC's appendices: migration cookbook.
 - `CHANGELOG` via changeset (`minor` because of new API).
 
-### PR 4 — Codemod
-
-Sub-package `packages/errors-codemods/`. jscodeshift transform:
-
-- detects `'@deessejs/errors'` import
-- detects a validator import (zod, valibot, arktype) in the same file
-- rewrites a legacy `error({ name, message: '...' })` call to a `error({ name, fields: ..., message: (data) => ... })` call
-- flags untestable templates (e.g. ternary, function call inside `{}`) for manual review
-
-### PR 5 — Built-in error tree migration
+### PR 4 — Built-in error tree migration (optional)
 
 Apply the new API to the package's own error factories (if any — currently the package does not ship built-in error factories). Document this PR as a "we migrated our own code" reference implementation.
 
-### PR 6 — Removal in 2.0.0
+### PR 5 — Removal in 2.0.0
 
-Major version bump. Delete the legacy template path and the deprecation warning. Update the codemod to also remove `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES` from docs.
+Major version bump. Delete the legacy template path and the deprecation warning. Remove `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES` from docs.
+
+> The previously planned PR 4 (codemod) was removed during review by decision Q3. The migration is now manual via the guide added in PR 3. If a future release shows that the manual migration is too friction-laden, a codemod PR can be reintroduced.
 
 ## 6. Risks revisited
 
@@ -253,7 +246,7 @@ The original issue lists six risks. The ones this RFC explicitly **increases**:
 
 The ones the issue already handles correctly:
 
-- **Breaking change.** Handled by the deprecation window and the codemod.
+- **Breaking change.** Handled by the deprecation window (manual migration; no codemod by decision Q3).
 - **Standard Schema version drift.** Handled by the `^1.0.0` pin in `package.json`.
 - **New validation behavior surface.** Handled by the deprecation window and the documented `ArgsValidationError`.
 
@@ -275,16 +268,39 @@ Everything the issue lists as `Out of scope` stays out:
 | C   | `error()` generic parameter inferred from `StandardSchemaV1`                | C2                       |
 | D   | Validation failure wrapped in `ArgsValidationError`                         | yes                      |
 | E   | Deprecation marker is both JSDoc + runtime warning                          | both                     |
-| F   | Codemod lives in a separate sub-package `packages/errors-codemods/`         | yes, separate            |
+| F   | No codemod for this release (per Q3); migration is manual via the guide     | none                     |
 
 These are the inputs to any PR against the source. If a reviewer disagrees with one of them, that decision is unlocked here, not in code review.
 
-## 9. Open questions for the maintainer
+## 9. Decisions locked by review
 
-- **Q1.** Is the `fields` rename worth a deprecation alias for `schema`, or do we accept the one-time breakage?
-- **Q2.** Should `ArgsValidationError` be exposed as a separate export (`import { ArgsValidationError } from '@deessejs/errors/validation'`) or live in the top-level entry? Top-level is simpler; sub-path is cleaner.
-- **Q3.** For the codemod: do we ship under `@deessejs/errors-codemods` or under an org-wide `@deessejs/codemods` repo so it can migrate other packages later? Org-wide is more ambitious; per-package is faster.
-- **Q4.** Do we deprecate `ErrorFactory.schema` in the same minor as the rest, or wait for 2.0.0? Same minor is safer because it keeps consumers on a single migration path.
+The following Q&A happened during review of this RFC. They are now part of the contract.
+
+### Q1 — Alias de dépréciation pour `ErrorFactory.schema`
+
+**Tranchée :** Cassure unique en 1.4.0.
+
+`ErrorFactory.schema` est supprimé dans la 1.4.0 sans alias `@deprecated` ni période de grâce. Aucun consumer connu dans le repo, dans la doc, ou dans le CHANGELOG. Préserver le doublon pendant deux versions minerait l'intention du refactor. Le search-and-replace `MyError.schema → MyError.fields` est trivial et documenté dans la migration guide.
+
+### Q2 — Emplacement de `ArgsValidationError`
+
+**Tranchée :** Top-level depuis `@deessejs/errors`.
+
+`import { ArgsValidationError } from '@deessejs/errors'`. Cohérent avec l'organisation actuelle où `error`, `raise`, `is`, `causes`, et `StandardSchemaV1` sont déjà exportés depuis `src/index.ts`. Le sub-path `@deessejs/errors/validation` reste une migration future possible sans casser les imports top-level existants.
+
+### Q3 — Codemod de migration
+
+**Tranchée :** Aucun codemod pour cette release.
+
+Le paquet `@deessejs/errors` n'a pas de consumer users-spécifiques connu. La migration vers la nouvelle API se fait par guide dans le CHANGELOG et la doc — search-and-replace manuel, validation Standard Schema à choisir librement par le consumer. Si la friction s'avère trop forte sur des cas réels, un codemod pourra être ajouté dans une release ultérieure, soit per-package (`@deessejs/errors-codemods`) soit org-wide (`@deessejs/codemods`) selon les besoins du moment.
+
+Conséquence : PR 4 (codemod) de la section 5 est supprimé du plan d'implémentation.
+
+### Q4 — Quand supprimer `ErrorFactory.schema` ?
+
+**Tranchée :** En 1.4.0, en même temps que la nouvelle API.
+
+Cohérent avec Q1. Étaler la cassure sur deux minors multiplierait les cycles de release sans bénéfice — le champ `schema` n'est de toute façon utilisé par personne. Étape unique : supprimer `schema` lors du même commit qui introduit la nouvelle API.
 
 ## 10. References
 
