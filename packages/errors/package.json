@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/errors",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Lightweight, type-safe error handling for TypeScript — Python-style exception chaining, hierarchical inheritance, and rich error semantics. Function-based API, ESM-only, designed for first-class interoperability with @deessejs/fp.",
   "homepage": "https://errors.deessejs.com",
   "repository": {
