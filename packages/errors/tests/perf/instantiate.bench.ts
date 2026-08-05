@@ -3,7 +3,7 @@
 
 import { bench, describe } from "vitest";
 import { z } from "zod";
-import { error } from "../src/index.js";
+import { error } from "../../src/index.ts";
 
 const NoFields = error({ name: "NoFields" });
 const WithFields = error({
