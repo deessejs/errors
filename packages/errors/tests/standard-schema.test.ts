@@ -153,19 +153,6 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     });
   });
 
-  describe('legacy deprecation warning', () => {
-    // The legacy form emits a console.warn at instantiation. Stack-frame-based
-    // call-site detection interacts poorly with the vitest stack format, so
-    // we treat this as a manual verification item rather than a unit test.
-    // The presence of the warnLegacy call in error.ts is the source of truth.
-    it('exists in the public-facing API surface (no automated assertion)', () => {
-      // Asserting the call-site collection works mechanically is brittle.
-      // Manual verification: instantiating any legacy error prints exactly
-      // one deprecation line per unique location.
-      expect(true).toBe(true);
-    });
-  });
-
   describe('ArgsValidationError class', () => {
     it('extends Error', () => {
       const e = new ArgsValidationError('X', [{ message: 'oops' }], 'mock');
