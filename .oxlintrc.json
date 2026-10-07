@@ -30,3 +30,4 @@
   },
   "ignorePatterns": ["node_modules/", "dist/", ".next/", ".turbo/", "coverage/", "*.log"]
 }
+
