@@ -33,6 +33,17 @@ For urgent fixes that must skip the staging queue: branch from `main` as `releas
 
 Each merge to `main` that contains at least one `.changeset/*.md` publishes one release per package with pending changesets. Multiple changesets in a single merge become one version bump per affected package (Changesets default behavior). A merge without changesets is a no-op.
 
+### Resync procedure
+
+If `main` ever gets ahead of `staging` (a hotfix merged to main while staging had pending changesets, or a release published out of order), the recovery is:
+
+1. **Merge `main` into `staging`** with `--no-ff` to preserve history. Resolve conflicts in favor of `main` for files that are part of the published release (e.g. `error.ts`, `types.ts`, `package.json`). For consumer-facing files (`index.ts`, `is/index.ts`), align imports/exports to the main version.
+2. **Drop pending changesets in staging that are now obsoleted** by the release on main. A changeset that says "add feature X" when main already has feature X is misleading in the changelog.
+3. **Merge `staging` into `main`** with `--no-ff` to publish the remaining changesets as the next version.
+4. **CI must pass on both branches** before declaring the resync done. Build, Tests, and Type Check are the gates; Lint may fail on pre-existing prettier issues and is not a blocker.
+
+Run `git rev-list --left-right --count origin/main...origin/staging` periodically to catch drift early. A non-zero count in either direction means the branches have diverged.
+
 ## Web Search
 
 When performing web searches, you MUST use the `fresh` CLI tool. Never use other search methods.
