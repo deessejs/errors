@@ -10,17 +10,17 @@ This page documents all public exports from @deessejs/errors.
 Creates an error factory function for defining typed, structured errors.
 
 ```ts title="factory.ts"
-const errorFactory = error<TFields>(config)
+const errorFactory = error<TFields>(config);
 ```
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| config.name | string | Error name identifier (required) |
-| config.message | string or function | Legacy template, or a function (data) => string taking the validated fields |
-| config.fields | StandardSchemaV1 | Field validation schema (Zod, Valibot, ArkType, etc.) |
-| config.inherits | ErrorFactory or ErrorFactory[] | Parent error(s) to inherit from |
+| Parameter       | Type                           | Description                                                                 |
+| --------------- | ------------------------------ | --------------------------------------------------------------------------- |
+| config.name     | string                         | Error name identifier (required)                                            |
+| config.message  | string or function             | Legacy template, or a function (data) => string taking the validated fields |
+| config.fields   | StandardSchemaV1               | Field validation schema (Zod, Valibot, ArkType, etc.)                       |
+| config.inherits | ErrorFactory or ErrorFactory[] | Parent error(s) to inherit from                                             |
 
 When fields is supplied, the input is validated against the schema at every call. Invalid inputs throw an ArgsValidationError. When message is a function, it receives the parsed (post-transform) data as its argument.
 
@@ -28,29 +28,28 @@ When fields is supplied, the input is validated against the schema at every call
 
 An ErrorFactory function that creates error instances. The factory has these properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | The error name |
-| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error types |
-| fields | StandardSchemaV1 or undefined | The validation schema (exposed via the factory) |
-| rawMessage | string or undefined | Original message template, only set when message is a string |
+| Property   | Type                                        | Description                                                  |
+| ---------- | ------------------------------------------- | ------------------------------------------------------------ |
+| name       | string                                      | The error name                                               |
+| inherits   | ErrorFactory or ErrorFactory[] or undefined | Parent error types                                           |
+| fields     | StandardSchemaV1 or undefined               | The validation schema (exposed via the factory)              |
+| rawMessage | string or undefined                         | Original message template, only set when message is a string |
 
 ### Example
 
 ```ts title="factory.ts"
-import { z } from "zod";
-import { error } from "@deessejs/errors";
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({ field: z.string() }),
   message: (data) => 'Field "' + data.field + '" is invalid',
   inherits: AppError,
 });
 
-const err = ValidationError({ field: "email" });
+const err = ValidationError({ field: 'email' });
 ```
-
 
 ---
 
@@ -64,9 +63,9 @@ raise(error: ErrorInstance): never
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| error | ErrorInstance | The error to throw |
+| Parameter | Type          | Description        |
+| --------- | ------------- | ------------------ |
+| error     | ErrorInstance | The error to throw |
 
 ### Returns
 
@@ -75,9 +74,9 @@ never - this function always throws.
 ### Example
 
 ```ts title="raise.ts"
-import { error, raise } from "@deessejs/errors";
+import { error, raise } from '@deessejs/errors';
 
-const ValidationError = error({ name: "ValidationError" });
+const ValidationError = error({ name: 'ValidationError' });
 
 raise(ValidationError({}));
 ```
@@ -94,9 +93,9 @@ const result = is(error: unknown, ErrorType): error is ErrorInstance
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| error | unknown | The error to check |
+| Parameter | Type                       | Description                     |
+| --------- | -------------------------- | ------------------------------- |
+| error     | unknown                    | The error to check              |
 | ErrorType | ErrorFactory or ErrorClass | The error type to check against |
 
 ### Returns
@@ -106,21 +105,21 @@ boolean - true if the error matches or inherits from the type. Narrows the input
 ### Example
 
 ```ts title="is.ts"
-import { error, is } from "@deessejs/errors";
+import { error, is } from '@deessejs/errors';
 
-const AppError = error({ name: "AppError" });
+const AppError = error({ name: 'AppError' });
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   inherits: AppError,
 });
 
 const err = ValidationError({});
 
 if (is(err, ValidationError)) {
-  console.log("ValidationError matched");
+  console.log('ValidationError matched');
 }
 if (is(err, AppError)) {
-  console.log("AppError matched via inheritance");
+  console.log('AppError matched via inheritance');
 }
 ```
 
@@ -136,9 +135,9 @@ const chain = causes(error: unknown): Error[]
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| error | unknown | The error to get causes from |
+| Parameter | Type    | Description                  |
+| --------- | ------- | ---------------------------- |
+| error     | unknown | The error to get causes from |
 
 ### Returns
 
@@ -147,16 +146,15 @@ Error[] - array of errors in the cause chain. Returns an empty array for null, u
 ### Example
 
 ```ts title="causes.ts"
-import { error, causes } from "@deessejs/errors";
+import { error, causes } from '@deessejs/errors';
 
-const AppError = error({ name: "AppError" });
+const AppError = error({ name: 'AppError' });
 const appErr = AppError({});
-appErr.from(new Error("Original error"));
+appErr.from(new Error('Original error'));
 
 const chain = causes(appErr);
 console.log(chain.length);
 ```
-
 
 ---
 
@@ -170,19 +168,19 @@ class ArgsValidationError extends Error
 
 ### Constructor
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| source | string | Name of the originating factory |
-| issues | ReadonlyArray&lt;StandardSchemaV1.Issue&gt; | Read-only array of validator issues (per Standard Schema spec) |
-| vendor | string | Vendor identifier (e.g. zod, valibot, arktype) |
+| Parameter | Type                                        | Description                                                    |
+| --------- | ------------------------------------------- | -------------------------------------------------------------- |
+| source    | string                                      | Name of the originating factory                                |
+| issues    | ReadonlyArray&lt;StandardSchemaV1.Issue&gt; | Read-only array of validator issues (per Standard Schema spec) |
+| vendor    | string                                      | Vendor identifier (e.g. zod, valibot, arktype)                 |
 
 ### Instance properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| source | string | The originating factory name |
-| issues | ReadonlyArray&lt;StandardSchemaV1.Issue&gt; | Validator issues |
-| vendor | string | Vendor identifier |
+| Property | Type                                        | Description                  |
+| -------- | ------------------------------------------- | ---------------------------- |
+| source   | string                                      | The originating factory name |
+| issues   | ReadonlyArray&lt;StandardSchemaV1.Issue&gt; | Validator issues             |
+| vendor   | string                                      | Vendor identifier            |
 
 ### Message format
 
@@ -193,17 +191,17 @@ Argument validation failed for "<source>": see .issues
 ### Example
 
 ```ts title="args-validation.ts"
-import { z } from "zod";
-import { error, ArgsValidationError } from "@deessejs/errors";
+import { z } from 'zod';
+import { error, ArgsValidationError } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({ field: z.string().min(1) }),
-  message: (data) => "Field " + data.field,
+  message: (data) => 'Field ' + data.field,
 });
 
 try {
-  ValidationError({ field: "" });
+  ValidationError({ field: '' });
 } catch (err) {
   if (err instanceof ArgsValidationError) {
     console.log(err.vendor);
@@ -220,24 +218,24 @@ The type of object returned by error factories. It extends the native Error type
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | Error name identifier |
-| message | string | Human-readable error message |
-| stack | string | Stack trace string |
-| fields | T | Validated fields |
-| notes | string[] | Additional notes (PEP 678) |
-| cause | Error or null | Direct cause of this error |
-| causes | Error[] | Full cause chain |
-| context | Record&lt;string, unknown&gt; or null | Injected context data |
-| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error factories |
+| Property | Type                                        | Description                  |
+| -------- | ------------------------------------------- | ---------------------------- |
+| name     | string                                      | Error name identifier        |
+| message  | string                                      | Human-readable error message |
+| stack    | string                                      | Stack trace string           |
+| fields   | T                                           | Validated fields             |
+| notes    | string[]                                    | Additional notes (PEP 678)   |
+| cause    | Error or null                               | Direct cause of this error   |
+| causes   | Error[]                                     | Full cause chain             |
+| context  | Record&lt;string, unknown&gt; or null       | Injected context data        |
+| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error factories       |
 
 ### Methods
 
-| Method | Description |
-|--------|-------------|
-| from(cause: Error or ErrorInstance) | Chains a cause error to this error. Returns this for chaining. |
-| addNote(note: string) | Appends a runtime context note (PEP 678). Returns this for chaining. |
+| Method                              | Description                                                          |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| from(cause: Error or ErrorInstance) | Chains a cause error to this error. Returns this for chaining.       |
+| addNote(note: string)               | Appends a runtime context note (PEP 678). Returns this for chaining. |
 
 ---
 

@@ -1,6 +1,5 @@
-import { source, blogSource } from '@/lib/source';
+import { source, blogSource, getPageImage } from '@/lib/source';
 import { baseUrl } from '@/lib/shared';
-import { getPageImage } from '@/lib/source';
 import type { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {

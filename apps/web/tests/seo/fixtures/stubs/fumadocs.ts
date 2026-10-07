@@ -1,6 +1,6 @@
 // Minimal stub for `fumadocs-core/source` so `src/lib/source.ts` can be
 // imported inside Vitest without booting the full Fumadocs loader.
-//
+
 // The SEO tests only need `source.getPages()` (to enumerate URLs for the
 // sitemap and `llms.txt`) and `source.getPageTree()` (for the layout). We
 // expose those via a tiny helper that the fixtures drive.

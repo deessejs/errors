@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "error"
+  },
+  "rules": {
+    "no-unused-vars": "off",
+    "no-underscore-dangle": "off",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "curly": ["error", "multi-line"],
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-spread": "error",
+    "prefer-rest-params": "error",
+    "no-template-curly-in-string": "error",
+    "no-useless-concat": "error",
+    "no-redeclare": "error",
+    "no-lone-blocks": "error",
+    "no-extra-boolean-cast": "error",
+    "array-callback-return": "error",
+    "no-sequences": "error",
+    "typescript/no-explicit-any": "warn",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-non-null-assertion": "warn",
+    "import/no-duplicates": "error"
+  },
+  "ignorePatterns": ["node_modules/", "dist/", ".next/", ".turbo/", "coverage/", "*.log"]
+}

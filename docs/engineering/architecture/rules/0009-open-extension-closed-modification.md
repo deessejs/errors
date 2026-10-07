@@ -124,7 +124,7 @@ registry, ask three questions:
 ## Enforcement
 
 - **Code review**. A reviewer who sees a chain of `if (kind === X)
-... else if ... else if ...` on an internally-defined enumeration
+  ... else if ... else if ...` on an internally-defined enumeration
   asks for the table form.
 - **Quarterly review**. A standing review of "which dispatchers
   have grown past three branches?" surfaces the candidates before

@@ -190,17 +190,17 @@ The codebase uses four patterns for domain types, in increasing
 order of expressiveness.
 
 - **Branded type** (identifier, scalar): `type AccountId = string & {
-readonly __brand: 'AccountId' }`. Same runtime shape as the
+  readonly __brand: 'AccountId' }`. Same runtime shape as the
   primitive; the type system prevents mix-ups. Use when the value
   is a single string or number with no internal structure.
 - **Record type** (shape with fields): `type Message = { readonly
-content: string; readonly type: 'text' | 'image' }`. Use when the
+  content: string; readonly type: 'text' | 'image' }`. Use when the
   value has internal structure the domain cares about.
 - **Discriminated union**: `type Event = { kind: 'click'; x: number;
-y: number } | { kind: 'key'; key: string }`. Use when the value
+  y: number } | { kind: 'key'; key: string }`. Use when the value
   has multiple shapes the consumer switches on.
 - **Branded record** (identifier with metadata): `type UserId = {
-readonly value: string; readonly tenantId: string }`. Use when
+  readonly value: string; readonly tenantId: string }`. Use when
   the identifier carries metadata the domain cares about.
 
 The pattern is chosen by **what the value carries**, not by

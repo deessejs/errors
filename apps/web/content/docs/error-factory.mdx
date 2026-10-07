@@ -10,10 +10,10 @@ The `error()` function is the primary way to define error types in @deessejs/err
 At minimum, an error factory requires a name. This name identifies the error type and appears in the `name` property of instances.
 
 ```ts title="basic.ts"
-import { error } from "@deessejs/errors";
+import { error } from '@deessejs/errors';
 
 const NotFoundError = error({
-  name: "NotFoundError",
+  name: 'NotFoundError',
 });
 
 const err = NotFoundError({});
@@ -28,11 +28,11 @@ When you provide only a name, the message defaults to the name. This is useful f
 You can provide a custom message function that takes the validated fields and returns the final string:
 
 ```ts title="custom-message.ts"
-import { error } from "@deessejs/errors";
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
-  message: () => "Validation failed",
+  name: 'ValidationError',
+  message: () => 'Validation failed',
 });
 
 const err = ValidationError({});
@@ -47,10 +47,10 @@ The real power of error factories comes from attaching structured data. You can 
 
 ```ts title="with-fields.ts"
 const UserError = error<{ userId: string; reason: string }>({
-  name: "UserError",
+  name: 'UserError',
 });
 
-const err = UserError({ userId: "usr_123", reason: "not found" });
+const err = UserError({ userId: 'usr_123', reason: 'not found' });
 console.log(err.fields.userId); // "usr_123"
 console.log(err.fields.reason); // "not found"
 ```
@@ -62,11 +62,11 @@ The fields object is fully accessible on the instance — useful for logging, er
 For robust error definitions, attach a [Standard Schema](https://standardschema.dev/) validator (Zod, Valibot, ArkType, etc.). Inputs are validated at creation time and invalid inputs throw an `ArgsValidationError`:
 
 ```ts title="with-schema.ts"
-import { z } from "zod";
-import { error } from "@deessejs/errors";
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({
     field: z.string(),
     reason: z.string(),
@@ -74,7 +74,7 @@ const ValidationError = error({
   message: (data) => `Field "${data.field}" is invalid: ${data.reason}`,
 });
 
-const err = ValidationError({ field: "email", reason: "invalid format" });
+const err = ValidationError({ field: 'email', reason: 'invalid format' });
 console.log(err.message); // 'Field "email" is invalid: invalid format'
 ```
 
@@ -85,7 +85,7 @@ See [Fields and Schema](/docs/fields-schema) for the full breakdown, including v
 The function returned by `error()` has several useful properties attached to it:
 
 ```ts title="properties.ts"
-const AppError = error({ name: "AppError" });
+const AppError = error({ name: 'AppError' });
 
 console.log(AppError.name); // "AppError"
 console.log(AppError.inherits); // undefined (no parent)
@@ -98,30 +98,30 @@ The `inherits` property exposes the parent factory or array of factories, which 
 Error factories are designed to be created once and reused throughout your application. Define them at module level so they are available everywhere:
 
 ```ts title="definitions.ts"
-import { error } from "@deessejs/errors";
+import { error } from '@deessejs/errors';
 
 export const NotFoundError = error({
-  name: "NotFoundError",
-  message: () => "Resource not found",
+  name: 'NotFoundError',
+  message: () => 'Resource not found',
 });
 
 export const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({ field: z.string(), reason: z.string() }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
 export const NetworkError = error({
-  name: "NetworkError",
-  message: () => "Network request failed",
+  name: 'NetworkError',
+  message: () => 'Network request failed',
 });
 ```
 
 Then import and use them wherever needed:
 
 ```ts title="usage.ts"
-import { raise } from "@deessejs/errors";
-import { NotFoundError } from "./errors";
+import { raise } from '@deessejs/errors';
+import { NotFoundError } from './errors';
 
 if (!resource) {
   raise(NotFoundError({}));

@@ -124,7 +124,10 @@ import { ValidationError, NetworkError, DatabaseError } from './errors';
 
 export function handleApiError(err: unknown) {
   // Log the full error chain
-  console.error('Error chain:', causes(err).map((e) => e.message));
+  console.error(
+    'Error chain:',
+    causes(err).map((e) => e.message)
+  );
 
   if (is(err, ValidationError)) {
     return {

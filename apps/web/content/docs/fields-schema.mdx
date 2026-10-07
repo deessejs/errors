@@ -10,15 +10,15 @@ Errors become much more useful when they carry structured data about what went w
 When you create an error factory, you can specify a generic type that defines the shape of the fields object:
 
 ```ts title="basic.ts"
-import { error } from "@deessejs/errors";
+import { error } from '@deessejs/errors';
 
 const ValidationError = error<{
   field: string;
   reason: string;
   value?: unknown;
 }>({
-  name: "ValidationError",
-  message: "Validation failed",
+  name: 'ValidationError',
+  message: 'Validation failed',
 });
 ```
 
@@ -26,14 +26,14 @@ Now when you create an error instance, TypeScript ensures you provide the requir
 
 ```ts title="usage.ts"
 const err = ValidationError({
-  field: "email",
-  reason: "invalid format",
+  field: 'email',
+  reason: 'invalid format',
 });
 
 const err2 = ValidationError({
-  field: "email",
-  reason: "invalid format",
-  value: "not-an-email",
+  field: 'email',
+  reason: 'invalid format',
+  value: 'not-an-email',
 });
 ```
 
@@ -44,15 +44,15 @@ The fields object is always accessible on the error instance, giving you a consi
 Once an error is caught, you can access its fields to provide meaningful feedback or logging:
 
 ```ts title="access.ts"
-import { error, raise } from "@deessejs/errors";
+import { error, raise } from '@deessejs/errors';
 
 const ValidationError = error<{ field: string; reason: string }>({
-  name: "ValidationError",
-  message: "Validation failed",
+  name: 'ValidationError',
+  message: 'Validation failed',
 });
 
 try {
-  raise(ValidationError({ field: "email", reason: "not a valid email address" }));
+  raise(ValidationError({ field: 'email', reason: 'not a valid email address' }));
 } catch (err) {
   // TypeScript knows the shape of fields once you narrow via is()
   if (is(err, ValidationError)) {
@@ -70,11 +70,11 @@ For production-grade error definitions, attach a [Standard Schema](https://stand
 Inputs that don't validate throw an `ArgsValidationError` carrying the vendor name and the failure issues:
 
 ```ts title="runtime-validation.ts"
-import { z } from "zod";
-import { ArgsValidationError, error } from "@deessejs/errors";
+import { z } from 'zod';
+import { ArgsValidationError, error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({
     field: z.string().min(1),
     reason: z.string().min(1),
@@ -83,16 +83,16 @@ const ValidationError = error({
 });
 
 // Valid input -> rendered message
-const ok = ValidationError({ field: "email", reason: "invalid" });
+const ok = ValidationError({ field: 'email', reason: 'invalid' });
 console.log(ok.message); // 'Field "email": invalid'
 
 // Invalid input -> ArgsValidationError
 try {
-  ValidationError({ field: "", reason: "invalid" });
+  ValidationError({ field: '', reason: 'invalid' });
 } catch (err) {
   if (err instanceof ArgsValidationError) {
-    console.log(err.vendor);  // "zod"
-    console.log(err.issues);  // StandardSchemaV1.FailureResult['issues']
+    console.log(err.vendor); // "zod"
+    console.log(err.issues); // StandardSchemaV1.FailureResult['issues']
   }
 }
 ```
@@ -100,11 +100,11 @@ try {
 ### Using Valibot
 
 ```ts title="valibot.ts"
-import * as v from "valibot";
-import { error } from "@deessejs/errors";
+import * as v from 'valibot';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: v.object({
     field: v.pipe(v.string(), v.minLength(1)),
     reason: v.pipe(v.string(), v.minLength(1)),
@@ -116,14 +116,14 @@ const ValidationError = error({
 ### Using ArkType
 
 ```ts title="arktype.ts"
-import { type } from "@ark/type";
-import { error } from "@deessejs/errors";
+import { type } from '@ark/type';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: type({
-    field: "string",
-    reason: "string",
+    field: 'string',
+    reason: 'string',
   }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
@@ -152,20 +152,20 @@ const DatabaseError = error<{
   query: string;
   table?: string;
   code?: string;
-}>({ name: "DatabaseError" });
+}>({ name: 'DatabaseError' });
 
 const ApiError = error<{
   endpoint: string;
   statusCode: number;
   response?: unknown;
-}>({ name: "ApiError" });
+}>({ name: 'ApiError' });
 
 const ValidationError = error<{
   field: string;
   reason: string;
   value?: unknown;
   constraints?: Record<string, unknown>;
-}>({ name: "ValidationError" });
+}>({ name: 'ValidationError' });
 ```
 
 Design your fields to capture what's useful for debugging and logging, not just what's required to identify the error.

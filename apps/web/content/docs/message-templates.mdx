@@ -10,11 +10,11 @@ When you attach a `fields` schema to an error factory, the message is computed f
 Pass a function that takes the parsed fields and returns the message. The data you receive is the Standard Schema output, with all transforms already applied:
 
 ```ts title="function.ts"
-import { z } from "zod";
-import { error } from "@deessejs/errors";
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({
     field: z.string(),
     reason: z.string(),
@@ -22,7 +22,7 @@ const ValidationError = error({
   message: (data) => `Field "${data.field}" is invalid: ${data.reason}`,
 });
 
-const err = ValidationError({ field: "email", reason: "invalid format" });
+const err = ValidationError({ field: 'email', reason: 'invalid format' });
 console.log(err.message); // 'Field "email" is invalid: invalid format'
 ```
 
@@ -31,11 +31,11 @@ The function receives the **Standard Schema output** type. After a `z.coerce.num
 ### With Valibot
 
 ```ts title="valibot.ts"
-import * as v from "valibot";
-import { error } from "@deessejs/errors";
+import * as v from 'valibot';
+import { error } from '@deessejs/errors';
 
 const FormatError = error({
-  name: "FormatError",
+  name: 'FormatError',
   fields: v.object({
     expected: v.string(),
     actual: v.string(),
@@ -43,24 +43,25 @@ const FormatError = error({
   message: (data) => `Expected ${data.expected}, got ${data.actual}`,
 });
 
-const err = FormatError({ expected: "number", actual: "string" });
+const err = FormatError({ expected: 'number', actual: 'string' });
 console.log(err.message); // "Expected number, got string"
 ```
 
 ### With ArkType
 
 ```ts title="arktype.ts"
-import { type } from "@ark/type";
-import { error } from "@deessejs/errors";
+import { type } from '@ark/type';
+import { error } from '@deessejs/errors';
 
 const ApiError = error({
-  name: "ApiError",
+  name: 'ApiError',
   fields: type({
-    method: "string",
-    endpoint: "string",
-    statusCode: "number",
+    method: 'string',
+    endpoint: 'string',
+    statusCode: 'number',
   }),
-  message: (data) => `${data.method.toUpperCase()} ${data.endpoint} failed with status ${data.statusCode}`,
+  message: (data) =>
+    `${data.method.toUpperCase()} ${data.endpoint} failed with status ${data.statusCode}`,
 });
 ```
 
@@ -70,7 +71,7 @@ The function form replaces the legacy `:upper` / `:lower` / `:json` modifiers. I
 
 ```ts title="modifiers.ts"
 const err = error({
-  name: "UserCreatedError",
+  name: 'UserCreatedError',
   fields: z.object({ userId: z.string() }),
   message: (data) => `Created user: ${data.userId.toUpperCase()}`,
 });
@@ -80,7 +81,7 @@ const err = error({
 
 ```ts title="json.ts"
 const DataError = error({
-  name: "DataError",
+  name: 'DataError',
   fields: z.object({ payload: z.object({ id: z.number(), name: z.string() }) }),
   message: (data) => `Invalid data: ${JSON.stringify(data.payload)}`,
 });
@@ -92,11 +93,11 @@ The legacy string-template form (`message: "Field {field} is invalid"`) still wo
 
 ```ts title="legacy.ts"
 const ValidationError = error({
-  name: "ValidationError",
-  message: "Field {field} is invalid",
+  name: 'ValidationError',
+  message: 'Field {field} is invalid',
 });
 
-const err = ValidationError({ field: "email" });
+const err = ValidationError({ field: 'email' });
 console.log(err.message); // "Field email is invalid"
 ```
 
