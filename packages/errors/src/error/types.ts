@@ -5,70 +5,27 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 // ============================================================================
-// Internal markers
-// ============================================================================
-
-/**
- * Symbol used to identify factory-created errors.
- * Stored on the error instance to enable reliable instanceof checks.
- *
- * The symbol is shared across the package (registered in the global
- * Symbol registry) so that two copies of the package — or two
- * realms — agree on the marker. The runtime check in `is()` is
- * keyed by this symbol.
- *
- * @internal
- */
-export const FACTORY_SYMBOL: unique symbol = Symbol.for('@deessejs/errors/factory');
-
-// ============================================================================
-// Brand
-// ============================================================================
-
-/**
- * Internal brand symbol. Set in the constructor of `ErrorInstanceImpl`
- * (issue #88); the only assignment site in the codebase.
- *
- * Exposed here so `ErrorInstanceImpl` (declared in `error.ts`) can
- * reference it as a property key. Consumers cannot mint a branded
- * instance because the symbol is not exported from the package root
- * `index.ts`.
- *
- * @internal
- */
-export const ErrorInstanceBrand: unique symbol = Symbol('@deessejs/errors/brand');
-
-// ============================================================================
-// Schema inference
-// ============================================================================
-
-/**
- * Extracts the field shape from a Standard Schema, defaulting to
- * `Record<string, never>` when no schema is provided.
- *
- * When `S extends StandardSchemaV1`, the output type of the schema is
- * used as the field shape. When `S` is `undefined` (the default for
- * schemas that are not passed to `error()`), an empty record is used.
- *
- * The `[S] extends [StandardSchemaV1]` form is used (instead of the
- * naked conditional) to avoid distributing over union types and to
- * ensure the `undefined` branch is matched as a whole.
- *
- * @internal
- */
-export type InferFields<S> = [S] extends [StandardSchemaV1]
-  ? StandardSchemaV1.InferOutput<S> & Record<string, unknown>
-  : Record<string, never>;
-
-// ============================================================================
 // Types
 // ============================================================================
 
 /**
- * Core properties present on every error instance.
+ * Helper to extract the inferred output type from a `StandardSchemaV1`.
  *
- * Mirrors the runtime shape set by `ErrorInstanceImpl`'s constructor.
- * These are the inherited `Error` fields narrowed to required strings.
+ * Standard Schema declares `~standard.schema.<I, O>` with input/output generics.
+ * Most validators (zod, valibot, arktype, etc.) infer `Output` from the schema
+ * builder. This helper simply walks the property path.
+ *
+ * @example
+ * ```ts
+ * type T = InferStandardSchemaOutput<typeof z.object({ id: z.string() })>;
+ * // T === { id: string }
+ * ```
+ */
+export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never;
+
+/**
+ * Core properties present on every error instance.
+ * These are guaranteed to exist regardless of how the error was created.
  */
 export type ErrorInstanceCore = {
   /** Error name identifier */
@@ -87,28 +44,24 @@ export type ErrorFactory<TFields extends Record<string, unknown> = Record<string
   (fields?: Partial<TFields>): ErrorInstance<TFields>;
   name: string;
   inherits?: ErrorFactory | ErrorFactory[];
+  /**
+   * The Standard Schema used to validate the args at instantiation time.
+   * Exposed for consumers that want to read it back from the factory itself.
+   */
   schema?: StandardSchemaV1;
-  rawMessage?: string;
+  /**
+   * The original message template or function. Exposed for introspection
+   * (e.g. docs UI, serializer inspection).
+   */
+  rawMessage?: string | ((data: TFields) => string);
 };
 
 /**
  * Error instance returned by an ErrorFactory.
- *
- * The implementation is a private class (`ErrorInstanceImpl`) declared
- * in `error.ts` (issue #88). The brand marker is a class property set
- * in the constructor; consumer code cannot mint a branded instance.
- *
- * The class extends `Error` at runtime, so `instance instanceof Error`
- * is `true`; this type does not declare an `extends Error` relationship
- * because doing so would force `name`/`message`/`stack` to be
- * optional (matching the inherited `Error` shape) and weaken the
- * runtime invariant. The factory function bridges the gap via a
- * cast at the construction site.
+ * Contains all standard Error properties plus additional domain-specific fields.
  */
 export type ErrorInstance<TFields extends Record<string, unknown> = Record<string, never>> =
   ErrorInstanceCore & {
-    /** Brand marker. Set in the class constructor; the only assignment site. */
-    readonly [ErrorInstanceBrand]: 'ErrorInstance';
     /** User-defined fields from Standard Schema */
     fields: TFields;
     /** Additional notes added via .addNote() */
@@ -116,11 +69,30 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
     /**
      * Adds a note to this error instance.
      *
+     * Notes provide runtime context that complements the structured fields.
      * Patterned after Python 3.11's `BaseException.add_note()` (PEP 678).
+     *
+     * @param note - The note text to attach
+     * @returns This error instance for chaining
+     *
+     * @example
+     * ```typescript
+     * const err = AppError().addNote('Attempt 1 failed').addNote('Retrying...');
+     * // err.notes === ['Attempt 1 failed', 'Retrying...']
+     * ```
      */
     addNote(note: string): ErrorInstance<TFields>;
     /**
      * Chains a cause error to this error.
+     *
+     * @param cause - The error that caused this one
+     * @returns This error instance for chaining
+     *
+     * @example
+     * ```typescript
+     * const err = ValidationError({ field: 'email' })
+     *   .from(new NetworkError('Connection failed'));
+     * ```
      */
     from(cause: Error | ErrorInstance): ErrorInstance<TFields>;
     /** Direct cause of this error (from .from()) */
@@ -131,36 +103,62 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
     context: Record<string, unknown> | null;
     /** Parent error factories for type checking */
     inherits?: ErrorFactory | ErrorFactory[];
-    /**
-     * Marker pointing back to the factory that produced this instance.
-     * Set by `error()` at construction time; read by `is()` to
-     * discriminate factory-created errors.
-     *
-     * @internal
-     */
-    [FACTORY_SYMBOL]: ErrorFactory<TFields>;
   };
 
 /**
- * Configuration accepted by the `error()` factory.
+ * New-style config: schema-inferred fields plus a function-form message.
  *
- * The `S` generic is the Standard Schema type (when one is provided
- * via `fields`). It is unbounded by default — most callers do not
- * pass a schema and get the empty-record default. Callers that do
- * pass a schema can rely on TS to infer the field shape downstream.
+ * The `fields` is a `StandardSchemaV1`; the args shape is the inferred
+ * `Output` of the schema. The `message` is a function that receives the
+ * validated output and returns the rendered string.
  *
- * Named here (rather than inlined at the call signature) so the
- * `error()` declaration reads as a single line and the config shape
- * is independently typeable for callers who want to compose
- * configurations programmatically.
+ * Only enabled when both `fields` and a function-form `message` are supplied.
+ * The legacy config (no `fields`, string `message`) lives in `LegacyErrorConfig`.
  */
-export type ErrorFactoryConfig<S extends StandardSchemaV1 | undefined = undefined> = {
+export type StandardErrorConfig<
+  S extends StandardSchemaV1,
+  M extends (data: InferStandardSchemaOutput<S>) => string,
+> = {
   /** Error name identifier */
   name: string;
-  /** Standard Schema field definitions */
-  fields?: S;
-  /** Single parent error factory, or list of parents, to inherit from */
+  /** Standard Schema field definitions (zod, valibot, arktype, etc.) */
+  fields: S;
+  /** Single parent error factory to inherit from */
   inherits?: ErrorFactory | ErrorFactory[];
-  /** Message template with {field} placeholders */
-  message?: string;
+  /** Message-as-function, receives the validated output */
+  message: M;
 };
+
+/**
+ * Legacy config: no schema, plain string message template.
+ *
+ * Marked `@deprecated` in 1.4.0; removed in 2.0.0.
+ */
+export type LegacyErrorConfig = {
+  /** Error name identifier */
+  name: string;
+  /** @deprecated Single parent error factory to inherit from */
+  inherits?: ErrorFactory | ErrorFactory[];
+  /** @deprecated Message template with `{field}` placeholders */
+  message?: string;
+  /**
+   * @deprecated Was never wired up to runtime validation. Migrate to
+   * `StandardErrorConfig` (RFC 0001).
+   */
+  schema?: StandardSchemaV1;
+};
+
+/**
+ * Configuration accepted by `error()`.
+ *
+ * - Standard path: supply `fields` (a `StandardSchemaV1`) and a function-form
+ *   `message`. The args shape is inferred.
+ * - Legacy path: omit `fields` or use a string `message`. Works in 1.4.0 with
+ *   a deprecation warning; removed in 2.0.0.
+ */
+export type ErrorConfig =
+  | StandardErrorConfig<
+      StandardSchemaV1,
+      (data: InferStandardSchemaOutput<StandardSchemaV1>) => string
+    >
+  | LegacyErrorConfig;

@@ -10,10 +10,10 @@ The `error()` function is the primary way to define error types in @deessejs/err
 At minimum, an error factory requires a name. This name identifies the error type and appears in the `name` property of instances.
 
 ```ts title="basic.ts"
-import { error } from '@deessejs/errors';
+import { error } from "@deessejs/errors";
 
 const NotFoundError = error({
-  name: 'NotFoundError',
+  name: "NotFoundError",
 });
 
 const err = NotFoundError({});
@@ -21,102 +21,107 @@ console.log(err.name); // "NotFoundError"
 console.log(err.message); // "NotFoundError"
 ```
 
-When you provide only a name, the message defaults to the same value. This is useful for simple errors where the name itself is descriptive enough.
+When you provide only a name, the message defaults to the name. This is useful for simple errors where the name itself is descriptive enough.
 
 ## Custom Messages
 
-You can provide a custom message that gives more context about what went wrong:
+You can provide a custom message function that takes the validated fields and returns the final string:
 
 ```ts title="custom-message.ts"
+import { error } from "@deessejs/errors";
+
 const ValidationError = error({
-  name: 'ValidationError',
-  message: 'Validation failed',
+  name: "ValidationError",
+  message: () => "Validation failed",
 });
 
 const err = ValidationError({});
 console.log(err.message); // "Validation failed"
 ```
 
+The function form is recommended. The legacy string-template form (with `{placeholder}` substitution) still works but is deprecated and will be removed in the next major. See [Message Rendering](/docs/message-templates) for details.
+
 ## Creating Instances with Fields
 
-The real power of error factories comes from attaching structured data. You can define the type of fields your error accepts using a generic parameter:
+The real power of error factories comes from attaching structured data. You can declare the fields type using a generic parameter:
 
 ```ts title="with-fields.ts"
 const UserError = error<{ userId: string; reason: string }>({
-  name: 'UserError',
+  name: "UserError",
 });
 
-const err = UserError({ userId: 'usr_123', reason: 'not found' });
+const err = UserError({ userId: "usr_123", reason: "not found" });
 console.log(err.fields.userId); // "usr_123"
 console.log(err.fields.reason); // "not found"
 ```
 
-The fields object is completely flexible. You can include any data that helps describe the error: IDs, timestamps, values that caused the error, or any other context.
+The fields object is fully accessible on the instance — useful for logging, error monitoring, and tooling.
 
 ## Using Fields with Schema Validation
 
-For more robust error definitions, you can provide a Standard Schema (compatible with Zod, Valibot, or ArkType) to validate fields at creation time:
+For robust error definitions, attach a [Standard Schema](https://standardschema.dev/) validator (Zod, Valibot, ArkType, etc.). Inputs are validated at creation time and invalid inputs throw an `ArgsValidationError`:
 
 ```ts title="with-schema.ts"
-import { z } from 'zod';
-import { error } from '@deessejs/errors';
+import { z } from "zod";
+import { error } from "@deessejs/errors";
 
 const ValidationError = error({
-  name: 'ValidationError',
+  name: "ValidationError",
   fields: z.object({
     field: z.string(),
     reason: z.string(),
   }),
+  message: (data) => `Field "${data.field}" is invalid: ${data.reason}`,
 });
 
-const err = ValidationError({ field: 'email', reason: 'invalid format' });
+const err = ValidationError({ field: "email", reason: "invalid format" });
+console.log(err.message); // 'Field "email" is invalid: invalid format'
 ```
 
-When fields don't match the schema, an error is thrown during error creation. This helps catch configuration mistakes early.
+See [Fields and Schema](/docs/fields-schema) for the full breakdown, including vendor-neutral coverage of Zod, Valibot, and ArkType.
 
 ## Factory Properties
 
 The function returned by `error()` has several useful properties attached to it:
 
 ```ts title="properties.ts"
-const AppError = error({ name: 'AppError' });
+const AppError = error({ name: "AppError" });
 
 console.log(AppError.name); // "AppError"
-console.log(AppError.schema); // undefined (no schema defined)
 console.log(AppError.inherits); // undefined (no parent)
 ```
 
-These properties are useful for introspection and for the `is()` function to check inheritance relationships.
+The `inherits` property exposes the parent factory or array of factories, which `is()` consults when checking inheritance. The schema is reachable via `AppError.fields` when supplied.
 
 ## Reusing Error Factories
 
-Error factories are designed to be created once and reused throughout your application. Define them at module level so they're available everywhere:
+Error factories are designed to be created once and reused throughout your application. Define them at module level so they are available everywhere:
 
 ```ts title="definitions.ts"
-// errors/index.ts
-import { error } from '@deessejs/errors';
+import { error } from "@deessejs/errors";
 
 export const NotFoundError = error({
-  name: 'NotFoundError',
-  message: 'Resource not found',
+  name: "NotFoundError",
+  message: () => "Resource not found",
 });
 
 export const ValidationError = error({
-  name: 'ValidationError',
-  message: 'Validation failed',
+  name: "ValidationError",
+  fields: z.object({ field: z.string(), reason: z.string() }),
+  message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
 export const NetworkError = error({
-  name: 'NetworkError',
-  message: 'Network request failed',
+  name: "NetworkError",
+  message: () => "Network request failed",
 });
 ```
 
 Then import and use them wherever needed:
 
 ```ts title="usage.ts"
-import { raise } from '@deessejs/errors';
-import { NotFoundError } from './errors';
+import { raise } from "@deessejs/errors";
+import { NotFoundError } from "./errors";
 
 if (!resource) {
   raise(NotFoundError({}));
@@ -134,5 +139,8 @@ if (!resource) {
   </Card>
   <Card title="Fields and Schema" href="/docs/fields-schema">
     Learn more about field definitions and schema validation.
+  </Card>
+  <Card title="API Reference" href="/docs/api-reference">
+    Full surface of error() and ArgsValidationError.
   </Card>
 </Cards>

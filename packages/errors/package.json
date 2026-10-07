@@ -1,11 +1,14 @@
 {
   "name": "@deessejs/errors",
-  "version": "1.1.1",
-  "description": "TypeScript error handling library inspired by Python — function-based API, exception chaining, hierarchical inheritance",
+  "version": "1.4.0",
+  "description": "Lightweight, type-safe error handling for TypeScript — Python-style exception chaining, hierarchical inheritance, and rich error semantics. Function-based API, ESM-only, designed for first-class interoperability with @deessejs/fp.",
   "homepage": "https://errors.deessejs.com",
   "repository": {
     "type": "git",
     "url": "https://github.com/deessejs/errors.git"
+  },
+  "bugs": {
+    "url": "https://github.com/deessejs/errors/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -17,6 +20,12 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
@@ -28,13 +37,15 @@
     "typescript",
     "errors",
     "exception",
-    "error-handling",
     "exception-chaining",
+    "error-handling",
     "hierarchical-errors",
     "python-style-errors",
     "custom-error-types",
-    "nodejs",
-    "npm-package"
+    "standard-schema",
+    "esm",
+    "monorepo",
+    "nodejs"
   ],
   "author": "Nesalia Inc. <hello@nesalia.com>",
   "license": "MIT",
@@ -42,13 +53,23 @@
     "access": "public",
     "provenance": true
   },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/deessejs"
+  },
   "devDependencies": {
+    "@ark/type": "^2.2.3",
     "@eslint/js": "^9.0.0",
     "@types/node": "^25.9.1",
     "eslint": "^9.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^4.1.7"
+    "valibot": "^1.4.2",
+    "vitest": "^4.1.7",
+    "zod": "^4.4.3"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0"
