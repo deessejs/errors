@@ -31,7 +31,8 @@
     "test:run": "vitest run",
     "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   },
   "keywords": [
     "typescript",
@@ -62,11 +63,8 @@
   },
   "devDependencies": {
     "@ark/type": "^2.2.3",
-    "@eslint/js": "^9.0.0",
     "@types/node": "^25.9.1",
-    "eslint": "^9.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.0.0",
     "valibot": "^1.4.2",
     "vitest": "^4.1.7",
     "zod": "^4.4.3"

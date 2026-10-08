@@ -114,9 +114,7 @@ appErr.from(NetworkError({ endpoint: '/api/users' }));
 appErr.from(ValidationError({ field: 'email' }));
 
 // Check if any cause is a NetworkError
-const hasNetworkFailure = causes(appErr).some(
-  (cause) => is(cause, NetworkError)
-);
+const hasNetworkFailure = causes(appErr).some((cause) => is(cause, NetworkError));
 
 console.log(hasNetworkFailure); // true
 ```

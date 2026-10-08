@@ -1,6 +1,7 @@
 // Edge case tests for the standard-schema runtime path.
 
 import { describe, it, expect, vi } from 'vitest';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { error, ArgsValidationError } from '../src/index.js';
 
 function makeSchema<TInput, TOutput>(opts: {
@@ -11,7 +12,7 @@ function makeSchema<TInput, TOutput>(opts: {
     | { value: TOutput }
     | { issues: ReadonlyArray<{ message: string; path?: ReadonlyArray<PropertyKey> }> }
     | Promise<{ value: TOutput } | { issues: ReadonlyArray<{ message: string }> }>;
-}): import('@standard-schema/spec').StandardSchemaV1<TInput, TOutput> {
+}): StandardSchemaV1<TInput, TOutput> {
   return {
     '~standard': {
       version: 1,
