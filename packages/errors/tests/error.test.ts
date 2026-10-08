@@ -81,8 +81,6 @@ describe('error() factory function', () => {
       expect(Array.isArray(instance.notes)).toBe(true);
       expect(instance.notes).toEqual([]);
       expect(instance.cause).toBeNull();
-      expect(Array.isArray(instance.causes)).toBe(true);
-      expect(instance.causes).toEqual([]);
       expect(instance.context).toBeNull();
     });
 

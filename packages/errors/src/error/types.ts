@@ -111,16 +111,8 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
      * that explains this one. Walk `cause` (singular) to follow the chain.
      */
     from(cause: Error | ErrorInstance<any>): ErrorInstance<TFields>;
-    /** Direct cause of this error. Single source of truth for the causal link. */
+    /** Direct cause of this error. Walk `.cause` to follow the chain. */
     cause: Error | null;
-    /**
-     * Full cause chain from .from() calls.
-     *
-     * @deprecated Prefer walking `cause` directly. The semantics of this
-     * field (a flat list of historical `.from()` calls vs. a true causal
-     * chain) will be revisited; see issue #35.
-     */
-    causes: Error[];
     /** Injected context data */
     context: Record<string, unknown> | null;
     /** Parent error factories for type checking */

@@ -217,6 +217,32 @@ function formatCallSite(): string {
  * });
  * ```
  */
+// Phase 2: schema-driven I/O inference. The overloads below let
+// TypeScript derive TInput and TOutput directly from the
+// `fields` schema, so the consumer does not have to annotate
+// the `message` parameter manually. The implementation signature
+// (with a single `T extends Record<string, unknown>`) is the
+// fallback for the no-schema and no-message cases.
+//
+// TypeScript picks the first matching overload. The no-schema
+// overload comes first so the more permissive signature is
+// preferred when the consumer does not supply `fields`.
+export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
+  name: string;
+  fields?: StandardSchemaV1;
+  message?: string | ((data: T) => string);
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
+}): ErrorFactory<T>;
+
+export function error<S extends StandardSchemaV1<any, any>>(
+  config: {
+    name: string;
+    fields: S;
+    message: (data: StandardSchemaV1.InferOutput<S>) => string;
+    inherits?: AnyErrorFactory | AnyErrorFactory[];
+  }
+): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
+
 export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
   name: string;
   fields?: StandardSchemaV1;
@@ -274,7 +300,13 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     }
 
     // Capture stack trace
-    const stack = captureStack(errorMessage);
+    // Phase 11: pass `error` as the second argument so V8's
+    // captureStackTrace excludes this factory's own frame from
+    // the captured trace. On non-V8 engines the argument is
+    // ignored and the fallback path post-processes the string.
+    // Cast: `error` is overloaded for the public API, but
+    // captureStackTrace accepts any callable.
+    const stack = captureStack(errorMessage, error as (...args: unknown[]) => unknown);
 
     // Create error instance using native Error
     const instance = new Error(errorMessage) as ErrorInstance<T>;
@@ -282,17 +314,17 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     instance.fields = fieldsData as unknown as T;
     instance.notes = [];
     instance.cause = null;
-    instance.causes = [];
     instance.context = null;
     instance.inherits = inherits ?? undefined;
     instance.stack = stack;
 
-    // Add .from() method for exception chaining
+    // Add .from() method for exception chaining. Phase 4b: only
+    // `.cause` is mutated. The historical chain (the deprecated
+    // `causes: Error[]` field) is reconstructed on demand by
+    // `causes(error)` in src/causes/index.ts. This keeps the type
+    // model honest: an instance has a single direct cause, not
+    // a flat history.
     instance.from = (cause: Error): ErrorInstance<T> => {
-      // Build new causes array: [new cause] + [cause's causes] + [existing causes of instance]
-      // This maintains chronological order: newest first
-      const causeCauses = 'causes' in cause && Array.isArray(cause.causes) ? cause.causes : [];
-      instance.causes = [cause, ...causeCauses, ...instance.causes];
       instance.cause = cause;
       return instance;
     };
