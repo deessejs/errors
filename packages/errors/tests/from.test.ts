@@ -127,7 +127,7 @@ describe('.from() method', () => {
       instance.from(cause);
 
       expect(instance.cause).toBe(cause);
-      expect((instance.cause as AppError).fields.code).toBe('ERR001');
+      expect((instance.cause as ReturnType<typeof AppError>).fields.code).toBe('ERR001');
     });
 
     it('should maintain instance fields after .from()', () => {

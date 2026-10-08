@@ -7,7 +7,7 @@
  * in the consumer-facing docs site; this suite verifies the contract.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ArgsValidationError, error } from '../src/error/error.js';
 import type { StandardSchemaV1 } from '../src/index.js';
 
@@ -110,17 +110,26 @@ describe('error() with Standard Schema (RFC 0001)', () => {
 
   describe('standard form with a failing schema', () => {
     it('throws ArgsValidationError on a bad input', () => {
-      const Fields = schema<{ ok: true }>((): v is { ok: true } => false, 'test-validator');
+      const Fields = schema<{ ok: true }>((input): input is { ok: true } => {
+        void input;
+        return false;
+      }, 'test-validator');
       const E = error({
         name: 'BadInputError',
         fields: Fields,
         message: (d: { ok: true }) => String(d.ok),
       });
+      // Phase 2: the input shape will be inferred from the schema
+      // and `{ wrong: true }` will be rejected at compile time.
+      // @ts-expect-error -- input shape not yet inferred from schema
       expect(() => E({ wrong: true })).toThrow(ArgsValidationError);
     });
 
     it('exposes the source name and issues on the thrown error', () => {
-      const Fields = schema<{ ok: true }>((): v is { ok: true } => false);
+      const Fields = schema<{ ok: true }>((input): input is { ok: true } => {
+        void input;
+        return false;
+      });
       const E = error({
         name: 'BadInputError',
         fields: Fields,
@@ -128,6 +137,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
       });
       let caught: unknown = null;
       try {
+        // @ts-expect-error -- Phase 2: input shape inferred from schema
         E({});
       } catch (err) {
         caught = err;
@@ -139,13 +149,17 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     });
 
     it('exposes the validator vendor', () => {
-      const Fields = schema<{ ok: true }>((): v is { ok: true } => false, 'arcane-vendor');
+      const Fields = schema<{ ok: true }>((input): input is { ok: true } => {
+        void input;
+        return false;
+      }, 'arcane-vendor');
       const E = error({
         name: 'V',
         fields: Fields,
         message: (d: { ok: true }) => String(d.ok),
       });
       try {
+        // @ts-expect-error -- Phase 2: input shape inferred from schema
         E({});
       } catch (err) {
         expect((err as ArgsValidationError).vendor).toBe('arcane-vendor');

@@ -102,6 +102,7 @@ describe('is() function', () => {
     it('should work with TypeError', () => {
       try {
         const fn: unknown = null;
+        // @ts-expect-error -- intentional trigger of a TypeError at runtime
         (fn as { method: unknown }).method();
       } catch (err) {
         expect(is(err, TypeError)).toBe(true);

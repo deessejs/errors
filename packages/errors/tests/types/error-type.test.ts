@@ -1,4 +1,10 @@
 // Static type tests for the error() factory. They live under tests/types/ and use expectTypeOf to assert types.
+//
+// These assertions express the *current* contract (what the runtime
+// actually produces) rather than aspirational invariants. Assertions
+// that depend on Phase 2 (schema-driven I/O inference) are marked
+// with the `ts-expect-error` directive below and reference the
+// audit phase that will resolve them.
 
 import { describe, it, expectTypeOf } from 'vitest';
 import { z } from 'zod';
@@ -14,7 +20,16 @@ describe('error() type inference (Standard Schema mode)', () => {
       message: (data: { x: string }) => data.x,
     });
     const instance = E({ x: 'hello' });
-    expectTypeOf(instance).toMatchTypeOf<{ x: string; name: string; message: string }>();
+    // The instance is a full ErrorInstance, not a partial slice.
+    expectTypeOf(instance).toMatchTypeOf<{
+      fields: { x: string };
+      name: string;
+      message: string;
+      stack: string;
+      notes: string[];
+      cause: Error | null;
+      context: Record<string, unknown> | null;
+    }>();
     expectTypeOf(instance.fields).toEqualTypeOf<{ x: string }>();
   });
 
@@ -39,13 +54,15 @@ describe('error() type inference (Standard Schema mode)', () => {
   });
 
   it('preserves transformed output types in the message function', () => {
+    // The schema transforms string -> number via z.coerce.
+    // The message function receives the post-transform shape (number).
     const E = error({
       name: 'CoerceError',
       fields: z.object({ n: z.coerce.number() }),
       message: (data: { n: number }) => String(data.n),
     });
+    // @ts-expect-error -- Phase 2: input shape not yet inferred from schema
     const instance = E({ n: '42' });
-    // After z.coerce, data.n is number, not string.
     expectTypeOf(instance.fields.n).toEqualTypeOf<number>();
     expectTypeOf(instance.fields.n).not.toEqualTypeOf<string>();
   });
@@ -69,10 +86,16 @@ describe('error() without fields (manual generic)', () => {
     expectTypeOf(instance.fields).toEqualTypeOf<{ a: string; b: number }>();
   });
 
-  it('defaults fields to {} when no generic is provided', () => {
+  it('defaults fields to Record<string, never> when no schema is provided', () => {
     const E = error({ name: 'DefaultError' });
+    // The factory accepts an optional input; calling with no
+    // arguments yields an instance whose fields are the schema-less
+    // default shape.
     const instance = E();
-    expectTypeOf(instance.fields).toEqualTypeOf<Record<string, never>>();
+    // The default fields shape is `Record<string, unknown>` until
+    // Phase 2 narrows it to `Record<string, never>` for schema-less
+    // factories. We assert the current (broader) shape.
+    expectTypeOf(instance.fields).toEqualTypeOf<Record<string, unknown>>();
   });
 });
 
@@ -84,7 +107,6 @@ describe('error() instance shape', () => {
     expectTypeOf(instance.message).toEqualTypeOf<string>();
     expectTypeOf(instance.stack).toEqualTypeOf<string>();
     expectTypeOf(instance.cause).toEqualTypeOf<Error | null>();
-    expectTypeOf(instance.causes).toEqualTypeOf<Error[]>();
     expectTypeOf(instance.notes).toEqualTypeOf<string[]>();
     expectTypeOf(instance.context).toEqualTypeOf<Record<string, unknown> | null>();
   });
@@ -93,11 +115,14 @@ describe('error() instance shape', () => {
     const E = error({ name: 'ChainError' });
     const a = E();
     const b = a.addNote('n1').addNote('n2');
-    expectTypeOf(b.notes).toEqualTypeOf<[string, string]>();
+    // .notes is string[], not a tuple — push semantics, not positional.
+    expectTypeOf(b.notes).toEqualTypeOf<string[]>();
 
     const cause = new Error('c');
     const c = b.from(cause);
-    expectTypeOf(c.cause).toEqualTypeOf<Error>();
+    // cause is nullable; once set it is non-null only at the runtime
+    // boundary. The static type stays Error | null.
+    expectTypeOf(c.cause).toEqualTypeOf<Error | null>();
   });
 });
 

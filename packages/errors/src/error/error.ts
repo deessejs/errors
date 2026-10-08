@@ -6,7 +6,7 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type { ErrorFactory, ErrorInstance } from './types.js';
+import type { AnyErrorFactory, ErrorFactory, ErrorInstance } from './types.js';
 import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
@@ -214,7 +214,7 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
   name: string;
   fields?: StandardSchemaV1;
   message?: string | ((data: T) => string);
-  inherits?: ErrorFactory | ErrorFactory[];
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
 }): ErrorFactory<T> {
   const { name, fields, inherits, message } = config;
 

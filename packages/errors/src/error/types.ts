@@ -72,12 +72,20 @@ export type ErrorFactory<
   /** Error name identifier. */
   name: string;
   /** Parent error factories for type checking. */
-  inherits?: ErrorFactory | ErrorFactory[];
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
   /** The Standard Schema used to validate the args at instantiation time. */
   schema?: StandardSchemaV1;
   /** The original message template or function (introspection only). */
   rawMessage?: string | ((data: TOutput) => string);
 };
+
+/**
+ * Type-erased ErrorFactory. Accepts any concrete factory regardless of
+ * its input/output generics. Used in `inherits` lists, the `is()`
+ * discriminator, and any other surface where the field-level types are
+ * not material.
+ */
+export type AnyErrorFactory = ErrorFactory<any, any>;
 
 /**
  * Error instance returned by an ErrorFactory.
@@ -102,7 +110,7 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
      * Chains a cause error to this error. The cause is the direct failure
      * that explains this one. Walk `cause` (singular) to follow the chain.
      */
-    from(cause: Error | ErrorInstance): ErrorInstance<TFields>;
+    from(cause: Error | ErrorInstance<any>): ErrorInstance<TFields>;
     /** Direct cause of this error. Single source of truth for the causal link. */
     cause: Error | null;
     /**
@@ -116,7 +124,7 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
     /** Injected context data */
     context: Record<string, unknown> | null;
     /** Parent error factories for type checking */
-    inherits?: ErrorFactory | ErrorFactory[];
+    inherits?: AnyErrorFactory | AnyErrorFactory[];
   };
 
 /**
@@ -139,7 +147,7 @@ export type StandardErrorConfig<
   /** Standard Schema field definitions (zod, valibot, arktype, etc.) */
   fields: S;
   /** Single parent error factory, or list of parents, to inherit from */
-  inherits?: ErrorFactory | ErrorFactory[];
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
   /** Message-as-function, receives the validated output */
   message: M;
 };
@@ -153,7 +161,7 @@ export type LegacyErrorConfig = {
   /** Error name identifier */
   name: string;
   /** @deprecated Single parent error factory to inherit from */
-  inherits?: ErrorFactory | ErrorFactory[];
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
   /** @deprecated Message template with `{field}` placeholders */
   message?: string;
 };

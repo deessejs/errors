@@ -2,22 +2,23 @@
  * Error type checking utilities.
  */
 
-import type { ErrorFactory, ErrorInstance } from '../error/types.js';
+import type { AnyErrorFactory, ErrorInstance } from '../error/types.js';
 import { FACTORY_SYMBOL } from '../error/error.js';
 
 /**
- * Type to extract the fields from an ErrorFactory or native Error class.
+ * Type to extract the fields from an ErrorFactory.
+ *
+ * For an ErrorFactory, the fields type is the **output** shape (what
+ * `.fields` carries after validation). Native Error constructors return
+ * `never` — see the overloads below for the discriminated return.
  *
  * @internal
  */
-type ExtractFields<T> =
-  T extends ErrorFactory<infer F>
+type ExtractFactoryFields<T> = T extends AnyErrorFactory
+  ? T extends ErrorInstance<infer F>
     ? F
-    : T extends new (...args: unknown[]) => infer E
-      ? E extends ErrorInstance<infer F>
-        ? F
-        : Record<string, unknown>
-      : Record<string, unknown>;
+    : Record<string, never>
+  : never;
 
 /**
  * Checks if an error is an instance of a specific error type.
@@ -26,6 +27,13 @@ type ExtractFields<T> =
  * - Custom error factories created by error()
  * - Single and multiple inheritance hierarchies
  * - Native JavaScript errors (TypeError, SyntaxError, etc.)
+ *
+ * The return type discriminates:
+ * - For a factory: `error is ErrorInstance<F>` (where F is the factory's
+ *   inferred output shape).
+ * - For a native constructor: `error is InstanceType<T>` (a plain native
+ *   Error subclass instance, without the `.fields` / `.notes` / `.from()`
+ *   / `.addNote()` extensions).
  *
  * @param error - The error to check (can be any value)
  * @param ErrorType - The error type to check against
@@ -37,7 +45,7 @@ type ExtractFields<T> =
  * const ValidationError = error({ name: 'ValidationError', inherits: AppError });
  *
  * const err = ValidationError();
- * is(err, ValidationError); // true
+ * is(err, ValidationError); // true; err is typed as ErrorInstance<...>
  * is(err, AppError);        // true (through inheritance)
  * ```
  *
@@ -48,15 +56,14 @@ type ExtractFields<T> =
  *   JSON.parse('invalid');
  * } catch (err) {
  *   if (is(err, SyntaxError)) {
- *     // Handle syntax errors
+ *     // Handle syntax errors — err is typed as SyntaxError
  *   }
  * }
  * ```
  */
-const is = <T extends ErrorFactory | (new (...args: unknown[]) => Error)>(
-  error: unknown,
-  ErrorType: T
-): error is ErrorInstance<ExtractFields<T>> => {
+function is<T extends AnyErrorFactory>(error: unknown, ErrorType: T): error is ErrorInstance<ExtractFactoryFields<T>>;
+function is<T extends ErrorConstructor>(error: unknown, ErrorType: T): error is Error;
+function is(error: unknown, ErrorType: AnyErrorFactory | ErrorConstructor): boolean {
   // Handle null/undefined
   if (error == null) {
     return false;
@@ -80,8 +87,8 @@ const is = <T extends ErrorFactory | (new (...args: unknown[]) => Error)>(
 
     if (factory !== undefined) {
       // DFS walk of inheritance tree using stack (prevents GC pressure)
-      const stack: ErrorFactory[] = [factory as ErrorFactory];
-      const seen = new Set<ErrorFactory>();
+      const stack: AnyErrorFactory[] = [factory as AnyErrorFactory];
+      const seen = new Set<AnyErrorFactory>();
 
       while (stack.length > 0) {
         const current = stack.pop()!;
@@ -98,7 +105,7 @@ const is = <T extends ErrorFactory | (new (...args: unknown[]) => Error)>(
         }
 
         // Add parents to stack
-        const inherits = (current as ErrorFactory).inherits;
+        const inherits = (current as AnyErrorFactory).inherits;
         if (inherits !== undefined) {
           if (Array.isArray(inherits)) {
             for (let i = 0; i < inherits.length; i++) {
@@ -113,6 +120,6 @@ const is = <T extends ErrorFactory | (new (...args: unknown[]) => Error)>(
   }
 
   return false;
-};
+}
 
 export { is };

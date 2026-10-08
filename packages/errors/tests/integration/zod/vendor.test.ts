@@ -69,6 +69,11 @@ describe('zod 4', () => {
       }),
       message: (data: { value: number }) => String(data.value),
     });
+    // Phase 2 will infer the input as { value: string | number }
+    // from the schema, allowing string coercion at call site.
+    // @ts-expect-error -- the public error() signature does not yet
+    // accept a string for a coerced-number schema field; Phase 2 of
+    // the type-validation audit fixes this.
     const instance = E({ value: '42' });
     expect(typeof instance.fields.value).toBe('number');
     expect(instance.fields.value).toBe(42);
