@@ -269,6 +269,23 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
    * Error factory function - creates error instances.
    */
   const ErrorFactoryInstance: ErrorFactory<T> = (input?: Partial<T>): ErrorInstance<T> => {
+    // Runtime safety net for the audit's P1 #1 finding: when a
+    // factory carries a schema, the input is required at the call
+    // site. The type signature accepts `input?` for backward
+    // compatibility, but the runtime throws if the consumer calls
+    // without arguments. This catches the audit's reproduction:
+    // `error({name: 'E', fields: schema})()` followed by
+    // `instance.fields.x` would crash with a generic TypeError
+    // on `undefined`; this version makes the failure explicit
+    // and localized.
+    if (input === undefined && hasSchema) {
+      throw new TypeError(
+        `error("${name}") was called with no arguments. The factory ` +
+          `carries a schema, so the input shape is required. Pass ` +
+          `the validated input, e.g. ${name}({ ... }).`
+      );
+    }
+
     let fieldsData: Record<string, unknown> = {};
     let errorMessage = name;
 
