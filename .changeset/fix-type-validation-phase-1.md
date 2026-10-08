@@ -91,6 +91,43 @@ Addresses the type-side and runtime-side findings of the self-audit.
   that relied on `Partial<T>` must now either supply the full
   shape or annotate the field as optional in the schema.
 
+**Required input argument — breaking**
+
+- `ErrorFactory<TInput, TOutput>` now requires the input argument
+  at the call site whenever `TInput` is not the empty shape. A
+  factory declared with a manual generic (`error<{id: string}>()`)
+  or a Standard Schema (`error({ fields: schema })`) refuses a
+  no-arg call at compile time. The runtime also throws a localized
+  `TypeError` for the schema-bearing path so consumers who bypass
+  the type-checker still get a clear message. Legacy call patterns
+  (`error({ name })`, `error({ name, message: 'literal' })`) keep
+  the optional argument because their default `TInput` is the empty
+  shape.
+
+**Inheritance guarantees structure — breaking**
+
+- A factory declared with `inherits: Parent` is now required to
+  produce a `fields` shape that satisfies every direct parent that
+  carries a schema. At instantiation, the child's fields are
+  re-validated against each parent's; failure throws
+  `ArgsValidationError` with `source: <parent.name>`. `is(child,
+  Parent)` and `is(child, Child)` are now honest at the type
+  level — the narrowed fields type is the intersection of the
+  factory's own output and all reachable ancestors' outputs.
+  Cycles are bounded by a depth counter; transitive ancestors
+  rely on each link in the chain being validated at its own
+  construction.
+
+**Function-form `message` without a schema**
+
+- The legacy branch now invokes the function with the validated
+  (or empty) fields and assigns its return to `errorMessage`.
+  Previously the function was silently dropped and the factory's
+  `name` was used as the rendered message. The audit's P2 finding
+  is closed; `error<{name: string}>({ name, message: d => d.name })`
+  now produces instances whose `.message` matches the function
+  output.
+
 **V8 stack capture (Phase 11)**
 
 - `Error.captureStackTrace(target, exclude)` is now used on V8

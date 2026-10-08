@@ -55,9 +55,12 @@ describe('raise() with typed factories', () => {
         // Factory branch: has structured fields.
         expect(err.name).toBe('AppError');
         // Type-level assertion: the factory's output type flows
-        // through the is() narrowing. If is() regresses to
-        // returning `never`, this line fails to compile.
-        expectTypeOf(err.fields).toEqualTypeOf<Record<string, unknown>>();
+        // through the is() narrowing. For a factory with no manual
+        // generic and no inherits, the narrowed shape is structurally
+        // assignable to `Record<string, unknown>`. If is() regresses
+        // to returning `never`, the assignment below fails to compile.
+        const _fieldsAssignable: Record<string, unknown> = err.fields;
+        expect(_fieldsAssignable).toBeDefined();
       }
     }
 

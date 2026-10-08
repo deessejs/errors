@@ -312,14 +312,18 @@ describe('error() factory function', () => {
       expect(instance.message).toBe('Field "" is invalid');
     });
 
-    it('should format template even with no fields provided', () => {
+    it('requires the input arg when a non-empty TInput is declared', () => {
+      // Pinning the type-level contract: a factory with a declared
+      // TInput must be called with that input. The call signature
+      // refuses no-arg calls at compile time; this test asserts the
+      // runtime consequence (a supplied empty string still formats).
       const TemplateError = error<{ field: string }>({
         name: 'TemplateError',
         message: 'Field "{field}" is invalid',
       });
 
-      const instance = TemplateError();
-      expect(instance.message).toBe('Field "{field}" is invalid');
+      const instance = TemplateError({ field: '' });
+      expect(instance.message).toBe('Field "" is invalid');
     });
 
     it('should not format message without placeholders', () => {
@@ -374,11 +378,10 @@ describe('error() factory function', () => {
       const AppError = error({ name: 'AppError' });
 
       // Type checks - these compile if types are correct.
-      // @ts-expect-error -- the factory returns ErrorInstance<Record<string, unknown>>
-      // which is not assignable to the bare ErrorInstance alias (default
-      // TFields=Record<string, never>). Phase 2 will fix this by
-      // producing ErrorInstance<Record<string, never>> when no schema
-      // is supplied.
+      // The factory returns ErrorInstance<Record<string, never>> (the
+      // empty shape, since no fields are declared), which is assignable
+      // to the bare `ErrorInstance` alias (default TFields =
+      // Record<string, never>).
       const instance: ErrorInstance = AppError();
       expect(instance.name).toBe('AppError');
     });

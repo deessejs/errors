@@ -26,7 +26,7 @@ describe('required input argument (P1 #1)', () => {
 
     expect(() => (E as unknown as () => unknown)()).toThrow(TypeError);
     expect(() => (E as unknown as () => unknown)()).toThrow(/SchemaError/);
-    expect(() => (E as unknown as () => unknown)()).toThrow(/requires an input/);
+    expect(() => (E as unknown as () => unknown)()).toThrow(/input shape is required/);
   });
 
   it('accepts no arguments for the legacy no-fields form', () => {

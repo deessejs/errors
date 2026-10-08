@@ -49,16 +49,25 @@ describe('schema + message configuration overloads', () => {
     });
   });
 
-  it('accepts a function message without a schema (manual generic)', () => {
+  it('invokes a function message without a schema at runtime', () => {
+    // Pinning the audit's P2 finding: the function-form `message`
+    // was previously dropped on the floor (the factory's `name`
+    // became the rendered message). The fix invokes the function
+    // with the validated (or empty) fields.
     const E = error<{ name: string }>({
       name: 'ManualGeneric',
-      message: (data) => data.name,
+      message: (data) => `Hello ${data.name}`,
     });
     expectTypeOf(E).toBeCallableWith({ name: 'Ada' });
+    expect(E({ name: 'Ada' }).message).toBe('Hello Ada');
   });
 
   it('accepts a string message without a schema (legacy template form)', () => {
-    const E = error({
+    // Legacy template form requires a manual generic to declare the
+    // shape of the inputs. Without one, `TInput` defaults to the empty
+    // shape and the call site cannot supply fields. This is the
+    // migration path for the pre-1.4 string-template API.
+    const E = error<{ name: string }>({
       name: 'Legacy',
       message: 'Hello {name}',
     });

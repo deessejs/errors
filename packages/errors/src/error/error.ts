@@ -243,7 +243,7 @@ export function error<S extends StandardSchemaV1<any, any>>(config: {
   inherits?: AnyErrorFactory | AnyErrorFactory[];
 }): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
 
-export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
+export function error<T extends Record<string, unknown> = Record<string, never>>(config: {
   name: string;
   fields?: undefined;
   message?: string | ((data: T) => string);
@@ -311,16 +311,47 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       // fields are still on the instance; consumers that want a
       // rendered message can supply `message`.
     } else {
-      // Legacy path — no schema, plain string template. No validation.
+      // Legacy path — no schema. Accepts a string template, a plain
+      // string, or a function-form message. Function-form is now
+      // invoked (the audit's P2 finding: it was previously dropped on
+      // the floor, leaving the factory's `name` as the rendered
+      // message). The cast mirrors the schema branch's invocation at
+      // line ~311.
       fieldsData = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
       if (typeof message === 'string' && hasTemplatePlaceholders(message)) {
         errorMessage = formatTemplate(message, fieldsData);
       } else if (typeof message === 'string') {
         errorMessage = message;
+      } else if (hasFunctionMessage && typeof message === 'function') {
+        errorMessage = (message as (data: T) => string)(fieldsData as unknown as T);
       }
       // The deprecation marker is gated by the warning once per call site.
       // Set `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES = "1"` to silence.
       warnLegacy(formatCallSite());
+    }
+
+    // Validate the child's fields against each direct parent that
+    // carries a schema. Without this, a child factory that omits the
+    // parent's required fields would still be classified as the parent
+    // by `is()`, but its `.fields` would not satisfy the parent's
+    // contract — a runtime lie that the type-checker now actively
+    // tells. Each direct parent is checked; transitive ancestors are
+    // expected to be validated at their own construction (each link in
+    // the chain runs its own parent-schema check at instantiation).
+    if (inherits !== undefined) {
+      const parents: AnyErrorFactory[] = Array.isArray(inherits) ? inherits : [inherits];
+      for (const parent of parents) {
+        const parentSchema = (parent as { schema?: unknown }).schema;
+        if (parentSchema === undefined || parentSchema === null) continue;
+        const result = runSchema(parentSchema as StandardSchemaV1, fieldsData, parent.name);
+        if (!result.ok) {
+          throw new ArgsValidationError(
+            parent.name,
+            result.issues as ReadonlyArray<unknown>,
+            (parentSchema as StandardSchemaV1)['~standard'].vendor
+          );
+        }
+      }
     }
 
     // Capture stack trace.
@@ -367,9 +398,14 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       return instance;
     };
 
-    // Mark this instance as created by this factory (for is() checks)
-    (instance as unknown as Record<typeof FACTORY_SYMBOL, () => unknown>)[FACTORY_SYMBOL] =
-      ErrorFactoryInstance;
+    // Mark this instance as created by this factory (for is() checks).
+    // Cast: ErrorFactoryInstance's call signature is conditional on
+    // TInput (empty vs non-empty), so the simplest way to assign through
+    // the symbol-keyed marker is via `unknown` and then a single callable
+    // shape that captureStack accepts.
+    (instance as unknown as Record<typeof FACTORY_SYMBOL, (...args: never[]) => unknown>)[
+      FACTORY_SYMBOL
+    ] = ErrorFactoryInstance as unknown as (...args: never[]) => unknown;
 
     return instance;
   };

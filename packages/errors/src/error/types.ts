@@ -60,33 +60,85 @@ export type ErrorInstanceCore = {
  * the input and output are independently inferred from the schema and may
  * differ when the schema transforms (coercion, defaults, branding).
  *
+ * The call signature is conditional on `TInput`: when `TInput` is the empty
+ * shape (`Record<string, never>`), the factory is callable with no
+ * arguments; when it is non-empty, the input argument is required at the
+ * call site. This closes the gap where a factory carrying a declared
+ * `TInput` could be called with no arguments and then crash on
+ * `instance.fields.x` with a confusing `TypeError` from the wrong frame.
+ *
  * @typeParam TInput  Shape the caller must supply when invoking the factory.
  * @typeParam TOutput Shape the instance carries in `.fields` after validation.
  */
 export type ErrorFactory<
   TInput extends Record<string, unknown> = Record<string, never>,
   TOutput extends Record<string, unknown> = TInput,
-> = {
-  /** Invoke the factory to mint a new instance. */
-  (input?: TInput): ErrorInstance<TOutput>;
-  /** Error name identifier. */
-  name: string;
-  /** Parent error factories for type checking. */
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
-  /** The Standard Schema used to validate the args at instantiation time. */
-  schema?: StandardSchemaV1;
-  /** The original message template or function (introspection only). */
-  rawMessage?: string | ((data: TOutput) => string);
-};
+> = [TInput] extends [Record<string, never>]
+  ? {
+      /**
+       * Invoke the factory to mint a new instance.
+       *
+       * When `TInput` is the empty shape, the argument is optional — the
+       * legacy string-template form (`error({ name, message })` with no
+       * manual generic) is allowed to be called with `()` or `({})`. The
+       * runtime coerces a non-object input to `{}` so the legacy template
+       * still renders, and a missing input falls back to `name` as the
+       * message.
+       */
+      (input?: TInput): ErrorInstance<TOutput>;
+      /** Error name identifier. */
+      name: string;
+      /** Parent error factories for type checking. */
+      inherits?: AnyErrorFactory | AnyErrorFactory[];
+      /** The Standard Schema used to validate the args at instantiation time. */
+      schema?: StandardSchemaV1;
+      /** The original message template or function (introspection only). */
+      rawMessage?: string | ((data: TOutput) => string);
+    }
+  : {
+      /**
+       * Invoke the factory to mint a new instance.
+       *
+       * When `TInput` is non-empty (the caller declared a manual generic
+       * or supplied a schema), the input argument is required. A factory
+       * with a non-empty `TInput` called with no arguments is a type
+       * error; the runtime also throws a localized `TypeError` when a
+       * schema-bearing factory is called without input.
+       */
+      (input: TInput): ErrorInstance<TOutput>;
+      /** Error name identifier. */
+      name: string;
+      /** Parent error factories for type checking. */
+      inherits?: AnyErrorFactory | AnyErrorFactory[];
+      /** The Standard Schema used to validate the args at instantiation time. */
+      schema?: StandardSchemaV1;
+      /** The original message template or function (introspection only). */
+      rawMessage?: string | ((data: TOutput) => string);
+    };
 
 /**
  * Type-erased ErrorFactory. Accepts any concrete factory regardless of
  * its input/output generics. Used in `inherits` lists, the `is()`
  * discriminator, and any other surface where the field-level types are
  * not material.
+ *
+ * The conditional on `ErrorFactory<TInput, TOutput>` makes
+ * `ErrorFactory<any, any>` self-referential (the body references
+ * `AnyErrorFactory` via the `inherits` field). Inlining the two branches
+ * with `any` generics breaks the structural cycle: the body's `inherits`
+ * now references a stand-alone alias defined *before* the conditional
+ * factory, not the factory itself.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyErrorFactory = ErrorFactory<any, any>;
+export type AnyErrorFactory = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (input?: any): ErrorInstance<any>;
+  name: string;
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
+  schema?: StandardSchemaV1;
+  rawMessage?:
+    | string // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    | ((data: any) => string);
+};
 
 /**
  * Error instance returned by an ErrorFactory.

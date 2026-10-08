@@ -62,7 +62,9 @@ describe('error() with Standard Schema (RFC 0001)', () => {
     });
 
     it('interpolates {placeholder} template', () => {
-      const Err = error({
+      // Legacy template form requires a manual generic to declare the
+      // shape of the inputs.
+      const Err = error<{ field: string; reason: string }>({
         name: 'LegacyError',
         message: 'Field "{field}" is invalid: {reason}',
       });
