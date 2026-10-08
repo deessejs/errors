@@ -135,3 +135,52 @@ describe('inherits: transitive validation', () => {
     expect(is(instance, Other)).toBe(false);
   });
 });
+
+describe('inherits: parent transformations cascade', () => {
+  it('applies a single parent transformation to the child fields', () => {
+    // Round 2 Gap 2: before the fix, the validation block consulted
+    // result.ok but discarded result.value. A parent with
+    // z.coerce.number() would still coerce its own fields, but the
+    // child kept the raw string in its `.fields`. The fix writes
+    // result.value back to `data` after every successful runSchema,
+    // so the post-transform shape cascades.
+    const Parent = error({
+      name: 'CoerceParent',
+      fields: z.object({ n: z.coerce.number() }),
+      message: (data) => String(data.n),
+    });
+    const Child = error({ name: 'CoerceChild', inherits: Parent });
+
+    const instance = Child({ n: '42' });
+    // Post-transform: the child's fields reflect the parent's
+    // coercion, not the raw string.
+    expect(instance.fields).toEqual({ n: 42 });
+    expect(typeof instance.fields.n).toBe('number');
+    // is() narrows to the schema's InferOutput, so the runtime
+    // value matches the type-level promise.
+    expect(is(instance, Parent)).toBe(true);
+  });
+
+  it('applies multiple parents in declaration order', () => {
+    // Multi-inheritance: the second parent sees the first parent's
+    // post-transform output, not the raw input. The cascade is
+    // last-writer-wins per parent in the order the parents appear
+    // in `inherits`.
+    const A = error({
+      name: 'A',
+      fields: z.object({ x: z.coerce.number() }),
+      message: (data) => String(data.x),
+    });
+    const B = error({
+      name: 'B',
+      fields: z.object({ y: z.string() }),
+      message: (data) => data.y,
+    });
+    const C = error({ name: 'C', inherits: [A, B] });
+
+    const instance = C({ x: '1', y: 'two' });
+    expect(instance.fields).toEqual({ x: 1, y: 'two' });
+    expect(is(instance, A)).toBe(true);
+    expect(is(instance, B)).toBe(true);
+  });
+});

@@ -201,10 +201,19 @@ function validateAncestors(
           (parentSchema as StandardSchemaV1)['~standard'].vendor
         );
       }
-      // Cascade the parent's transformed output so the next parent's
-      // `runSchema` sees the post-transform fields, and so the leaf's
-      // `instance.fields` reflects every parent's transformation.
-      data = (result.value as Record<string, unknown>) ?? data;
+      // Cascade the parent's transformed output. We merge the
+      // parent's validated value into `data` rather than replacing
+      // it: zod (and most Standard Schema validators) only echo back
+      // the keys they recognize, so a strict replacement would
+      // strip fields the parent does not know about. The merge
+      // keeps fields that the child carries but the parent does not
+      // (e.g. multi-inheritance: a parent's `result.value` only
+      // contains its own keys), and overlays the parent's
+      // transformations on the keys the parent did validate.
+      const transformed = result.value as Record<string, unknown> | undefined;
+      if (transformed !== undefined) {
+        data = { ...data, ...transformed };
+      }
     }
     // Recurse into the parent's own inherits. The walk matches the
     // type-level `ExtractFactoryFields` recursion in is/index.ts:42-118,

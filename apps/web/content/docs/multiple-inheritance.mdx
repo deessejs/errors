@@ -129,6 +129,10 @@ Multiple inheritance is appropriate when:
 
 Avoid using multiple inheritance just because you can. Prefer single inheritance for most errors, and only use multiple inheritance when the error genuinely belongs to multiple categories.
 
+## Schema Validation Across Multiple Parents
+
+When parents in a multiple-inheritance chain carry Standard Schemas, the child must satisfy every parent's schema. The validation walks the array in declaration order and applies each parent's transformations to the child's fields in turn — the second parent sees the first parent's post-transform output, not the raw input. A diamond (`A ← B`, `A ← C`, `D.inherits: [B, C]`) is validated against the shared root exactly once via a `Set`-based cycle guard shared across siblings. The `inherits` array is frozen at construction, so any in-place mutation of the caller's array after `error()` returns throws `TypeError`. The narrowed `instance.fields` and the type-level `is()` discrimination are guaranteed to agree: a factory that does not produce a schema-satisfying `fields` shape cannot yield a classify-able instance.
+
 ## See Also
 
 <Cards>

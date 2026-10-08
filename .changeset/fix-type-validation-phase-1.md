@@ -107,16 +107,32 @@ Addresses the type-side and runtime-side findings of the self-audit.
 **Inheritance guarantees structure — breaking**
 
 - A factory declared with `inherits: Parent` is now required to
-  produce a `fields` shape that satisfies every direct parent that
-  carries a schema. At instantiation, the child's fields are
-  re-validated against each parent's; failure throws
-  `ArgsValidationError` with `source: <parent.name>`. `is(child,
-  Parent)` and `is(child, Child)` are now honest at the type
-  level — the narrowed fields type is the intersection of the
-  factory's own output and all reachable ancestors' outputs.
-  Cycles are bounded by a depth counter; transitive ancestors
-  rely on each link in the chain being validated at its own
-  construction.
+  produce a `fields` shape that satisfies every reachable ancestor
+  that carries a schema. At instantiation, the child's fields are
+  re-validated against each ancestor's schema in a depth-first walk
+  rooted at the current factory. The walk reads from the frozen
+  `factory.inherits` snapshot (the same source of truth that `is()`
+  reads from), uses a `Set<AnyErrorFactory>` cycle guard shared
+  across siblings, and applies each ancestor's transformed output
+  to `data` as it cascades. Failure throws `ArgsValidationError`
+  with `source: <ancestor.name>`; the leaf's `instance.fields`
+  reflects every parent's transformation in the same order the
+  parents appear in `inherits`.
+- `is(child, Parent)` and `is(child, Child)` are now honest at the
+  type level — the narrowed fields type is the intersection of the
+  factory's own output and all reachable ancestors' outputs — and
+  the runtime validation block enforces the same contract: a
+  factory whose `fields` do not satisfy an ancestor's schema
+  cannot produce a classify-able instance.
+- The caller's `inherits` array is now `Object.freeze`d in place
+  at construction time (in addition to the Phase 4 freeze of the
+  factory's internal copy). Any in-place mutation of the array
+  after construction throws `TypeError` in strict mode. The
+  earlier implementation only froze the snapshot, leaving a
+  window where mutating the caller's array between factory
+  construction and the first invocation could desynchronize
+  the validation block (which read the closure) from `is()`
+  (which read the snapshot).
 
 **Function-form `message` without a schema**
 

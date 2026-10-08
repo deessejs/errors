@@ -115,6 +115,10 @@ console.log(ValidationError.inherits === AppError); // true
 
 This is useful for building introspection tools or generating documentation automatically.
 
+## Schema Validation Across the Chain
+
+When a parent factory carries a Standard Schema, the child must produce a `fields` shape that satisfies every reachable ancestor's schema at instantiation. The validation walks the entire `inherits` chain — `Parent → Middle → Leaf` is validated transitively, not just at the direct parent — and applies each ancestor's transformations to the child's fields in the order the parents appear. A failure throws `ArgsValidationError` with `source: <ancestor.name>`; the leaf's `instance.fields` reflects every parent's transformation. The `inherits` array itself is frozen at construction time, so any in-place mutation after `error()` returns throws `TypeError`.
+
 ## See Also
 
 <Cards>
