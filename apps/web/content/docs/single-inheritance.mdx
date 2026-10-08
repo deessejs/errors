@@ -119,6 +119,35 @@ This is useful for building introspection tools or generating documentation auto
 
 When a parent factory carries a Standard Schema, the child must produce a `fields` shape that satisfies every reachable ancestor's schema at instantiation. The validation walks the entire `inherits` chain — `Parent → Middle → Leaf` is validated transitively, not just at the direct parent — and applies each ancestor's transformations to the child's fields in the order the parents appear. A failure throws `ArgsValidationError` with `source: <ancestor.name>`; the leaf's `instance.fields` reflects every parent's transformation. The `inherits` array itself is frozen at construction time, so any in-place mutation after `error()` returns throws `TypeError`.
 
+## Transformation Compatibility
+
+The cascade also enforces that an instance simultaneously satisfies the leaf's contract AND every ancestor's `InferOutput`. Two scenarios would otherwise be silently accepted and are now rejected at the factory call site:
+
+```ts title="incompatible-rewrite.ts"
+// Scenario 1: an ancestor's schema rewrites a key the leaf declared.
+// The leaf's schema says `n: z.string()`; an ancestor coerces `n`
+// to number. The runtime would otherwise overwrite the leaf's
+// `n: string` with `n: number`. The cascade now throws
+// `ArgsValidationError` with `source: <ancestor.name>`,
+// `issues[0].path: ['n']`, and `from` / `to` shape kinds.
+const Leaf = error({
+  name: 'Leaf',
+  fields: z.object({ n: z.string() }),
+  message: (d) => d.n,
+  inherits: error({
+    name: 'Parent',
+    fields: z.object({ n: z.coerce.number() }),
+    message: (d) => String(d.n),
+  }),
+});
+
+Leaf({ n: '42' }); // throws ArgsValidationError
+```
+
+Same-kind transitions are still allowed. If the leaf's schema and the ancestor's schema agree on the kind (e.g. both produce `number`), the cascade applies the ancestor's transformation without throwing — the leaf's narrowed type and the instance's actual type still agree.
+
+For consumers who declared a leaf with the manual generic `error<{n: string}>()` but no schema: the runtime cannot recover the generic's keys (TypeScript erases them), so the leaf falls back to the shape gate. The generic remains a type-level guarantee; the runtime enforces it only when a schema is also present.
+
 ## See Also
 
 <Cards>

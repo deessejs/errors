@@ -133,6 +133,36 @@ Avoid using multiple inheritance just because you can. Prefer single inheritance
 
 When parents in a multiple-inheritance chain carry Standard Schemas, the child must satisfy every parent's schema. The validation walks the array in declaration order and applies each parent's transformations to the child's fields in turn — the second parent sees the first parent's post-transform output, not the raw input. A diamond (`A ← B`, `A ← C`, `D.inherits: [B, C]`) is validated against the shared root exactly once via a `Set`-based cycle guard shared across siblings. The `inherits` array is frozen at construction, so any in-place mutation of the caller's array after `error()` returns throws `TypeError`. The narrowed `instance.fields` and the type-level `is()` discrimination are guaranteed to agree: a factory that does not produce a schema-satisfying `fields` shape cannot yield a classify-able instance.
 
+## Transformation Compatibility Across Siblings
+
+When two parents in a multi-inheritance chain transform the same key in incompatible ways, the cascade now rejects the call. The shape gate runs at the parent-to-parent level: a parent that overwrites a key already written by an earlier parent in the cascade with a different shape kind throws `ArgsValidationError` with `source: <parent.name>`, `issues[0].path: [<key>]`, and `from` / `to` shape kinds.
+
+```ts title="sibling-incompatible.ts"
+// Two parents in a multi-inheritance chain, each with a
+// transforming schema on the same key. The first parent coerces
+// `n` to number; the second expects `n` to be a string. The
+// second parent's `runSchema` would otherwise run on the
+// post-first-parent value (a number) and either silently
+// accept it (the input type is permissive) or throw. The
+// cascade now throws on the second parent's rewrite with
+// `from: 'number'`, `to: 'string'`.
+const A = error({
+  name: 'A',
+  fields: z.object({ n: z.coerce.number() }),
+  message: (d) => String(d.n),
+});
+const B = error({
+  name: 'B',
+  fields: z.object({ n: z.string() }),
+  message: (d) => d.n,
+});
+const C = error({ name: 'C', inherits: [A, B] });
+
+C({ n: '42' }); // throws ArgsValidationError, source: 'B'
+```
+
+Same-kind sibling transitions (e.g. both produce `number`) remain valid. The shape gate only fires on cross-category rewrites. Parents that add disjoint keys still merge freely.
+
 ## See Also
 
 <Cards>
