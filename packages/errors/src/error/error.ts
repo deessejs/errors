@@ -228,6 +228,14 @@ function formatCallSite(): string {
 // TypeScript can statically route the call. The first overload
 // is the only one where `message`'s parameter type is
 // determined by the schema.
+//
+// The `any, any` parameters on StandardSchemaV1 let us capture
+// every concrete schema (Zod, valibot, arktype, custom mocks) and
+// derive the per-call input/output types via InferInput/InferOutput.
+// Without `any`, the call signature would require `<infer I, infer O>`
+// and the overload would lose its ability to discriminate on the
+// call site.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function error<S extends StandardSchemaV1<any, any>>(
   config: {
     name: string;
@@ -359,8 +367,19 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     configurable: false,
   });
 
+  // Phase 4: copy the inherits list at definition so subsequent
+  // mutations of the caller's array do not retroactively change
+  // the classification. The copy is then frozen (Object.freeze
+  // below) so consumers cannot mutate the factory's own copy
+  // either. A reassignment of `factory.inherits = ...` is
+  // rejected by the freeze; an in-place mutation of the original
+  // array is no longer observable through this factory.
   if (inherits !== undefined) {
-    (ErrorFactoryInstance as ErrorFactory<T>).inherits = inherits;
+    const inheritsSnapshot: AnyErrorFactory | AnyErrorFactory[] = Array.isArray(inherits)
+      ? [...inherits]
+      : inherits;
+    Object.freeze(inheritsSnapshot);
+    (ErrorFactoryInstance as ErrorFactory<T>).inherits = inheritsSnapshot;
   }
 
   if (fields !== undefined) {

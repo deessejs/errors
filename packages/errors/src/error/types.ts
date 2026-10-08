@@ -85,6 +85,7 @@ export type ErrorFactory<
  * discriminator, and any other surface where the field-level types are
  * not material.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyErrorFactory = ErrorFactory<any, any>;
 
 /**
@@ -110,6 +111,10 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
      * Chains a cause error to this error. The cause is the direct failure
      * that explains this one. Walk `cause` (singular) to follow the chain.
      */
+    // The `any` here lets `cause` accept any ErrorInstance shape
+    // without forcing a covariant narrowing that would reject
+    // structurally-compatible instances from sibling factories.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     from(cause: Error | ErrorInstance<any>): ErrorInstance<TFields>;
     /** Direct cause of this error. Walk `.cause` to follow the chain. */
     cause: Error | null;

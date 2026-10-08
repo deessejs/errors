@@ -51,4 +51,27 @@ describe('inherits is immutable after factory construction', () => {
     const instance = E();
     expect(instance.name).toBe('Original');
   });
+
+  it("does not observe later mutations of the caller's array", () => {
+    // Phase 4 P2 #6: the factory snapshots the inherits list at
+    // definition time. The previous implementation stored the
+    // caller's array reference, so an in-place mutation would
+    // retroactively flip the classification of every instance.
+    const Parent = error({ name: 'Parent' });
+    const Other = error({ name: 'Other' });
+
+    const parents = [Parent];
+    const C = error({ name: 'C', inherits: parents });
+    const instance = C();
+
+    expect(is(instance, Parent)).toBe(true);
+    expect(is(instance, Other)).toBe(false);
+
+    // Mutate the caller's array. The factory's snapshot must not
+    // observe this mutation.
+    parents.splice(0, 1, Other);
+
+    expect(is(instance, Parent)).toBe(true);
+    expect(is(instance, Other)).toBe(false);
+  });
 });
