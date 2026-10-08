@@ -15,6 +15,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { error, is, ArgsValidationError } from '../src/index.js';
+import type { AnyErrorFactory } from '../src/error/types.js';
 
 describe('inherits: transitive validation', () => {
   it('validates the grandparent schema when the leaf has only a middle parent', () => {
@@ -23,8 +24,12 @@ describe('inherits: transitive validation', () => {
       fields: z.object({ id: z.string() }),
       message: (data) => data.id,
     });
-    const Middle = error({ name: 'Middle', inherits: Parent });
-    const Leaf = error({ name: 'Leaf', inherits: Middle });
+    // The child factory's call signature does not propagate the
+    // parent's input shape automatically; pin a manual generic so
+    // the test exercises the parent's schema at the call site
+    // instead of forcing a cast.
+    const Middle = error<{ id: string }>({ name: 'Middle', inherits: Parent });
+    const Leaf = error<{ id: string }>({ name: 'Leaf', inherits: Middle });
 
     // Happy path: a leaf with the grandparent's required fields.
     const ok = Leaf({ id: 'x' });
@@ -34,10 +39,13 @@ describe('inherits: transitive validation', () => {
     expect(is(ok, Leaf)).toBe(true);
 
     // Sad path: missing the grandparent's required field throws
-    // ArgsValidationError sourced from the grandparent.
+    // ArgsValidationError sourced from the grandparent. The call
+    // site uses a cast because the static type contract says
+    // `{id: string}` is required; the runtime contract is what
+    // fails here.
     let caught: unknown = null;
     try {
-      Leaf();
+      (Leaf as unknown as () => unknown)();
     } catch (err) {
       caught = err;
     }
@@ -72,9 +80,9 @@ describe('inherits: transitive validation', () => {
       fields: z.object({ id: z.string() }),
       message: (data) => data.id,
     });
-    const Left = error({ name: 'Left', inherits: Root });
-    const Right = error({ name: 'Right', inherits: Root });
-    const Tip = error({ name: 'Tip', inherits: [Left, Right] });
+    const Left = error<{ id: string }>({ name: 'Left', inherits: Root });
+    const Right = error<{ id: string }>({ name: 'Right', inherits: Root });
+    const Tip = error<{ id: string }>({ name: 'Tip', inherits: [Left, Right] });
 
     // Happy path: the root's required fields flow through.
     const ok = Tip({ id: 'x' });
@@ -82,10 +90,12 @@ describe('inherits: transitive validation', () => {
 
     // Sad path: missing the root's required field throws with
     // source: 'Root' (regardless of which leaf path triggered
-    // the validation).
+    // the validation). Cast the call site so the static type
+    // contract (which requires `{id: string}`) does not preempt
+    // the runtime check.
     let caught: unknown = null;
     try {
-      Tip();
+      (Tip as unknown as () => unknown)();
     } catch (err) {
       caught = err;
     }
@@ -111,8 +121,13 @@ describe('inherits: transitive validation', () => {
     });
     const Other = error({ name: 'Other' });
 
-    const parents = [Parent];
-    const C = error({ name: 'C', inherits: parents });
+    // The array is typed loosely so the splice/push arguments can
+    // be the `Other` factory (a no-schema factory whose `TInput`
+    // is `Record<string, never>` and therefore not assignable to
+    // the schema-bearing `Parent`). The runtime still rejects the
+    // mutation because of the freeze.
+    const parents: AnyErrorFactory[] = [Parent];
+    const C = error<{ id: string }>({ name: 'C', inherits: parents });
 
     // The factory works at construction time and at the first call.
     const instance = C({ id: 'x' });
@@ -151,7 +166,13 @@ describe('inherits: parent transformations cascade', () => {
     });
     const Child = error({ name: 'CoerceChild', inherits: Parent });
 
-    const instance = Child({ n: '42' });
+    // The child's call signature inherits the parent's input shape
+    // through the standard-schema input inference. The cascade
+    // test below is a runtime contract, not a type-narrowing one;
+    // pin the cast at the call site so the test stays focused.
+    const instance = (Child as unknown as (input: { n: string }) => { fields: { n: number } })({
+      n: '42',
+    });
     // Post-transform: the child's fields reflect the parent's
     // coercion, not the raw string.
     expect(instance.fields).toEqual({ n: 42 });
@@ -178,7 +199,15 @@ describe('inherits: parent transformations cascade', () => {
     });
     const C = error({ name: 'C', inherits: [A, B] });
 
-    const instance = C({ x: '1', y: 'two' });
+    // The child's call signature does not yet propagate the
+    // parents' input shapes; the runtime cascade is the focus of
+    // this test, not the type-level narrowing. Pin a cast at the
+    // call site.
+    const instance = (
+      C as unknown as (input: { x: string; y: string }) => {
+        fields: { x: number; y: string };
+      }
+    )({ x: '1', y: 'two' });
     expect(instance.fields).toEqual({ x: 1, y: 'two' });
     expect(is(instance, A)).toBe(true);
     expect(is(instance, B)).toBe(true);
