@@ -92,4 +92,46 @@ describe('inherits: transitive validation', () => {
     expect(caught).toBeInstanceOf(ArgsValidationError);
     expect((caught as ArgsValidationError).source).toBe('Root');
   });
+
+  it("rejects later in-place mutation of the caller's inherits array", () => {
+    // Round 2 Gap 3: before the fix, the factory's validation block
+    // read the closure-captured `inherits` reference, while `is()`
+    // read the frozen snapshot. A consumer who mutated the caller's
+    // array between factory construction and the first invocation
+    // could desynchronize the two: `is()` kept recognizing the
+    // original parent, but the validation block no longer saw it.
+    //
+    // The fix freezes the caller's array in place at construction
+    // time. Any later in-place mutation now throws in strict mode,
+    // closing the window at the source.
+    const Parent = error({
+      name: 'Parent',
+      fields: z.object({ id: z.string() }),
+      message: (data) => data.id,
+    });
+    const Other = error({ name: 'Other' });
+
+    const parents = [Parent];
+    const C = error({ name: 'C', inherits: parents });
+
+    // The factory works at construction time and at the first call.
+    const instance = C({ id: 'x' });
+    expect(is(instance, Parent)).toBe(true);
+    expect(is(instance, Other)).toBe(false);
+
+    // Later in-place mutations of the caller's array are rejected.
+    expect(() => {
+      parents.length = 0;
+    }).toThrow(TypeError);
+    expect(() => {
+      parents.splice(0, 1, Other);
+    }).toThrow(TypeError);
+    expect(() => {
+      parents.push(Other);
+    }).toThrow(TypeError);
+
+    // Classification is preserved regardless of the failed mutation.
+    expect(is(instance, Parent)).toBe(true);
+    expect(is(instance, Other)).toBe(false);
+  });
 });

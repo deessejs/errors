@@ -52,11 +52,16 @@ describe('inherits is immutable after factory construction', () => {
     expect(instance.name).toBe('Original');
   });
 
-  it("does not observe later mutations of the caller's array", () => {
+  it("rejects later in-place mutations of the caller's array", () => {
     // Phase 4 P2 #6: the factory snapshots the inherits list at
     // definition time. The previous implementation stored the
-    // caller's array reference, so an in-place mutation would
+    // caller's array reference, so an in-place mutation could
     // retroactively flip the classification of every instance.
+    //
+    // Round 2: the caller's array is now `Object.freeze`d in place
+    // at construction time, so any later in-place mutation throws
+    // immediately (in strict mode) or silently fails (in sloppy
+    // mode) — the classification window is closed at the source.
     const Parent = error({ name: 'Parent' });
     const Other = error({ name: 'Other' });
 
@@ -67,10 +72,13 @@ describe('inherits is immutable after factory construction', () => {
     expect(is(instance, Parent)).toBe(true);
     expect(is(instance, Other)).toBe(false);
 
-    // Mutate the caller's array. The factory's snapshot must not
-    // observe this mutation.
-    parents.splice(0, 1, Other);
+    // Mutate the caller's array. The freeze rejects the mutation.
+    expect(() => parents.splice(0, 1, Other)).toThrow(TypeError);
+    expect(() => {
+      parents.length = 0;
+    }).toThrow(TypeError);
 
+    // The original classification is preserved either way.
     expect(is(instance, Parent)).toBe(true);
     expect(is(instance, Other)).toBe(false);
   });

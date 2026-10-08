@@ -474,9 +474,19 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
   // the classification. The copy is then frozen (Object.freeze
   // below) so consumers cannot mutate the factory's own copy
   // either. A reassignment of `factory.inherits = ...` is
-  // rejected by the freeze; an in-place mutation of the original
-  // array is no longer observable through this factory.
+  // rejected by the freeze.
+  //
+  // Round 2: the caller's array itself is also frozen in place.
+  // The earlier snapshot-only freeze left a window where mutating
+  // the caller's array between factory construction and the first
+  // invocation could desynchronize the runtime validation block
+  // (which read the closure) from `is()` (which read the frozen
+  // snapshot). Freezing the input reference closes the window at
+  // the source — any later mutation now throws in strict mode.
   if (inherits !== undefined) {
+    if (Array.isArray(inherits)) {
+      Object.freeze(inherits);
+    }
     const inheritsSnapshot: AnyErrorFactory | AnyErrorFactory[] = Array.isArray(inherits)
       ? [...inherits]
       : inherits;
