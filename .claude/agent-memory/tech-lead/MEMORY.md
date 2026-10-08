@@ -1,2 +1,0 @@
-- [Project Type](project_type.md) — TypeScript package template for creating new packages
-- [Language Preference](language_preference.md) — Always communicate in English
