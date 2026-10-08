@@ -2,9 +2,11 @@
 "@deessejs/errors": minor
 ---
 
-chore: tighten type contracts (audit Phase 1 + parts of 2/4/6)
+chore: tighten type, validation, and runtime contracts (audit Phases 1–6)
 
-Addresses the type-side findings of the self-audit:
+Addresses the type-side and runtime-side findings of the self-audit.
+
+**Type contracts (Phases 1, 2, 6)**
 
 - Activates typecheck on the test files. A new `tsconfig.test.json`
   extends the base config and includes `src` and `tests`. A new
@@ -24,13 +26,49 @@ Addresses the type-side findings of the self-audit:
   overload returns `Error`. The previous single signature falsely
   promised `.fields`, `.notes`, `.from()`, and `.addNote()` on
   native error instances.
-- Adds a `tests/raise-typed.test.ts` consumer-side smoke test
-  that pins the public contract of `raise()` (throws preserve
-  factory field types) and the `is()` discrimination.
 
-The package's runtime behavior, public API surface, and
-documentation are unchanged. Phase 2 (schema-driven I/O inference
-on the public `error()` signature), Phase 3 (validation decoupled
-from message form, async rejection), and Phase 4 (cause semantics
-and immutable parents) remain to be addressed in follow-up PRs
-and are tracked by `@ts-expect-error` markers in the type tests.
+**Validation (Phase 3)**
+
+- The standard-schema branch now runs whenever a schema is supplied,
+  regardless of whether the message is a function or a string.
+  Before this change, a config like `{ fields: schema, message: 'literal' }`
+  silently skipped validation. The factory name is used as the
+  fallback error message; a function message still wins when present.
+- `ArgsValidationError.source` now contains the factory's `name`
+  instead of the long-form 'Async schemas are not supported…' text.
+  The explanatory detail moves to `ArgsValidationError.issues`.
+- The async-rejection path now attaches a no-op `.catch` to the
+  validator's pending Promise so a late rejection cannot surface
+  as an unhandledRejection.
+
+**Runtime stability (Phase 4)**
+
+- The factory object is now `Object.freeze`d at construction. The
+  `name`, `inherits`, and `schema` fields cannot be reassigned
+  after `error()` returns. This is the runtime enforcement for the
+  audit's observation that `is(child, Parent)` and `is(child, Other)`
+  must not flip just because someone mutated `Child.inherits`.
+
+**Consumer smoke tests (Phase 5)**
+
+- New `tests/consumer-from-dist.mjs` imports the published entry
+  point (`dist/index.js`) and exercises the public API surface
+  (error, raise, is, causes, ArgsValidationError). Run via
+  `pnpm test:consumer` (which builds first). Catches regressions
+  where source changes were not reflected in the build output.
+- New `tests/inherits-immutable.test.ts` proves the Phase 4
+  guarantee: late mutation of `factory.inherits` does not flip
+  the classification of instances created before the mutation.
+- New `tests/raise-typed.test.ts` pins the public contract of
+  `raise()` and the `is()` discrimination.
+
+The `causes: Error[]` field is still present and `@deprecated`.
+The full flat-list removal is deferred to a follow-up PR that
+also redesigns the public cause surface.
+
+The schema-driven input-shape inference (Phase 2's second half)
+remains to be addressed in a follow-up PR. The current public
+signature still requires manual type annotations on the message
+function parameter; the type tests carry `@ts-expect-error`
+markers pointing at the missing inference.
+

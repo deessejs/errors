@@ -77,14 +77,21 @@ function warnLegacy(callSite: string): void {
  */
 function runSchema(
   schema: StandardSchemaV1,
-  input: unknown
+  input: unknown,
+  factoryName: string
 ): { ok: true; value: unknown } | { ok: false; issues: ReadonlyArray<unknown> } {
   const handle = schema;
   const result = handle['~standard'].validate(input) as unknown;
   if (result && typeof (result as Promise<unknown>).then === 'function') {
+    // The schema returned a Promise, but error() is synchronous. We
+    // refuse to wait (that's what "async schemas are not supported"
+    // means). The Promise itself is still in flight; if we let it
+    // settle, its rejection would surface as an unhandledRejection.
+    // Attach a no-op catch so the rejection is contained. Consumers
+    // who need async validation should call the schema directly.
+    (result as Promise<unknown>).catch(() => undefined);
     throw new ArgsValidationError(
-      `Async schemas are not supported in \`error({...})\`. ` +
-        `Use \`schema\` directly (await) before instantiating.`,
+      factoryName,
       [{ message: 'Async validation not supported in error()' }],
       handle['~standard'].vendor ?? 'unknown'
     );
@@ -218,9 +225,12 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
 }): ErrorFactory<T> {
   const { name, fields, inherits, message } = config;
 
-  // Decide API mode up front and surface call sites early so the deprecation
-  // warning points at the user's call.
-  const isStandard = fields !== undefined && typeof message === 'function';
+  // Phase 3: validation is gated on the presence of `fields` alone,
+  // not on the conjunction with a function-form `message`. A schema
+  // without a function message still validates; the resulting error
+  // carries the validated fields and the error name as the message.
+  const hasSchema = fields !== undefined;
+  const hasFunctionMessage = typeof message === 'function';
 
   /**
    * Error factory function - creates error instances.
@@ -229,12 +239,13 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     let fieldsData: Record<string, unknown> = {};
     let errorMessage = name;
 
-    if (isStandard) {
-      if (fields === undefined || typeof message !== 'function') {
-        // Unreachable at runtime; the overloads guarantee both are present.
-        throw new Error('Internal: standard mode without fields or message function');
+    if (hasSchema) {
+      // Unreachable at runtime when isStandard is true; the overloads
+      // guarantee that, when `fields` is present, we go through here.
+      if (fields === undefined) {
+        throw new Error('Internal: schema branch entered without fields');
       }
-      const result = runSchema(fields, input);
+      const result = runSchema(fields, input, name);
       if (!result.ok) {
         throw new ArgsValidationError(
           name,
@@ -243,9 +254,14 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
         );
       }
       fieldsData = (result.value as Record<string, unknown>) ?? {};
-      errorMessage = (message as (data: T) => string)(fieldsData as unknown as T);
+      if (hasFunctionMessage && typeof message === 'function') {
+        errorMessage = (message as (data: T) => string)(fieldsData as unknown as T);
+      }
+      // else: errorMessage stays as the factory name. The validated
+      // fields are still on the instance; consumers that want a
+      // rendered message can supply `message`.
     } else {
-      // Legacy path — coerce input and interpolate the template if any.
+      // Legacy path — no schema, plain string template. No validation.
       fieldsData = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
       if (typeof message === 'string' && hasTemplatePlaceholders(message)) {
         errorMessage = formatTemplate(message, fieldsData);
@@ -313,6 +329,13 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
   if (message !== undefined) {
     (ErrorFactoryInstance as ErrorFactory<T>).rawMessage = message;
   }
+
+  // Phase 4: freeze the factory's metadata so consumers cannot
+  // mutate classification at runtime. The factory's `name`, `inherits`,
+  // and `schema` are part of the type contract and must not change
+  // after construction. The `rawMessage` and the function name are
+  // already non-writable via defineProperty above.
+  Object.freeze(ErrorFactoryInstance as unknown as object);
 
   return ErrorFactoryInstance;
 }

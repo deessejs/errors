@@ -36,7 +36,13 @@ describe('standard schema runtime: edge cases', () => {
       throw new Error('expected throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ArgsValidationError);
-      expect((err as ArgsValidationError).message).toContain('Async schemas');
+      // Phase 3: .source is the factory name; .issues carries the
+      // explanatory message. Together they identify the error
+      // precisely without the redundant long-form message prefix.
+      expect((err as ArgsValidationError).source).toBe('AsyncE');
+      expect((err as ArgsValidationError).issues[0]).toEqual({
+        message: 'Async validation not supported in error()',
+      });
       expect((err as ArgsValidationError).vendor).toBe('async-vendor');
     }
   });
