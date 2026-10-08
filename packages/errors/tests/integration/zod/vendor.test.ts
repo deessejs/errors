@@ -18,7 +18,7 @@ describe('zod 4', () => {
         email: z.string().email(),
         age: z.number().int().min(0),
       }),
-      message: (data: { email: string; age: number }) => `Field "${data.email}" age ${data.age}`,
+      message: (data) => `Field "${data.email}" age ${data.age}`,
     });
     const instance = E({ email: 'jane@example.com', age: 30 });
     expect(instance.message).toBe('Field "jane@example.com" age 30');
@@ -35,7 +35,7 @@ describe('zod 4', () => {
       fields: z.object({
         email: z.string().email(),
       }),
-      message: (data: { email: string }) => `Field "${data.email}"`,
+      message: (data) => `Field "${data.email}"`,
     });
     expect(() => E({ email: 'not-an-email' })).toThrow(ArgsValidationError);
   });
@@ -46,7 +46,7 @@ describe('zod 4', () => {
       fields: z.object({
         email: z.string().email(),
       }),
-      message: (data: { email: string }) => `Field ${data.email}`,
+      message: (data) => `Field ${data.email}`,
     });
     let caught: unknown = null;
     try {
@@ -67,13 +67,10 @@ describe('zod 4', () => {
       fields: z.object({
         value: z.coerce.number(),
       }),
-      message: (data: { value: number }) => String(data.value),
+      message: (data) => String(data.value),
     });
-    // Phase 2 will infer the input as { value: string | number }
-    // from the schema, allowing string coercion at call site.
-    // @ts-expect-error -- the public error() signature does not yet
-    // accept a string for a coerced-number schema field; Phase 2 of
-    // the type-validation audit fixes this.
+    // Phase 2: the input shape is { value: string | number }
+    // from the schema, allowing string coercion at the call site.
     const instance = E({ value: '42' });
     expect(typeof instance.fields.value).toBe('number');
     expect(instance.fields.value).toBe(42);

@@ -217,23 +217,17 @@ function formatCallSite(): string {
  * });
  * ```
  */
-// Phase 2: schema-driven I/O inference. The overloads below let
-// TypeScript derive TInput and TOutput directly from the
-// `fields` schema, so the consumer does not have to annotate
-// the `message` parameter manually. The implementation signature
-// (with a single `T extends Record<string, unknown>`) is the
-// fallback for the no-schema and no-message cases.
+// Phase 2: schema-driven I/O inference. The overloads below
+// discriminate on `fields`. The first overload matches calls
+// that supply a schema; the second matches calls that don't.
+// TypeScript picks the first matching overload, so the schema
+// overload must be first for its inference to win.
 //
-// TypeScript picks the first matching overload. The no-schema
-// overload comes first so the more permissive signature is
-// preferred when the consumer does not supply `fields`.
-export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
-  name: string;
-  fields?: StandardSchemaV1;
-  message?: string | ((data: T) => string);
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
-}): ErrorFactory<T>;
-
+// Implementation note: we use a discriminated union on
+// `{ fields: S }` vs `{ fields?: never; message?: ... }` so
+// TypeScript can statically route the call. The first overload
+// is the only one where `message`'s parameter type is
+// determined by the schema.
 export function error<S extends StandardSchemaV1<any, any>>(
   config: {
     name: string;
@@ -242,6 +236,13 @@ export function error<S extends StandardSchemaV1<any, any>>(
     inherits?: AnyErrorFactory | AnyErrorFactory[];
   }
 ): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
+
+export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
+  name: string;
+  fields?: undefined;
+  message?: string | ((data: T) => string);
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
+}): ErrorFactory<T>;
 
 export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
   name: string;
@@ -299,14 +300,22 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       warnLegacy(formatCallSite());
     }
 
-    // Capture stack trace
-    // Phase 11: pass `error` as the second argument so V8's
-    // captureStackTrace excludes this factory's own frame from
-    // the captured trace. On non-V8 engines the argument is
-    // ignored and the fallback path post-processes the string.
-    // Cast: `error` is overloaded for the public API, but
+    // Capture stack trace.
+    // Phase 11: pass the *factory* itself (the closure that the
+    // consumer invokes) as the second argument so V8's
+    // captureStackTrace excludes this factory's frames from the
+    // captured trace. Passing the outer `error` function would
+    // exclude all frames because `error` is not in the call chain
+    // at runtime — the consumer calls the factory returned by
+    // `error()`, not `error` itself. On non-V8 engines the
+    // argument is ignored and the fallback path post-processes
+    // the string.
+    // Cast: ErrorFactoryInstance is an overloaded callable;
     // captureStackTrace accepts any callable.
-    const stack = captureStack(errorMessage, error as (...args: unknown[]) => unknown);
+    const stack = captureStack(
+      errorMessage,
+      ErrorFactoryInstance as (...args: unknown[]) => unknown
+    );
 
     // Create error instance using native Error
     const instance = new Error(errorMessage) as ErrorInstance<T>;

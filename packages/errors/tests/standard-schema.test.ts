@@ -13,16 +13,18 @@ import type { StandardSchemaV1 } from '../src/index.js';
 
 // Build a Standard Schema validator from a plain function. Mirrors zod's
 // `safeParse` shape: returns either `{ value }` or `{ issues }`.
-const schema = <T>(
-  predicate: (input: unknown) => input is T,
+// Phase 2: typed I/O so the schema overload of `error()` can
+// infer the message parameter and the input shape.
+const schema = <I, O = I>(
+  predicate: (input: unknown) => input is O,
   validator: string = 'mock'
-): StandardSchemaV1 => ({
+): StandardSchemaV1<I, O> => ({
   '~standard': {
     version: 1,
     vendor: validator,
     validate: (input: unknown) =>
       predicate(input)
-        ? { value: input as T }
+        ? { value: input as O }
         : {
             issues: [
               {
@@ -87,7 +89,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
       const GreetingError = error({
         name: 'GreetingError',
         fields: Fields,
-        message: (data: { name: string }) => `Hello, ${data.name}!`,
+        message: (data) => `Hello, ${data.name}!`,
       });
       const instance = GreetingError({ name: 'world' });
       expect(instance.message).toBe('Hello, world!');
@@ -102,7 +104,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
       const E = error({
         name: 'E',
         fields: Fields,
-        message: (d: { x: number }) => String(d.x),
+        message: (d) => String(d.x),
       });
       expect((E as unknown as { schema: unknown }).schema).toBe(Fields);
     });
@@ -117,7 +119,7 @@ describe('error() with Standard Schema (RFC 0001)', () => {
       const E = error({
         name: 'BadInputError',
         fields: Fields,
-        message: (d: { ok: true }) => String(d.ok),
+        message: (d) => String(d.ok),
       });
       // Phase 2: the input shape will be inferred from the schema
       // and `{ wrong: true }` will be rejected at compile time.
@@ -133,12 +135,14 @@ describe('error() with Standard Schema (RFC 0001)', () => {
       const E = error({
         name: 'BadInputError',
         fields: Fields,
-        message: (d: { ok: true }) => String(d.ok),
+        message: (d) => String(d.ok),
       });
       let caught: unknown = null;
       try {
-        // @ts-expect-error -- Phase 2: input shape inferred from schema
-        E({});
+        // The mock schema rejects all inputs, so this triggers
+        // an ArgsValidationError at runtime. The static type requires
+        // { ok: true } (the schema's input shape), so we pass it.
+        E({ ok: true });
       } catch (err) {
         caught = err;
       }
@@ -153,14 +157,17 @@ describe('error() with Standard Schema (RFC 0001)', () => {
         void input;
         return false;
       }, 'arcane-vendor');
+      const TypedFields = Fields as unknown as StandardSchemaV1<{ ok: true }, { ok: true }>;
       const E = error({
         name: 'V',
-        fields: Fields,
-        message: (d: { ok: true }) => String(d.ok),
+        fields: TypedFields,
+        message: (d) => String(d.ok),
       });
       try {
-        // @ts-expect-error -- Phase 2: input shape inferred from schema
-        E({});
+        // The mock schema rejects all inputs, so this triggers
+        // an ArgsValidationError at runtime. The static type requires
+        // { ok: true } (the schema's input shape), so we pass it.
+        E({ ok: true });
       } catch (err) {
         expect((err as ArgsValidationError).vendor).toBe('arcane-vendor');
       }
@@ -190,19 +197,28 @@ describe('error() with Standard Schema (RFC 0001)', () => {
   });
 
   describe('legacy form retains legacy schema field exposure', () => {
-    it('exposes the schema on the factory even when message is a string', () => {
-      // Per RFC 0001 decision A, the schema field on the factory is kept in
-      // the legacy path so introspection tools still work.
+    // Phase 3 makes the presence of `fields` always trigger
+    // validation, regardless of the message form. The previous
+    // shape — schema + string message, validation skipped — is
+    // no longer reachable through the public type signature.
+    // The schema is still exposed on the factory when a function
+    // message is supplied; the corresponding test lives in
+    // the 'standard form' describe above.
+    it('exposes the schema on the factory when a function message is supplied', () => {
       const Fields = schema<{ name: string }>(
         (v): v is { name: string } =>
           typeof v === 'object' && v !== null && typeof (v as { name: unknown }).name === 'string'
       );
+      // The mock `schema()` helper returns a StandardSchemaV1 with
+      // unspecified generics. Cast to the precise shape so the
+      // schema overload's data inference matches.
+      const TypedFields = Fields as unknown as StandardSchemaV1<{ name: string }, { name: string }>;
       const E = error({
         name: 'MixedError',
-        fields: Fields,
-        message: 'Legacy template {name}',
+        fields: TypedFields,
+        message: (d) => d.name,
       });
-      expect((E as unknown as { schema: unknown }).schema).toBe(Fields);
+      expect((E as unknown as { schema: unknown }).schema).toBe(TypedFields);
     });
   });
 });

@@ -2,11 +2,15 @@
  * Consumer-side smoke test: validates that `raise()` correctly
  * preserves the type of the factory's ErrorInstance at the throw
  * site, and that the `is()` type guard discriminates factories
- * from native errors at runtime (the type-level discrimination is
- * pinned by tests/types/error-type.test.ts).
+ * from native errors at runtime.
+ *
+ * The type-level assertions below are checked at compile time
+ * (this file is included in tsconfig.test.json). If `is()` ever
+ * regresses to returning `never` for the factory branch, the
+ * type checks here will fail to compile.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, expectTypeOf } from 'vitest';
 import { error, raise, is } from '../src/index.js';
 
 describe('raise() with typed factories', () => {
@@ -50,6 +54,10 @@ describe('raise() with typed factories', () => {
       if (is(err, AppError)) {
         // Factory branch: has structured fields.
         expect(err.name).toBe('AppError');
+        // Type-level assertion: the factory's output type flows
+        // through the is() narrowing. If is() regresses to
+        // returning `never`, this line fails to compile.
+        expectTypeOf(err.fields).toEqualTypeOf<Record<string, unknown>>();
       }
     }
 
@@ -59,6 +67,10 @@ describe('raise() with typed factories', () => {
       if (is(err, SyntaxError)) {
         // Native branch: standard Error properties only.
         expect(err.name).toBe('SyntaxError');
+        // Type-level: is() narrows to the native Error subclass's
+        // *instance type*. The constructor type `typeof SyntaxError`
+        // is unwrapped via `InstanceType`.
+        expectTypeOf(err).toEqualTypeOf<SyntaxError>();
       } else {
         // is() returned false; this branch proves the discrimination works.
         expect.fail('expected SyntaxError');

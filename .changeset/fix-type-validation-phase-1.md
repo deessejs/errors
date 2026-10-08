@@ -1,5 +1,5 @@
 ---
-"@deessejs/errors": minor
+"@deessejs/errors": major
 ---
 
 chore: tighten type, validation, and runtime contracts (audit Phases 1–6)
@@ -62,13 +62,46 @@ Addresses the type-side and runtime-side findings of the self-audit.
 - New `tests/raise-typed.test.ts` pins the public contract of
   `raise()` and the `is()` discrimination.
 
-The `causes: Error[]` field is still present and `@deprecated`.
-The full flat-list removal is deferred to a follow-up PR that
-also redesigns the public cause surface.
+**Cause semantics (Phase 4b) — breaking**
+
+- The flat `causes: Error[]` field on `ErrorInstance` has been
+  removed. The previous field conflated historical `.from()` calls
+  with a true causal chain.
+- `cause: Error | null` is now the only direct field. Each
+  `.from()` call replaces the previous cause; the chain of
+  previous causes is reachable through their own `.cause` links.
+- `causes(error)` now walks the chain by following each cause's
+  own `.cause` link, with cycle detection. The returned array
+  is a new copy on each call.
+
+**Validation (Phase 3) — breaking**
+
+- A Standard Schema without a function-form `message` is no
+  longer accepted by the public signature. The schema overload
+  requires `message: (data) => string`. Consumers that relied
+  on `{ fields: schema }` without `message` (where the legacy
+  string-template form was used) must add a function message
+  or a string message without a schema.
+
+**Factory call signature — breaking**
+
+- The previous `error<T>()` factory accepted `Partial<T>` so any
+  field could be omitted at the call site. The new signature
+  accepts `T` (or `TInput` when a schema is supplied). Callers
+  that relied on `Partial<T>` must now either supply the full
+  shape or annotate the field as optional in the schema.
+
+**V8 stack capture (Phase 11)**
+
+- `Error.captureStackTrace(target, exclude)` is now used on V8
+  engines. The factory passes the closure as the exclude
+  argument, so the captured trace contains only the call site
+  of the factory invocation, not the factory's own frames.
+  Non-V8 engines fall back to the previous string-based filter.
 
 The schema-driven input-shape inference (Phase 2's second half)
 remains to be addressed in a follow-up PR. The current public
-signature still requires manual type annotations on the message
-function parameter; the type tests carry `@ts-expect-error`
-markers pointing at the missing inference.
+signature requires a function-form `message` when a schema is
+supplied; the type tests carry `@ts-expect-error` markers
+pointing at the missing input inference.
 

@@ -343,6 +343,7 @@ describe('error() factory function', () => {
       const ValidationError = error({
         name: 'ValidationError',
         fields: mockSchema,
+        message: () => 'placeholder',
       });
 
       expect(ValidationError.schema).toBeDefined();
@@ -354,6 +355,7 @@ describe('error() factory function', () => {
       const FieldError = error({
         name: 'FieldError',
         fields: mockSchema,
+        message: () => 'placeholder',
       });
 
       expect(FieldError.schema).toBeDefined();
@@ -465,7 +467,11 @@ describe('error() factory function', () => {
       // Regression for issue #83: the field shape is derived from the
       // schema's output type, not from a placeholder T parameter.
       const schema = createTypedMockSchema<unknown, { email: string; age: number }>();
-      const ValidationError = error({ name: 'ValidationError', fields: schema });
+      const ValidationError = error({
+        name: 'ValidationError',
+        fields: schema,
+        message: () => 'placeholder',
+      });
 
       // The factory accepts exactly the schema's output shape as input.
       // This line is the inference contract: it must type-check without
@@ -488,16 +494,22 @@ describe('error() factory function', () => {
 
     it('should infer without requiring an explicit T annotation', () => {
       // The schema declares its output. The factory's return type
-      // carries that output through `InferFields<S>`.
+      // carries that output through the schema overload's
+      // `InferOutput<S>`. Phase 2: with a schema, the consumer
+      // must supply a function-form `message`; we use a minimal
+      // one that ignores the data.
       type EmailOutput = { email: string };
       const schema = createTypedMockSchema<unknown, EmailOutput>();
-      const Factory = error({ name: 'EmailError', fields: schema });
+      const Factory = error({
+        name: 'EmailError',
+        fields: schema,
+        message: () => 'placeholder',
+      });
 
-      // Type assertion at compile time: the call must accept `EmailOutput`.
-      // If inference were broken, this would fail with a type error.
-      // @ts-expect-error -- the public error() signature does not yet
-      // accept Partial<EmailOutput> as input when the schema's output
-      // is EmailOutput. Phase 2 will fix the input/output distinction.
+      // Type assertion at compile time: the call must accept
+      // `Partial<EmailOutput>` (the schema's input shape, made
+      // optional for ergonomic call sites). If inference were
+      // broken, this would fail with a type error.
       const _check: (input?: Partial<EmailOutput>) => ErrorInstance<EmailOutput> = Factory;
       void _check;
 

@@ -58,7 +58,10 @@ const appErr = AppError({});
 appErr.from(validationErr);
 
 console.log(appErr.cause === validationErr); // true
-console.log(appErr.causes.length); // 1
+// The full chain is reachable via the causes() helper, which
+// walks the cause links and returns the chain immediate-cause first.
+import { causes } from '@deessejs/errors';
+console.log(causes(appErr).length); // 1
 ```
 
 The `from()` method returns the error instance, allowing you to chain multiple calls or combine it with other operations.
@@ -84,6 +87,8 @@ When no cause has been set, `cause` is `null`.
 The `causes` array contains the entire chain of errors, ordered from most recent to oldest. This gives you the full history of what happened.
 
 ```ts title="causes-array.ts"
+import { causes, error } from '@deessejs/errors';
+
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
@@ -91,12 +96,14 @@ const appErr = AppError({});
 appErr.from(ValidationError({ field: 'email' }));
 appErr.from(new Error('Database connection failed'));
 
-console.log(appErr.causes.length); // 2
-console.log(appErr.causes[0].name); // "ValidationError" (most recent)
-console.log(appErr.causes[1].message); // "Database connection failed" (oldest)
+// Walk the chain via causes() — immediate cause first, root cause last.
+const chain = causes(appErr);
+console.log(chain.length); // 2
+console.log(chain[0].name); // "ValidationError" (most recent)
+console.log(chain[1].message); // "Database connection failed" (oldest)
 ```
 
-When you chain multiple errors, the new cause is added to the front of the array, keeping chronological order.
+When you chain multiple errors, the new cause replaces the direct cause; the previous cause becomes the second link in the chain, keeping causal order.
 
 ## The notes Property
 

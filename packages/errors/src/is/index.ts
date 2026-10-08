@@ -6,19 +6,27 @@ import type { AnyErrorFactory, ErrorInstance } from '../error/types.js';
 import { FACTORY_SYMBOL } from '../error/error.js';
 
 /**
- * Type to extract the fields from an ErrorFactory.
+ * Type to extract the fields from an ErrorFactory or native Error
+ * class.
  *
- * For an ErrorFactory, the fields type is the **output** shape (what
- * `.fields` carries after validation). Native Error constructors return
- * `never` — see the overloads below for the discriminated return.
+ * For an ErrorFactory, the fields type is the **output** shape —
+ * the second type parameter on `ErrorFactory<TInput, TOutput>`.
+ * We extract it by introspecting the call signature: the factory
+ * is `(input?: TInput) => ErrorInstance<TOutput>`, so TOutput
+ * is the type of the awaited return value.
+ *
+ * For a native Error constructor, the value is the instance type.
+ * See the overloads below for the discriminated return.
  *
  * @internal
  */
 type ExtractFactoryFields<T> = T extends AnyErrorFactory
-  ? T extends ErrorInstance<infer F>
+  ? T extends (...args: never[]) => ErrorInstance<infer F>
     ? F
-    : Record<string, never>
-  : never;
+    : never
+  : T extends new (...args: never[]) => Error
+    ? T
+    : never;
 
 /**
  * Checks if an error is an instance of a specific error type.
@@ -62,8 +70,14 @@ type ExtractFactoryFields<T> = T extends AnyErrorFactory
  * ```
  */
 function is<T extends AnyErrorFactory>(error: unknown, ErrorType: T): error is ErrorInstance<ExtractFactoryFields<T>>;
-function is<T extends ErrorConstructor>(error: unknown, ErrorType: T): error is Error;
-function is(error: unknown, ErrorType: AnyErrorFactory | ErrorConstructor): boolean {
+function is<T extends new (...args: never[]) => Error>(
+  error: unknown,
+  ErrorType: T
+): error is InstanceType<T>;
+function is(
+  error: unknown,
+  ErrorType: AnyErrorFactory | (new (...args: never[]) => Error)
+): boolean {
   // Handle null/undefined
   if (error == null) {
     return false;
