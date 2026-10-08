@@ -69,7 +69,10 @@ type ExtractFactoryFields<T> = T extends AnyErrorFactory
  * }
  * ```
  */
-function is<T extends AnyErrorFactory>(error: unknown, ErrorType: T): error is ErrorInstance<ExtractFactoryFields<T>>;
+function is<T extends AnyErrorFactory>(
+  error: unknown,
+  ErrorType: T
+): error is ErrorInstance<ExtractFactoryFields<T>>;
 function is<T extends new (...args: never[]) => Error>(
   error: unknown,
   ErrorType: T

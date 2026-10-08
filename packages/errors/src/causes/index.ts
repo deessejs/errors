@@ -56,8 +56,7 @@ const causes = (error: unknown): Error[] => {
   // (the runtime or upstream set it incorrectly); we stop the walk
   // rather than include the malformed value in the result.
   const rawCause = (error as { cause?: unknown }).cause;
-  let current: Error | null =
-    rawCause !== null && rawCause instanceof Error ? rawCause : null;
+  let current: Error | null = rawCause !== null && rawCause instanceof Error ? rawCause : null;
 
   while (current !== null && !seen.has(current)) {
     seen.add(current);

@@ -29,7 +29,7 @@ describe('error() overload inference (Phase 2b)', () => {
     expect(E).toBeDefined();
   });
 
-  it('infers input as the schema\'s input shape (not the output)', () => {
+  it("infers input as the schema's input shape (not the output)", () => {
     // z.coerce.number takes string | number for input, returns
     // number for output. The factory should accept the input
     // shape (string | number), not just the output.

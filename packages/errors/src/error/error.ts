@@ -236,14 +236,12 @@ function formatCallSite(): string {
 // and the overload would lose its ability to discriminate on the
 // call site.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function error<S extends StandardSchemaV1<any, any>>(
-  config: {
-    name: string;
-    fields: S;
-    message: (data: StandardSchemaV1.InferOutput<S>) => string;
-    inherits?: AnyErrorFactory | AnyErrorFactory[];
-  }
-): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
+export function error<S extends StandardSchemaV1<any, any>>(config: {
+  name: string;
+  fields: S;
+  message: (data: StandardSchemaV1.InferOutput<S>) => string;
+  inherits?: AnyErrorFactory | AnyErrorFactory[];
+}): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
 
 export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
   name: string;

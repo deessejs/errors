@@ -38,9 +38,9 @@ describe('valibot 1', () => {
     // rejected at runtime by the validator. We cast through unknown
     // to bypass the static type (the picklist literal is narrower
     // than string) and exercise the runtime rejection path.
-    expect(() =>
-      E({ tag: 'weird' } as unknown as { tag: 'info' | 'warn' | 'error' })
-    ).toThrow(ArgsValidationError);
+    expect(() => E({ tag: 'weird' } as unknown as { tag: 'info' | 'warn' | 'error' })).toThrow(
+      ArgsValidationError
+    );
   });
 
   it('exposes the issues and vendor on failure', () => {
