@@ -159,6 +159,62 @@ export class ArgsValidationError extends Error {
 }
 
 // ============================================================================
+// Inheritance walk
+// ============================================================================
+
+/**
+ * Recursively validates `data` against the schema of every reachable
+ * ancestor of `root` (following the `inherits` chain), and applies
+ * each ancestor's transformed output to `data` as it cascades
+ * downstream.
+ *
+ * Cycle protection: the `seen` set is passed in by the caller (pre-
+ * seeded with `root` itself to skip self-loops) and shared across
+ * siblings so diamond inheritance does not re-validate the same
+ * ancestor twice on the same `data`. The pattern is the same as
+ * `is/index.ts:197, 203-206`.
+ *
+ * The walk reads from `(parent as ErrorFactory<unknown>).inherits`
+ * — the Phase 4 frozen snapshot, not the caller's original array.
+ * This keeps a single source of truth shared with `is()`.
+ *
+ * @internal
+ */
+function validateAncestors(
+  root: AnyErrorFactory,
+  data: Record<string, unknown>,
+  seen: Set<AnyErrorFactory>
+): Record<string, unknown> {
+  const rootInherits = root.inherits;
+  if (rootInherits === undefined) return data;
+  const parents: AnyErrorFactory[] = Array.isArray(rootInherits) ? rootInherits : [rootInherits];
+  for (const parent of parents) {
+    if (seen.has(parent)) continue;
+    seen.add(parent);
+    const parentSchema = (parent as { schema?: unknown }).schema;
+    if (parentSchema !== undefined && parentSchema !== null) {
+      const result = runSchema(parentSchema as StandardSchemaV1, data, parent.name);
+      if (!result.ok) {
+        throw new ArgsValidationError(
+          parent.name,
+          result.issues as ReadonlyArray<unknown>,
+          (parentSchema as StandardSchemaV1)['~standard'].vendor
+        );
+      }
+      // Cascade the parent's transformed output so the next parent's
+      // `runSchema` sees the post-transform fields, and so the leaf's
+      // `instance.fields` reflects every parent's transformation.
+      data = (result.value as Record<string, unknown>) ?? data;
+    }
+    // Recurse into the parent's own inherits. The walk matches the
+    // type-level `ExtractFactoryFields` recursion in is/index.ts:42-118,
+    // so the runtime narrowing and the runtime fields agree.
+    data = validateAncestors(parent, data, seen);
+  }
+  return data;
+}
+
+// ============================================================================
 // Error Factory
 // ============================================================================
 
@@ -330,28 +386,23 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       warnLegacy(formatCallSite());
     }
 
-    // Validate the child's fields against each direct parent that
-    // carries a schema. Without this, a child factory that omits the
-    // parent's required fields would still be classified as the parent
-    // by `is()`, but its `.fields` would not satisfy the parent's
-    // contract — a runtime lie that the type-checker now actively
-    // tells. Each direct parent is checked; transitive ancestors are
-    // expected to be validated at their own construction (each link in
-    // the chain runs its own parent-schema check at instantiation).
-    if (inherits !== undefined) {
-      const parents: AnyErrorFactory[] = Array.isArray(inherits) ? inherits : [inherits];
-      for (const parent of parents) {
-        const parentSchema = (parent as { schema?: unknown }).schema;
-        if (parentSchema === undefined || parentSchema === null) continue;
-        const result = runSchema(parentSchema as StandardSchemaV1, fieldsData, parent.name);
-        if (!result.ok) {
-          throw new ArgsValidationError(
-            parent.name,
-            result.issues as ReadonlyArray<unknown>,
-            (parentSchema as StandardSchemaV1)['~standard'].vendor
-          );
-        }
-      }
+    // Validate the child's fields against every reachable ancestor that
+    // carries a schema. Without this, a child factory whose `fields`
+    // do not satisfy a parent's contract would still be classified as
+    // the parent by `is()`, but its `.fields` would not satisfy the
+    // parent's contract — a runtime lie that the type-checker now
+    // actively tells (the type-level `ExtractFactoryFields` in
+    // `is/index.ts` already intersects every reachable ancestor's
+    // output). The walk below covers the full transitive chain with
+    // a `Set`-based cycle guard, and applies each ancestor's
+    // transformed output to `fieldsData` as it cascades.
+    const rootInherits = (ErrorFactoryInstance as ErrorFactory<T>).inherits;
+    if (rootInherits !== undefined) {
+      fieldsData = validateAncestors(
+        ErrorFactoryInstance as AnyErrorFactory,
+        fieldsData,
+        new Set<AnyErrorFactory>([ErrorFactoryInstance as AnyErrorFactory])
+      );
     }
 
     // Capture stack trace.
