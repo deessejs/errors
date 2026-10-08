@@ -126,7 +126,8 @@ jobs:
       # directory names contain a dot (e.g. `llms.txt/route.ts`). The
       # production tsconfig does not enable it, so we run type-check:test
       # explicitly. The regular `pnpm turbo type-check` is run on the
-      # rest of the workspace by the `Type Check` job below.
+      # rest of the workspace by the `Type Check` job below. The
+      # `Type Check (Tests)` job runs the same for @deessejs/errors.
       - name: Type-check apps/web test suite
         run: pnpm --filter web type-check:test
 
@@ -166,6 +167,78 @@ jobs:
 
       - name: Run type check
         run: pnpm turbo type-check
+
+  # ============================================================================
+  # Type Check (Tests) — exercises the test files in @deessejs/errors
+  # ============================================================================
+  type-check-tests:
+    name: Type Check (Tests)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Cache Turborepo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # The standard `pnpm turbo type-check` runs `tsc --noEmit` against
+      # the source tsconfig which includes only `src/`. The
+      # `tsconfig.test.json` extends the base and includes the test
+      # files; this job catches regressions in the type-level tests
+      # that the source typecheck would silently miss.
+      - name: Run type check on tests
+        run: pnpm --filter @deessejs/errors type-check:test
+
+  # ============================================================================
+  # Consumer from dist — proves the published entry point is consumable
+  # ============================================================================
+  consumer-from-dist:
+    name: Consumer from dist
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Cache Turborepo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # The script builds first (tsc -p tsconfig.build.json) and
+      # then runs tests/consumer-from-dist.mjs which imports
+      # dist/index.js and exercises the public API.
+      - name: Build and run consumer smoke test
+        run: pnpm --filter @deessejs/errors test:consumer
 
   # ============================================================================
   # Changeset required (PRs to staging only)
