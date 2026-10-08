@@ -152,44 +152,38 @@ describe('inherits: transitive validation', () => {
 });
 
 describe('inherits: parent transformations cascade', () => {
-  it('applies a single parent transformation to the child fields', () => {
-    // Round 2 Gap 2: before the fix, the validation block consulted
-    // result.ok but discarded result.value. A parent with
-    // z.coerce.number() would still coerce its own fields, but the
-    // child kept the raw string in its `.fields`. The fix writes
-    // result.value back to `data` after every successful runSchema,
-    // so the post-transform shape cascades.
+  it('runs the parent schema on the cascade input', () => {
+    // The cascade applies the parent's `result.value` to the
+    // child's fields. The parent here uses a non-transforming
+    // schema (`z.number()`, not `z.coerce.number()`) so the
+    // Round 3 shape gate does not fire on the input. The test
+    // pins the cascade contract without exercising a kind
+    // transformation: the input shape survives the parent's
+    // schema run.
     const Parent = error({
       name: 'CoerceParent',
-      fields: z.object({ n: z.coerce.number() }),
+      fields: z.object({ n: z.number() }),
       message: (data) => String(data.n),
     });
     const Child = error({ name: 'CoerceChild', inherits: Parent });
 
-    // The child's call signature inherits the parent's input shape
-    // through the standard-schema input inference. The cascade
-    // test below is a runtime contract, not a type-narrowing one;
-    // pin the cast at the call site so the test stays focused.
-    const instance = (Child as unknown as (input: { n: string }) => { fields: { n: number } })({
-      n: '42',
+    const instance = (Child as unknown as (input: { n: number }) => { fields: { n: number } })({
+      n: 42,
     });
-    // Post-transform: the child's fields reflect the parent's
-    // coercion, not the raw string.
+    // The parent's schema validated the input; the output is
+    // what the child carries.
     expect(instance.fields).toEqual({ n: 42 });
-    expect(typeof instance.fields.n).toBe('number');
-    // is() narrows to the schema's InferOutput, so the runtime
-    // value matches the type-level promise.
     expect(is(instance, Parent)).toBe(true);
   });
 
-  it('applies multiple parents in declaration order', () => {
+  it('runs each parent schema in declaration order', () => {
     // Multi-inheritance: the second parent sees the first parent's
-    // post-transform output, not the raw input. The cascade is
-    // last-writer-wins per parent in the order the parents appear
-    // in `inherits`.
+    // post-transform output, not the raw input. Both schemas are
+    // non-transforming (number and string, no coerce/transform),
+    // so the Round 3 shape gate does not fire.
     const A = error({
       name: 'A',
-      fields: z.object({ x: z.coerce.number() }),
+      fields: z.object({ x: z.number() }),
       message: (data) => String(data.x),
     });
     const B = error({
@@ -199,17 +193,46 @@ describe('inherits: parent transformations cascade', () => {
     });
     const C = error({ name: 'C', inherits: [A, B] });
 
-    // The child's call signature does not yet propagate the
-    // parents' input shapes; the runtime cascade is the focus of
-    // this test, not the type-level narrowing. Pin a cast at the
-    // call site.
     const instance = (
-      C as unknown as (input: { x: string; y: string }) => {
+      C as unknown as (input: { x: number; y: string }) => {
         fields: { x: number; y: string };
       }
-    )({ x: '1', y: 'two' });
+    )({ x: 1, y: 'two' });
     expect(instance.fields).toEqual({ x: 1, y: 'two' });
     expect(is(instance, A)).toBe(true);
     expect(is(instance, B)).toBe(true);
+  });
+
+  it('applies a manual-generic cascade (parent adds a key the child did not declare)', () => {
+    // The Round 3 strict rule: a parent may only add keys the
+    // child did not declare via the manual generic. Here the
+    // child declares `{a: string}` and the parent provides a
+    // `b` key that the child did not declare. The parent's
+    // schema is `z.object({b: z.coerce.number()})`; the call
+    // site supplies `b: '1'` and the cascade transforms it to
+    // a number. The result has both `a` and `b`, and `b` is a
+    // number (the parent's transformation) without violating
+    // the child's contract (the child did not declare `b`).
+    const Child = error<{ a: string }>({ name: 'C' });
+    const Parent = error({
+      name: 'P',
+      fields: z.object({ b: z.coerce.number() }),
+      message: (data) => `${data.b}`,
+    });
+    const Leaf = error<{ a: string }>({ name: 'L', inherits: Parent });
+
+    // The call is on `Leaf`. Its manual generic pins the input
+    // to `{a: string}`. The legacy pass-through filter strips
+    // `b` from the input (it's not in TKeys), so the cascade
+    // starts with `{a: 'x'}`. Parent's schema requires `b`,
+    // so the call site must supply `b: '1'` at the type level
+    // — cast accordingly.
+    const instance = (
+      Leaf as unknown as (input: { a: string; b: string }) => {
+        fields: { a: string; b: number };
+      }
+    )({ a: 'x', b: '1' });
+    expect(instance.fields).toEqual({ a: 'x', b: 1 });
+    expect(is(instance, Parent)).toBe(true);
   });
 });

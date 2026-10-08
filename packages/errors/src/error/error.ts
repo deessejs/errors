@@ -104,6 +104,34 @@ function runSchema(
 }
 
 // ============================================================================
+// Shape-kind classification
+// ============================================================================
+
+/**
+ * Coarse runtime kind of a value, used by the cascade's shape gate.
+ * The categories are primitive kind + reference-kind (array vs object);
+ * the gate allows same-kind transitions and rejects cross-category
+ * ones (e.g. number → string). This is the "Option A" fallback for
+ * the no-manual-generic path; the typed-child path uses the
+ * strict per-key rule in `validateAncestors`.
+ *
+ * @internal
+ */
+type ShapeKind =
+  'number' | 'string' | 'boolean' | 'bigint' | 'null' | 'array' | 'object' | 'undefined';
+
+function kindOf(value: unknown): ShapeKind {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (typeof value === 'object') return 'object';
+  return typeof value as ShapeKind;
+}
+
+function kindsCompatible(prior: ShapeKind, next: ShapeKind): boolean {
+  return prior === next;
+}
+
+// ============================================================================
 // ArgsValidationError
 // ============================================================================
 
@@ -178,12 +206,32 @@ export class ArgsValidationError extends Error {
  * — the Phase 4 frozen snapshot, not the caller's original array.
  * This keeps a single source of truth shared with `is()`.
  *
+ * Round 3: the cascade enforces the invariant "every instance must
+ * simultaneously satisfy the types of the child AND the parents
+ * recognized by `is()`" — i.e. the same intersection that the
+ * type-level `ExtractFactoryFields` implements in
+ * `is/index.ts:42-118`. For each key K a parent writes:
+ *
+ *  - If the child declared a manual generic (`error<T>()`) and K
+ *    is in T's keys, the parent is forbidden from rewriting K
+ *    (the child's contract is load-bearing). Throws
+ *    `ArgsValidationError` with `source: <parent.name>` and
+ *    `path: [K]`.
+ *  - Otherwise, if K already had a value in `data` (from a prior
+ *    parent or the child's own schema), the new value's shape kind
+ *    must equal the prior value's kind. Cross-category changes
+ *    (e.g. number → string) throw with `path: [K]`, `from`, `to`.
+ *  - Same-kind transitions (number → number, string → string) and
+ *    brand-new keys (no prior value) are allowed.
+ *
  * @internal
  */
 function validateAncestors(
   root: AnyErrorFactory,
   data: Record<string, unknown>,
-  seen: Set<AnyErrorFactory>
+  seen: Set<AnyErrorFactory>,
+  childKeys: ReadonlySet<string> | null,
+  parentWrites: Map<string, ShapeKind>
 ): Record<string, unknown> {
   const rootInherits = root.inherits;
   if (rootInherits === undefined) return data;
@@ -201,24 +249,89 @@ function validateAncestors(
           (parentSchema as StandardSchemaV1)['~standard'].vendor
         );
       }
-      // Cascade the parent's transformed output. We merge the
-      // parent's validated value into `data` rather than replacing
-      // it: zod (and most Standard Schema validators) only echo back
-      // the keys they recognize, so a strict replacement would
-      // strip fields the parent does not know about. The merge
-      // keeps fields that the child carries but the parent does not
-      // (e.g. multi-inheritance: a parent's `result.value` only
-      // contains its own keys), and overlays the parent's
-      // transformations on the keys the parent did validate.
+      // Per-key merge with childKeys check (Option C) and shape-kind
+      // gate (Option A). A single `{ ...data, ...transformed }` spread
+      // would silently overwrite child-constrained keys and silently
+      // accept cross-category rewrites — both are the bug. Walking
+      // key by key lets us surface each as `ArgsValidationError` with
+      // `path: [K]`.
+      //
+      // The shape gate's "prior" is the kind recorded in
+      // `parentWrites` (a sibling/grandparent that wrote K earlier
+      // in declaration order), NOT the input value. The input is
+      // data, not a contract; the load-bearing prior is the
+      // previous parent's transformed output. This is what
+      // detects the user's scenario 2: P1 writes number, P2
+      // writes string on the same key — the cross-category
+      // between two parents fires.
       const transformed = result.value as Record<string, unknown> | undefined;
       if (transformed !== undefined) {
-        data = { ...data, ...transformed };
+        const vendor = (parentSchema as StandardSchemaV1)['~standard'].vendor;
+        for (const key of Object.keys(transformed)) {
+          const next = transformed[key];
+          const nextKind = kindOf(next);
+          if (childKeys !== null && childKeys.has(key)) {
+            // The leaf declared this key. The parent's schema
+            // already ran on `data` (which includes the leaf's
+            // value) and accepted it. The parent is now trying to
+            // overwrite the leaf's value. This is a kind-level
+            // check: if the parent's output has the same shape
+            // kind as the leaf's existing value, the rewrite is
+            // safe (e.g. z.coerce.number() with number input
+            // produces a number — same kind as the leaf's
+            // declared type). If the kinds differ, the parent is
+            // changing the type, which the strict rule forbids.
+            const priorKind = kindOf(data[key]);
+            if (!kindsCompatible(priorKind, nextKind)) {
+              throw new ArgsValidationError(
+                parent.name,
+                [
+                  {
+                    message: `parent "${parent.name}" rewrites child-constrained key "${key}" with incompatible kind`,
+                    path: [key],
+                    from: priorKind,
+                    to: nextKind,
+                  },
+                ],
+                vendor
+              );
+            }
+            // Same kind: allow the rewrite (the parent's value
+            // replaces the leaf's value of the same kind).
+          }
+          const priorKind = parentWrites.get(key);
+          if (priorKind !== undefined && !kindsCompatible(priorKind, nextKind)) {
+            // A previous parent (in declaration order) wrote this
+            // key with a different kind. The current parent's
+            // transformation is incompatible with that.
+            throw new ArgsValidationError(
+              parent.name,
+              [
+                {
+                  message: `parent "${parent.name}" produces incompatible transformation on key "${key}"`,
+                  path: [key],
+                  from: priorKind,
+                  to: nextKind,
+                },
+              ],
+              vendor
+            );
+          }
+          // Record this parent's write so a later parent can be
+          // gated against it. We use a fresh map for the recursion
+          // so a sibling that doesn't touch K doesn't see this
+          // write.
+          parentWrites.set(key, nextKind);
+          data = { ...data, [key]: next };
+        }
       }
     }
     // Recurse into the parent's own inherits. The walk matches the
     // type-level `ExtractFactoryFields` recursion in is/index.ts:42-118,
-    // so the runtime narrowing and the runtime fields agree.
-    data = validateAncestors(parent, data, seen);
+    // so the runtime narrowing and the runtime fields agree. The
+    // childKeys set is rooted at the leaf factory, so the same
+    // restriction applies transitively.
+    data = validateAncestors(parent, data, seen, childKeys, parentWrites);
   }
   return data;
 }
@@ -354,6 +467,21 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     let fieldsData: Record<string, unknown> = {};
     let errorMessage = name;
 
+    // Round 3: the child-constrained key set is derived from the
+    // schema's actual output for THIS input (i.e. the keys of
+    // `fieldsData` after the schema branch has populated it). This
+    // means the strict rule applies to whatever the schema
+    // produced — not to a static, probed set. Probing the schema
+    // at construction time (the alternative) was rejected because
+    // schemas with strict required-keys throw on empty input, and
+    // some test schemas (async, throwing) would not survive a
+    // probe. The downside of the per-input derivation: when the
+    // user passes empty input that yields `{}` (no defaults), the
+    // childKeys set is empty and the shape gate (Option A) runs.
+    // The user's scenarios both pass non-empty input, so this is
+    // fine in practice.
+    let childKeys: ReadonlySet<string> | null = null;
+
     if (hasSchema) {
       // Unreachable at runtime when isStandard is true; the overloads
       // guarantee that, when `fields` is present, we go through here.
@@ -375,6 +503,12 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       // else: errorMessage stays as the factory name. The validated
       // fields are still on the instance; consumers that want a
       // rendered message can supply `message`.
+      // Round 3: derive childKeys from the schema's output. The
+      // keys of `fieldsData` are the load-bearing child contract
+      // for this instantiation.
+      if (Object.keys(fieldsData).length > 0) {
+        childKeys = new Set(Object.keys(fieldsData));
+      }
     } else {
       // Legacy path — no schema. Accepts a string template, a plain
       // string, or a function-form message. Function-form is now
@@ -405,12 +539,19 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     // output). The walk below covers the full transitive chain with
     // a `Set`-based cycle guard, and applies each ancestor's
     // transformed output to `fieldsData` as it cascades.
+    //
+    // Round 3: the cascade also enforces the "child + parents agree"
+    // invariant via the childKeys set computed above. When T is the
+    // empty shape, childKeys is `null` and the cascade falls back to
+    // the per-key shape-kind gate.
     const rootInherits = (ErrorFactoryInstance as ErrorFactory<T>).inherits;
     if (rootInherits !== undefined) {
       fieldsData = validateAncestors(
         ErrorFactoryInstance as AnyErrorFactory,
         fieldsData,
-        new Set<AnyErrorFactory>([ErrorFactoryInstance as AnyErrorFactory])
+        new Set<AnyErrorFactory>([ErrorFactoryInstance as AnyErrorFactory]),
+        childKeys,
+        new Map<string, ShapeKind>()
       );
     }
 
