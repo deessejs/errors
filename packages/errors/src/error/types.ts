@@ -5,20 +5,35 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 // ============================================================================
-// Types
+// Schema inference helpers
 // ============================================================================
 
 /**
- * Helper to extract the inferred output type from a `StandardSchemaV1`.
+ * Extracts the input type from a `StandardSchemaV1`.
  *
  * Standard Schema declares `~standard.schema.<I, O>` with input/output generics.
- * Most validators (zod, valibot, arktype, etc.) infer `Output` from the schema
- * builder. This helper simply walks the property path.
+ * The input type is what the caller must pass; the output type is what the
+ * validator returns after coercions, defaults, and transformations.
  *
  * @example
  * ```ts
- * type T = InferStandardSchemaOutput<typeof z.object({ id: z.string() })>;
+ * type T = InferStandardSchemaInput<typeof z.object({ id: z.string() })>;
  * // T === { id: string }
+ * ```
+ */
+export type InferStandardSchemaInput<S> = S extends StandardSchemaV1<infer I, unknown> ? I : never;
+
+/**
+ * Extracts the output type from a `StandardSchemaV1`.
+ *
+ * For schemas that transform (z.coerce, z.default, z.transform), the output
+ * type differs from the input. This helper is what consumers should rely on
+ * for downstream type-checking of validated data.
+ *
+ * @example
+ * ```ts
+ * type T = InferStandardSchemaOutput<typeof z.coerce.number()>;
+ * // T === number
  * ```
  */
 export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never;
@@ -38,31 +53,41 @@ export type ErrorInstanceCore = {
 
 /**
  * Error factory function type.
- * Creates typed, structured errors with optional field definitions.
+ *
+ * Creates typed, structured errors. The two type parameters separate the
+ * *input* contract (what the caller passes) from the *output* contract
+ * (what the instance carries in its `fields` slot). With a Standard Schema,
+ * the input and output are independently inferred from the schema and may
+ * differ when the schema transforms (coercion, defaults, branding).
+ *
+ * @typeParam TInput  Shape the caller must supply when invoking the factory.
+ * @typeParam TOutput Shape the instance carries in `.fields` after validation.
  */
-export type ErrorFactory<TFields extends Record<string, unknown> = Record<string, never>> = {
-  (fields?: Partial<TFields>): ErrorInstance<TFields>;
+export type ErrorFactory<
+  TInput extends Record<string, unknown> = Record<string, never>,
+  TOutput extends Record<string, unknown> = TInput,
+> = {
+  /** Invoke the factory to mint a new instance. */
+  (input?: TInput): ErrorInstance<TOutput>;
+  /** Error name identifier. */
   name: string;
+  /** Parent error factories for type checking. */
   inherits?: ErrorFactory | ErrorFactory[];
-  /**
-   * The Standard Schema used to validate the args at instantiation time.
-   * Exposed for consumers that want to read it back from the factory itself.
-   */
+  /** The Standard Schema used to validate the args at instantiation time. */
   schema?: StandardSchemaV1;
-  /**
-   * The original message template or function. Exposed for introspection
-   * (e.g. docs UI, serializer inspection).
-   */
-  rawMessage?: string | ((data: TFields) => string);
+  /** The original message template or function (introspection only). */
+  rawMessage?: string | ((data: TOutput) => string);
 };
 
 /**
  * Error instance returned by an ErrorFactory.
- * Contains all standard Error properties plus additional domain-specific fields.
+ *
+ * Contains all standard `Error` properties plus additional domain-specific
+ * fields. The `fields` slot holds the **post-validation** shape.
  */
 export type ErrorInstance<TFields extends Record<string, unknown> = Record<string, never>> =
   ErrorInstanceCore & {
-    /** User-defined fields from Standard Schema */
+    /** Validated fields, post-transformation. */
     fields: TFields;
     /** Additional notes added via .addNote() */
     notes: string[];
@@ -71,33 +96,22 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
      *
      * Notes provide runtime context that complements the structured fields.
      * Patterned after Python 3.11's `BaseException.add_note()` (PEP 678).
-     *
-     * @param note - The note text to attach
-     * @returns This error instance for chaining
-     *
-     * @example
-     * ```typescript
-     * const err = AppError().addNote('Attempt 1 failed').addNote('Retrying...');
-     * // err.notes === ['Attempt 1 failed', 'Retrying...']
-     * ```
      */
     addNote(note: string): ErrorInstance<TFields>;
     /**
-     * Chains a cause error to this error.
-     *
-     * @param cause - The error that caused this one
-     * @returns This error instance for chaining
-     *
-     * @example
-     * ```typescript
-     * const err = ValidationError({ field: 'email' })
-     *   .from(new NetworkError('Connection failed'));
-     * ```
+     * Chains a cause error to this error. The cause is the direct failure
+     * that explains this one. Walk `cause` (singular) to follow the chain.
      */
     from(cause: Error | ErrorInstance): ErrorInstance<TFields>;
-    /** Direct cause of this error (from .from()) */
+    /** Direct cause of this error. Single source of truth for the causal link. */
     cause: Error | null;
-    /** Full cause chain from .from() calls */
+    /**
+     * Full cause chain from .from() calls.
+     *
+     * @deprecated Prefer walking `cause` directly. The semantics of this
+     * field (a flat list of historical `.from()` calls vs. a true causal
+     * chain) will be revisited; see issue #35.
+     */
     causes: Error[];
     /** Injected context data */
     context: Record<string, unknown> | null;
@@ -106,14 +120,15 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
   };
 
 /**
- * New-style config: schema-inferred fields plus a function-form message.
+ * Standard-schema-backed config.
  *
- * The `fields` is a `StandardSchemaV1`; the args shape is the inferred
- * `Output` of the schema. The `message` is a function that receives the
- * validated output and returns the rendered string.
+ * When `fields` is a `StandardSchemaV1`, the input shape is the schema's
+ * inferred **input** and the instance's `.fields` is the schema's inferred
+ * **output**. They may differ for schemas that transform.
  *
- * Only enabled when both `fields` and a function-form `message` are supplied.
- * The legacy config (no `fields`, string `message`) lives in `LegacyErrorConfig`.
+ * The `message` is a function that receives the validated output and returns
+ * the rendered string. The presence of `fields` triggers validation at
+ * instantiation time, regardless of the message form.
  */
 export type StandardErrorConfig<
   S extends StandardSchemaV1,
@@ -123,7 +138,7 @@ export type StandardErrorConfig<
   name: string;
   /** Standard Schema field definitions (zod, valibot, arktype, etc.) */
   fields: S;
-  /** Single parent error factory to inherit from */
+  /** Single parent error factory, or list of parents, to inherit from */
   inherits?: ErrorFactory | ErrorFactory[];
   /** Message-as-function, receives the validated output */
   message: M;
@@ -141,11 +156,6 @@ export type LegacyErrorConfig = {
   inherits?: ErrorFactory | ErrorFactory[];
   /** @deprecated Message template with `{field}` placeholders */
   message?: string;
-  /**
-   * @deprecated Was never wired up to runtime validation. Migrate to
-   * `StandardErrorConfig` (RFC 0001).
-   */
-  schema?: StandardSchemaV1;
 };
 
 /**
