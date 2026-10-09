@@ -10,7 +10,7 @@ import type {
   AnyErrorFactory,
   ErrorFactory,
   ErrorInstance,
-  ObjectOutputSchema,
+  IsObjectOutput,
   ParentFor,
   SchemaErrorFactory,
 } from './types.js';
@@ -61,9 +61,20 @@ const FACTORY_SYMBOL = Symbol.for('@deessejs/errors/factory');
  * The `WeakSet` keeps the memory profile clean: when the instance
  * becomes unreachable, the entry is GC'd automatically. The set
  * itself is module-private, so consumers cannot add to it from
- * outside the package. Cross-realm or cross-bundle recognition is
- * not supported by this registry (the marker still works for
- * legitimate instances if a consumer holds a direct reference).
+ * outside the package.
+ *
+ * **The registry is per-package-load.** An instance created by a
+ * second copy of `@deessejs/errors` (a duplicate in `node_modules`,
+ * a separate bundle, a CommonJS/ESM dual load, two copies running
+ * in a micro-frontend) is registered in *that* copy's `WeakSet`,
+ * not ours. Holding a direct reference to its factory is not
+ * sufficient: the marker slot is read and matches, but the
+ * registry check fails, and `is()` returns false. To recognize
+ * cross-load instances, the consumer must call `is()` from the
+ * same load that produced the instance. This is a deliberate
+ * trade-off: the marker alone is spoofable, the registry alone is
+ * not portable, and combining them makes forgeries impossible
+ * within a load at the cost of cross-load compatibility.
  *
  * @internal
  */
@@ -473,21 +484,33 @@ const buildErrorInstance = (
  * });
  * ```
  */
-// R7 + R8: the schema overload constrains the schema's output to a
-// non-null, non-array object via `ObjectOutputSchema`. The R9 audit
-// confirmed that a pure-type reject at the call site is not
-// possible (TypeScript's function-arity flexibility allows a
-// 0-arg lambda `() => 'x'` to be assigned to a function whose
-// parameter type is `null` or `never`, so the gate can only
-// *advise* via the inferred `InferOutput<S>` shape, not reject
-// on the call itself). The `inherits` parameter is constrained
-// via `ParentFor<NoInfer<...>>` (a contravariance witness —
-// requires `strictFunctionTypes`).
+// R7 + R8 + R9 + R10: the schema overload constrains the schema's
+// output to a non-null, non-array object via a structural
+// intersection on the `fields` parameter. The R10 audit found
+// that a pure-type reject at the call site **is** possible, by
+// intersecting `S` with a phantom that resolves to `never` when
+// the predicate is false:
+//
+//   fields: S & (IsObjectOutput<InferOutput<S>> extends true
+//                  ? unknown
+//                  : never);
+//
+// When the user supplies a schema with `InferOutput = null`, the
+// intersection becomes `S & never = never`, and the call errors:
+// the user's value does not satisfy the parameter type. The
+// earlier diagnosis ("TypeScript's function-arity flexibility
+// prevents a type-level reject") was incorrect — that diagnosis
+// applied to a constraint on the `message` arity, not on
+// `fields`. The audit's repro confirms the gate fires for
+// `null`, `unknown[]`, and primitive outputs while preserving
+// the input/output inference for record outputs.
+//
+// The `inherits` parameter is constrained via `ParentFor<NoInfer<...>>`
+// (a contravariance witness — requires `strictFunctionTypes`).
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function error<S extends ObjectOutputSchema<StandardSchemaV1<any, any>>>(config: {
+export function error<S extends StandardSchemaV1>(config: {
   name: string;
-  fields: S;
+  fields: S & (IsObjectOutput<StandardSchemaV1.InferOutput<S>> extends true ? unknown : never);
   message: (data: StandardSchemaV1.InferOutput<S>) => string;
   inherits?:
     | ParentFor<NoInfer<StandardSchemaV1.InferOutput<S>>>

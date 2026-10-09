@@ -51,23 +51,25 @@ export const acceptsFields: unique symbol = Symbol('@deessejs/errors/acceptsFiel
 type AcceptsFieldsArg<Output> = [Output] extends [Record<string, never>] ? unknown : Output;
 
 /**
- * Compile-time gate: the schema's `InferOutput` must be a non-null,
- * non-array object. Schemas whose transformation yields `null`,
- * primitives, or arrays are rejected at the call site of `error()`.
+ * Compile-time predicate: is the schema's output type a non-null,
+ * non-array object?
  *
- * The predicate is intentionally narrow. The leaf's top-level
- * `fields` slot is a record (a fixed shape produced by the leaf's
- * schema), and the consumer's downstream code reads it as
- * `Record<string, unknown>`. A schema that returns a primitive, a
- * nullable, or an array would silently violate the consumer's
- * expectation at runtime; rejecting it at compile time closes the
- * gap before the consumer can write a single line of code.
+ * The predicate is `true` for record-shaped types and `false` for
+ * the malformed cases the audit enumerated: `null`, `undefined`,
+ * arrays, and primitives (string, number, boolean, bigint,
+ * symbol). The result is consulted by the schema-bearing
+ * `error()` overload to reject malformed schemas at the call site
+ * (R10) and by the runtime guard `isObjectFields` to reject the
+ * value when the schema actually fires.
  *
- * Individual field values inside the record are still unconstrained
- * — `z.object({ n: z.coerce.number() })` is accepted because the
- * top-level output is `{ n: number }` (a record), even though `n` is
- * a primitive. The audit's repro (`z.object({}).transform(() => null)`)
- * is rejected because the top-level output is `null`.
+ * For `unknown` and `any` the result is intentionally `true`:
+ * the type system cannot prove the runtime value is a record,
+ * but the consumer's downstream code reads `instance.fields` as
+ * `Record<string, unknown>` regardless, and the runtime guard
+ * catches the malformed value. A pure-type reject for `unknown`/
+ * `any` would force every test fixture and every consumer that
+ * uses an untyped schema to cast, which the audit did not
+ * intend.
  *
  * @internal
  */
@@ -136,52 +138,6 @@ export type InferStandardSchemaInput<S> = S extends StandardSchemaV1<infer I, un
 export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never;
 
 /**
- * Restricts a Standard Schema to those whose inferred output is a
- * non-null, non-array object. Used by the public `error()` overloads
- * to **advise** that the schema's output will land in a
- * `Record<string, unknown>` slot on the instance.
- *
- * **Type-level enforcement is advisory, not authoritative.** The
- * audit found that a pure-type gate cannot reject every malformed
- * schema at the call site: TypeScript's function-arity flexibility
- * means a 0-arg lambda `() => 'x'` is assignable to a function
- * whose parameter type is `null` or `never`. The constraint below
- * narrows the schema in the *positive* case (object outputs are
- * accepted) but does not reject the negative case (null, arrays,
- * primitives) at compile time. The **runtime guard**
- * `isObjectFields` in `error.ts` is the authoritative enforcement:
- * any schema whose validated value is `null`, a primitive, or an
- * array throws `ArgsValidationError`.
- *
- * The constraint placeholder is `StandardSchemaV1<any, any>`, the
- * spec's default-typed alias. Widening to `any` lets the overload
- * accept any concrete schema before the gate evaluates; the gate
- * then specializes the constraint to `S` (object output) or
- * `StandardSchemaV1<I, never>` (non-object output). A consumer that
- * reaches the negative branch and supplies the result will get a
- * `SchemaErrorFactory<unknown, never>`, which propagates `never` to
- * downstream code, but the call itself does not fail to compile
- * (the type checker does not see the `IsObjectOutput<O>` evaluation
- * as a hard reject because of the arity flexibility described
- * above).
- *
- * The predicate `IsObjectOutput<O>` is still useful for the
- * "accepts a record" half of the gate: a `StandardSchemaV1<unknown,
- * { x: number }>` is correctly identified as a record and the
- * overload returns the typed `SchemaErrorFactory`. A
- * `StandardSchemaV1<unknown, null>` slips through to the runtime
- * guard.
- *
- * @internal
- */
-export type ObjectOutputSchema<S> =
-  S extends StandardSchemaV1<infer I, infer O>
-    ? IsObjectOutput<O> extends true
-      ? S
-      : StandardSchemaV1<I, never>
-    : never;
-
-/**
  * Core properties present on every error instance.
  * These are guaranteed to exist regardless of how the error was created.
  */
@@ -219,10 +175,7 @@ export type ErrorInstanceCore = {
  * @typeParam TInput  Shape the caller must supply when invoking the factory.
  * @typeParam TOutput Shape the instance carries in `.fields` after validation.
  */
-export type SchemaErrorFactory<
-  TInput extends Record<string, unknown>,
-  TOutput extends Record<string, unknown>,
-> = {
+export type SchemaErrorFactory<TInput, TOutput> = {
   /**
    * Invoke the factory to mint a new instance.
    *
@@ -366,35 +319,34 @@ export type ExtractOwnFactoryOutput<F> = F extends (...args: never[]) => ErrorIn
  * Contains all standard `Error` properties plus additional domain-specific
  * fields. The `fields` slot holds the **post-validation** shape.
  */
-export type ErrorInstance<TFields extends Record<string, unknown> = Record<string, never>> =
-  ErrorInstanceCore & {
-    /** Validated fields, post-transformation. */
-    fields: TFields;
-    /** Additional notes added via .addNote() */
-    notes: string[];
-    /**
-     * Adds a note to this error instance.
-     *
-     * Notes provide runtime context that complements the structured fields.
-     * Patterned after Python 3.11's `BaseException.add_note()` (PEP 678).
-     */
-    addNote(note: string): ErrorInstance<TFields>;
-    /**
-     * Chains a cause error to this error. The cause is the direct failure
-     * that explains this one. Walk `cause` (singular) to follow the chain.
-     */
-    // The `any` here lets `cause` accept any ErrorInstance shape
-    // without forcing a covariant narrowing that would reject
-    // structurally-compatible instances from sibling factories.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    from(cause: Error | ErrorInstance<any>): ErrorInstance<TFields>;
-    /** Direct cause of this error. Walk `.cause` to follow the chain. */
-    cause: Error | null;
-    /** Injected context data */
-    context: Record<string, unknown> | null;
-    /** Parent error factories for type checking */
-    inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
-  };
+export type ErrorInstance<TFields = Record<string, never>> = ErrorInstanceCore & {
+  /** Validated fields, post-transformation. */
+  fields: TFields;
+  /** Additional notes added via .addNote() */
+  notes: string[];
+  /**
+   * Adds a note to this error instance.
+   *
+   * Notes provide runtime context that complements the structured fields.
+   * Patterned after Python 3.11's `BaseException.add_note()` (PEP 678).
+   */
+  addNote(note: string): ErrorInstance<TFields>;
+  /**
+   * Chains a cause error to this error. The cause is the direct failure
+   * that explains this one. Walk `cause` (singular) to follow the chain.
+   */
+  // The `any` here lets `cause` accept any ErrorInstance shape
+  // without forcing a covariant narrowing that would reject
+  // structurally-compatible instances from sibling factories.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  from(cause: Error | ErrorInstance<any>): ErrorInstance<TFields>;
+  /** Direct cause of this error. Walk `.cause` to follow the chain. */
+  cause: Error | null;
+  /** Injected context data */
+  context: Record<string, unknown> | null;
+  /** Parent error factories for type checking */
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
+};
 
 /**
  * Standard-schema-backed config.

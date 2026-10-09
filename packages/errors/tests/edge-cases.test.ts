@@ -65,7 +65,7 @@ describe('standard schema runtime: edge cases', () => {
     const weirdIssues = ['string', 42, { totally: 'weird' }];
     const E = error({
       name: 'WeirdE',
-      fields: makeSchema({
+      fields: makeSchema<unknown, Record<string, unknown>>({
         vendor: 'weird',
         validate: () => ({ issues: weirdIssues as never }),
       }),
@@ -180,7 +180,7 @@ describe('standard schema runtime: more edge cases', () => {
   it('error name and stack are preserved correctly on the wrapper', () => {
     const E = error({
       name: 'StackE',
-      fields: makeSchema({
+      fields: makeSchema<unknown, Record<string, unknown>>({
         vendor: 'stack',
         validate: () => ({ issues: [{ message: 'x' }] }),
       }),

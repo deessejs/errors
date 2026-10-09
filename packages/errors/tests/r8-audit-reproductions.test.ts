@@ -28,15 +28,74 @@ const makeSchema = <I, O>(output: O): StandardSchemaV1<I, O> => ({
 });
 
 describe('R8.1: schema output must be a non-null object', () => {
+  it('rejects at the type level when the schema returns null', () => {
+    // R10: the gate fires at the call site via a structural
+    // intersection on the `fields` parameter. When the schema's
+    // InferOutput is `null`, the intersection becomes
+    // `S & never = never`, and the call errors. The @ts-expect-error
+    // directive is consumed by the type error.
+    const schema = makeSchema<unknown, null>(null);
+    error({
+      name: 'E',
+      // @ts-expect-error — schema output is null, not a record
+      fields: schema,
+      message: () => 'x',
+    });
+  });
+
+  it('rejects at the type level when the schema returns an array', () => {
+    const schema = makeSchema<unknown, unknown[]>([]);
+    error({
+      name: 'E',
+      // @ts-expect-error — schema output is an array, not a record
+      fields: schema,
+      message: () => 'x',
+    });
+  });
+
+  it('rejects at the type level when the schema returns a primitive', () => {
+    const schema = makeSchema<unknown, number>(42);
+    error({
+      name: 'E',
+      // @ts-expect-error — schema output is a primitive, not a record
+      fields: schema,
+      message: () => 'x',
+    });
+  });
+
+  it('accepts a schema whose transform produces a valid object', () => {
+    // Positive case: the gate accepts record outputs and the
+    // factory's `fields` slot is typed with the schema's output.
+    const schema = z.object({ n: z.coerce.number() }).transform((v) => ({ value: v.n }));
+    const E = error({
+      name: 'E',
+      fields: schema,
+      message: (d) => String(d.value),
+    });
+    const instance = E({ n: '42' });
+    expect(instance.fields).toEqual({ value: 42 });
+  });
+
+  it('keeps input/output inference for a record-output schema', () => {
+    // The factory's `fields` slot is typed with the schema's
+    // output, and the message's data parameter is the same shape.
+    // This is the R6 inference contract — preserved by the
+    // intersection gate, not weakened by it.
+    const schema = z.object({ n: z.coerce.number() });
+    const E = error({
+      name: 'E',
+      fields: schema,
+      message: (d) => String(d.n),
+    });
+    const instance = E({ n: '42' });
+    expect(instance.fields).toEqual({ n: 42 });
+  });
+
   it('rejects at runtime when the schema returns null (bypassed type check)', () => {
-    // The audit's R8.1 finding was that a schema with a malformed
-    // output slipped past the type-level gate. The audit confirmed
-    // a pure-type reject is not possible: TypeScript's function-
-    // arity flexibility allows a 0-arg lambda to satisfy a
-    // `(data: null) => string` constraint, so the gate cannot fire
-    // at the call site. The **runtime** guard `isObjectFields`
-    // catches the case when the schema actually runs and yields a
-    // non-record value. This test pins the runtime contract.
+    // The runtime guard is the hard backstop. A consumer that
+    // bypasses the type system (e.g. via `as unknown as ...`)
+    // still gets an `ArgsValidationError` when the schema
+    // actually fires and yields a non-record value.
     const schema = makeSchema<unknown, null>(null) as unknown as StandardSchemaV1<
       unknown,
       Record<string, unknown>
@@ -73,17 +132,6 @@ describe('R8.1: schema output must be a non-null object', () => {
       message: () => 'x',
     });
     expect(() => E({})).toThrow(ArgsValidationError);
-  });
-
-  it('accepts a schema whose transform produces a valid object', () => {
-    const schema = z.object({ n: z.coerce.number() }).transform((v) => ({ value: v.n }));
-    const E = error({
-      name: 'E',
-      fields: schema,
-      message: (d) => String(d.value),
-    });
-    const instance = E({ n: '42' });
-    expect(instance.fields).toEqual({ value: 42 });
   });
 });
 

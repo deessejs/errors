@@ -152,7 +152,7 @@ function is(
     return false;
   }
 
-  // R9: the registry is the authoritative identity. A foreign
+  // R9 + R10: the registry is the authoritative identity. A foreign
   // object can imitate the marker (place a real factory
   // reference at the symbol key), but it cannot insert itself
   // into the module-private `WeakSet` that `buildErrorInstance`
@@ -163,10 +163,19 @@ function is(
   // the audit's recommendation: "utiliser une association privée
   // instance → factory pour les instances créées par le package".
   //
-  // Cross-realm or cross-bundle recognition is intentionally
-  // not supported: the registry is per-load, and a foreign module
-  // would need a separate registration path. The marker still
-  // works for legitimate instances within the same load.
+  // **The registry is per-package-load.** An instance created by
+  // a second copy of `@deessejs/errors` (e.g. a duplicate in
+  // `node_modules`, a separate bundle in a micro-frontend, or a
+  // CommonJS/ESM dual load) is registered in *that* copy's
+  // `WeakSet`, not ours. Holding a direct reference to its
+  // factory is not sufficient: the marker slot is read and
+  // matches, but the registry check fails, and `is()` returns
+  // false. To recognize cross-load instances, the consumer must
+  // call `is()` from the same load that produced the instance.
+  // This is a deliberate trade-off: the marker alone is spoofable,
+  // the registry alone is not portable, and combining them makes
+  // forgeries impossible within a load at the cost of cross-load
+  // compatibility.
   if (!isRegisteredInstance(error)) {
     return false;
   }
