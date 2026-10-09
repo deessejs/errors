@@ -79,10 +79,10 @@ causes(err); // [cause]
 
 ## Engine compatibility
 
-| Runtime    | Required             |
-| ---------- | -------------------- |
-| Node.js    | `>=22.14.0`          |
-| pnpm       | `10` for development |
+| Runtime    | Required                                                         |
+| ---------- | ---------------------------------------------------------------- |
+| Node.js    | `>=22.14.0`                                                      |
+| pnpm       | `10` for development                                             |
 | TypeScript | `5.4` or later (the public `error()` overloads use `NoInfer<T>`) |
 
 ESM-only. Consumers using a CJS resolver need to use dynamic `import()` or migrate to ESM.
