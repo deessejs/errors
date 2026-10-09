@@ -24,12 +24,12 @@ describe('R6 is() narrows to the queried factory output', () => {
     const NumberParent = error({
       name: 'NumberParent',
       fields: z.object({ n: z.number() }),
-      message: d => String(d.n),
+      message: (d) => String(d.n),
     });
     const Child = error({
       name: 'Child',
       fields: z.object({ n: z.number(), extra: z.string() }),
-      message: d => `${d.n}-${d.extra}`,
+      message: (d) => `${d.n}-${d.extra}`,
       inherits: NumberParent,
     });
     const caught: unknown = Child({ n: 1, extra: 'x' });
@@ -51,12 +51,12 @@ describe('R6 is() narrows to the queried factory output', () => {
     const CoerceParent = error({
       name: 'CoerceParent',
       fields: z.object({ n: z.coerce.number() }),
-      message: d => String(d.n),
+      message: (d) => String(d.n),
     });
     const Child = error({
       name: 'Child',
       fields: z.object({ n: z.coerce.number(), label: z.string() }),
-      message: d => `${d.n}-${d.label}`,
+      message: (d) => `${d.n}-${d.label}`,
       inherits: CoerceParent,
     });
     const caught: unknown = Child({ n: '42', label: 'x' });
@@ -70,12 +70,12 @@ describe('R6 is() narrows to the queried factory output', () => {
     const LiteralParent = error({
       name: 'LiteralParent',
       fields: z.object({ status: z.literal('ok') }),
-      message: d => d.status,
+      message: (d) => d.status,
     });
     const Child = error({
       name: 'Child',
       fields: z.object({ status: z.literal('ok'), code: z.number() }),
-      message: d => `${d.status}-${d.code}`,
+      message: (d) => `${d.status}-${d.code}`,
       inherits: LiteralParent,
     });
     const caught: unknown = Child({ status: 'ok', code: 1 });
@@ -88,12 +88,14 @@ describe('R6 is() narrows to the queried factory output', () => {
     const NestedParent = error({
       name: 'NestedParent',
       fields: z.object({ data: z.object({ user: z.object({ name: z.string() }) }) }),
-      message: d => d.data.user.name,
+      message: (d) => d.data.user.name,
     });
     const Child = error({
       name: 'Child',
-      fields: z.object({ data: z.object({ user: z.object({ name: z.string(), id: z.string() }) }) }),
-      message: d => d.data.user.id,
+      fields: z.object({
+        data: z.object({ user: z.object({ name: z.string(), id: z.string() }) }),
+      }),
+      message: (d) => d.data.user.id,
       inherits: NestedParent,
     });
     const caught: unknown = Child({ data: { user: { name: 'x', id: 'y' } } });
@@ -106,12 +108,12 @@ describe('R6 is() narrows to the queried factory output', () => {
     const ArrayParent = error({
       name: 'ArrayParent',
       fields: z.object({ items: z.array(z.object({ id: z.string() })) }),
-      message: d => String(d.items.length),
+      message: (d) => String(d.items.length),
     });
     const Child = error({
       name: 'Child',
       fields: z.object({ items: z.array(z.object({ id: z.string(), count: z.number() })) }),
-      message: d => String(d.items.length),
+      message: (d) => String(d.items.length),
       inherits: ArrayParent,
     });
     const caught: unknown = Child({ items: [{ id: 'a', count: 1 }] });
@@ -124,17 +126,17 @@ describe('R6 is() narrows to the queried factory output', () => {
     const A = error({
       name: 'A',
       fields: z.object({ a: z.string() }),
-      message: d => d.a,
+      message: (d) => d.a,
     });
     const B = error({
       name: 'B',
       fields: z.object({ b: z.number() }),
-      message: d => String(d.b),
+      message: (d) => String(d.b),
     });
     const C = error({
       name: 'C',
       fields: z.object({ a: z.string(), b: z.number(), c: z.boolean() }),
-      message: d => `${d.a}-${d.b}-${d.c}`,
+      message: (d) => `${d.a}-${d.b}-${d.c}`,
       inherits: [A, B],
     });
     const caught: unknown = C({ a: 'x', b: 1, c: true });
@@ -150,7 +152,7 @@ describe('R6 is() narrows to the queried factory output', () => {
     const P = error({
       name: 'P',
       fields: z.object({ n: z.number() }),
-      message: d => String(d.n),
+      message: (d) => String(d.n),
     });
     const caught: unknown = P({ n: 1 });
     if (is(caught, Error)) {

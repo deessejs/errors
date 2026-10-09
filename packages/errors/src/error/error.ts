@@ -6,12 +6,7 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type {
-  AnyErrorFactory,
-  CompatibleWith,
-  ErrorFactory,
-  ErrorInstance,
-} from './types.js';
+import type { AnyErrorFactory, CompatibleWith, ErrorFactory, ErrorInstance } from './types.js';
 import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
@@ -497,18 +492,21 @@ export function error<S extends StandardSchemaV1<any, any>>(
       ? ([...inherits] as readonly AnyErrorFactory[])
       : inherits;
     Object.freeze(inheritsSnapshot);
-    (ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>).inherits =
-      inheritsSnapshot;
+    (
+      ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>
+    ).inherits = inheritsSnapshot;
   }
 
   if (fields !== undefined) {
-    (ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>).schema =
-      fields;
+    (
+      ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>
+    ).schema = fields;
   }
 
   if (message !== undefined) {
-    (ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>).rawMessage =
-      message;
+    (
+      ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>
+    ).rawMessage = message;
   }
 
   // Phase 4: freeze the factory's metadata so consumers cannot
