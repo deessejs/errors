@@ -1,3 +1,13 @@
 packages:
   - 'packages/*'
   - 'apps/*'
+
+# Pinned to the highest published version of sprintf-js (1.1.3 — also the
+# unpatched latest). The GHSA-hp3w-g68c-fv3c advisory covers the entire
+# `<= 1.1.3` range and there is no upstream patch (see PR #104 rationale).
+# Path: js-yaml@3.14.2 -> read-yaml-file -> @manypkg/get-packages ->
+# @changesets/cli (devDependency only, never loaded by published library
+# code; affects only the local release/CI tooling). An override here keeps
+# the resolution explicit and obvious during future audits.
+overrides:
+  sprintf-js: ^1.1.3
