@@ -3,7 +3,7 @@
  */
 
 import type { AnyErrorFactory, ErrorInstance } from '../error/types.js';
-import { FACTORY_SYMBOL } from '../error/error.js';
+import { FACTORY_SYMBOL, isRegisteredInstance } from '../error/error.js';
 
 /**
  * Type to extract the fields from a single ErrorFactory.
@@ -60,37 +60,6 @@ const isCallableFactory = (value: unknown): value is AnyErrorFactory => {
 };
 
 /**
- * Validates that a candidate is a real `ErrorInstance` produced by
- * a factory, not a foreign object that imitates the marker shape.
- *
- * The audit found a gap: a hand-rolled object that places a real
- * factory reference at `Symbol.for('@deessejs/errors/factory')` —
- * but has no `.fields`, `.from()`, `.addNote()`, or `.cause` — was
- * accepted by `is()`. The marker read returned the real factory,
- * the DFS walk resolved the queried factory on the first hop, and
- * `is()` returned true. The audit's intended contract: a foreign
- * object that lacks the instance methods is not an instance of
- * the factory, even if its marker is a callable reference.
- *
- * The check is the union of every `ErrorInstance` shape a real
- * factory produces: it must extend `Error` and carry a function
- * `from` and a function `addNote`. `fields`, `notes`, and `cause`
- * are not used as discriminants because they are *typed* but the
- * audit case has them absent; checking their presence (rather than
- * method presence) would silently accept the foreign object as
- * long as the right `fields` value is supplied.
- *
- * The marker-based check is the primary contract; this is a
- * defense-in-depth check for the spoofed-marker case.
- */
-const isErrorInstance = (value: unknown): value is ErrorInstance => {
-  if (value === null || typeof value !== 'object') return false;
-  if (!(value instanceof Error)) return false;
-  const v = value as { from?: unknown; addNote?: unknown };
-  return typeof v.from === 'function' && typeof v.addNote === 'function';
-};
-
-/**
  * Checks if an error is an instance of a specific error type.
  *
  * Works with:
@@ -109,7 +78,10 @@ const isErrorInstance = (value: unknown): value is ErrorInstance => {
  * on the candidate value, then walks the factory's `inherits` graph
  * depth-first. Markers that are not callable (null, primitive, or
  * arbitrary object) are rejected; the function returns false rather
- * than crashing. See `isCallableFactory` for the validation.
+ * than crashing. See `isCallableFactory` for the validation. The
+ * candidate must also be in the package-private `INSTANCE_REGISTRY`
+ * (`isRegisteredInstance`) — a foreign object that imitates the
+ * marker but was not produced by `error()` is rejected.
  *
  * @param error - The error to check (can be any value)
  * @param ErrorType - The error type to check against
@@ -180,14 +152,22 @@ function is(
     return false;
   }
 
-  // Defense-in-depth: a foreign object that imitates the marker
-  // (places a real factory reference at the symbol key) but lacks
-  // the instance methods (`.from`, `.addNote`) is not a real
-  // ErrorInstance. The audit found a case where such a forgery
-  // passed the marker check and `is()` returned true. The check
-  // uses method presence (functions, not values) so a hand-rolled
-  // object cannot satisfy it by carrying the right `.fields`.
-  if (!isErrorInstance(error)) {
+  // R9: the registry is the authoritative identity. A foreign
+  // object can imitate the marker (place a real factory
+  // reference at the symbol key), but it cannot insert itself
+  // into the module-private `WeakSet` that `buildErrorInstance`
+  // populates. The previous method-presence check (`.from`,
+  // `.addNote`) was not sound: a hand-rolled `Error` subclass
+  // with the right methods but no real `.fields` slipped through.
+  // The registry check is O(1), cannot be spoofed, and matches
+  // the audit's recommendation: "utiliser une association privée
+  // instance → factory pour les instances créées par le package".
+  //
+  // Cross-realm or cross-bundle recognition is intentionally
+  // not supported: the registry is per-load, and a foreign module
+  // would need a separate registration path. The marker still
+  // works for legitimate instances within the same load.
+  if (!isRegisteredInstance(error)) {
     return false;
   }
 

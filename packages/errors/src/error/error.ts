@@ -47,6 +47,50 @@ declare const process:
  */
 const FACTORY_SYMBOL = Symbol.for('@deessejs/errors/factory');
 
+/**
+ * Private registry of every `ErrorInstance` produced by a factory
+ * in this package load. `is()` consults the registry to reject
+ * foreign objects that imitate the marker shape.
+ *
+ * The audit found that method-presence checks (`.from`, `.addNote`)
+ * are not a sound gate: a hand-rolled `Error` subclass with the
+ * right methods but no real `.fields` slips through. The registry
+ * is the **authoritative** identity: a candidate is a real
+ * `ErrorInstance` only if this package added it.
+ *
+ * The `WeakSet` keeps the memory profile clean: when the instance
+ * becomes unreachable, the entry is GC'd automatically. The set
+ * itself is module-private, so consumers cannot add to it from
+ * outside the package. Cross-realm or cross-bundle recognition is
+ * not supported by this registry (the marker still works for
+ * legitimate instances if a consumer holds a direct reference).
+ *
+ * @internal
+ */
+const INSTANCE_REGISTRY: WeakSet<object> = new WeakSet();
+
+/**
+ * Mark an `ErrorInstance` as registered with this package. Called
+ * exactly once, at construction time, by `buildErrorInstance`.
+ *
+ * @internal
+ */
+const registerInstance = (instance: object): void => {
+  INSTANCE_REGISTRY.add(instance);
+};
+
+/**
+ * Check whether a candidate is a registered instance produced by
+ * this package. The check is O(1) and never throws: a foreign
+ * object, a primitive, or `null` simply returns false.
+ *
+ * @internal
+ */
+const isRegisteredInstance = (candidate: unknown): candidate is object => {
+  if (candidate === null || typeof candidate !== 'object') return false;
+  return INSTANCE_REGISTRY.has(candidate);
+};
+
 // ============================================================================
 // Deprecation tracking
 // ============================================================================
@@ -157,10 +201,53 @@ const renderIssues = (issues: ReadonlyArray<StandardSchemaV1.Issue>): string => 
       continue;
     }
     const message = typeof issue.message === 'string' ? issue.message : '';
-    const path = Array.isArray(issue.path) ? issue.path.join('.') : '';
+    const path = pathToString(issue.path);
     parts.push(path ? `${path}: ${message}` : message);
   }
   return parts.join('\n');
+};
+
+/**
+ * Render a `StandardSchemaV1.Issue.path` as a dotted string.
+ *
+ * The spec defines `path` as `ReadonlyArray<PropertyKey | PathSegment>`,
+ * where `PropertyKey = string | number | symbol` and `PathSegment` is
+ * `{ key: PropertyKey }`. Naive `.join('.')` would throw on a `symbol`
+ * key (`Cannot convert a Symbol value to a string`) and render
+ * `[object Object]` for an object segment. This helper extracts
+ * `.key` from object segments and `String()`s every primitive, so
+ * the result is always a human-readable dotted path.
+ *
+ * Examples:
+ *  - `['email']` -> `"email"`
+ *  - `['user', 'name']` -> `"user.name"`
+ *  - `['items', 0, 'id']` -> `"items.0.id"`
+ *  - `[{ key: 'email' }]` -> `"email"`
+ *  - `[Symbol('id')]` -> `"Symbol(id)"`
+ *  - `[null, undefined]` -> `""` (defensive against malformed issues)
+ */
+const pathToString = (path: unknown): string => {
+  if (!Array.isArray(path)) return '';
+  return path
+    .map((segment) => {
+      if (segment === null || segment === undefined) return '';
+      if (typeof segment === 'object') {
+        const key = (segment as { key?: unknown }).key;
+        return keyToString(key);
+      }
+      return keyToString(segment);
+    })
+    .filter((s) => s.length > 0)
+    .join('.');
+};
+
+const keyToString = (key: unknown): string => {
+  if (key === null || key === undefined) return '';
+  if (typeof key === 'symbol') return key.toString();
+  if (typeof key === 'string' || typeof key === 'number' || typeof key === 'boolean') {
+    return String(key);
+  }
+  return '';
 };
 
 /**
@@ -333,6 +420,10 @@ const buildErrorInstance = (
     enumerable: false,
     configurable: false,
   });
+  // R9: register the instance in the package-private registry.
+  // `is()` consults the registry as the authoritative identity
+  // (the marker alone is spoofable; the registry is not).
+  registerInstance(instance);
   return instance;
 };
 
@@ -383,9 +474,15 @@ const buildErrorInstance = (
  * ```
  */
 // R7 + R8: the schema overload constrains the schema's output to a
-// non-null, non-array object via `ObjectOutputSchema`. The `inherits`
-// parameter is constrained via `ParentFor<NoInfer<...>>` (a
-// contravariance witness — requires `strictFunctionTypes`).
+// non-null, non-array object via `ObjectOutputSchema`. The R9 audit
+// confirmed that a pure-type reject at the call site is not
+// possible (TypeScript's function-arity flexibility allows a
+// 0-arg lambda `() => 'x'` to be assigned to a function whose
+// parameter type is `null` or `never`, so the gate can only
+// *advise* via the inferred `InferOutput<S>` shape, not reject
+// on the call itself). The `inherits` parameter is constrained
+// via `ParentFor<NoInfer<...>>` (a contravariance witness —
+// requires `strictFunctionTypes`).
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function error<S extends ObjectOutputSchema<StandardSchemaV1<any, any>>>(config: {
@@ -416,6 +513,26 @@ export function error(
   config: any
 ): AnyErrorFactory {
   const { name, fields, inherits, message } = normalize(config);
+
+  // R9: build the inherits snapshot once, before any closure
+  // captures it. The factory metadata and every produced instance
+  // share the same frozen reference. The previous version froze
+  // a copy on the factory but let the closure pass the caller's
+  // original list to the instance — a caller-side mutation on
+  // the shared list would still be visible on `instance.inherits`.
+  // Sharing the snapshot closes that gap.
+  //
+  // The cast strips `Readonly<...>` from `Object.freeze`'s
+  // widened return type so the snapshot stays assignable to the
+  // non-readonly parameter type the rest of the body uses. The
+  // runtime freezing is what protects against caller mutations;
+  // the type is a convenience, not a contract.
+  const inheritsSnapshot: AnyErrorFactory | readonly AnyErrorFactory[] | undefined =
+    inherits === undefined
+      ? undefined
+      : Array.isArray(inherits)
+        ? (Object.freeze([...inherits]) as readonly AnyErrorFactory[])
+        : (Object.freeze(inherits) as AnyErrorFactory);
 
   const hasSchema = fields !== undefined;
   const hasFunctionMessage = typeof message === 'function';
@@ -501,7 +618,7 @@ export function error(
       name,
       message: errorMessage,
       fields: fieldsData,
-      inherits,
+      inherits: inheritsSnapshot,
       stack,
     });
   };
@@ -524,18 +641,14 @@ export function error(
     configurable: false,
   });
 
-  // R8: keep a single frozen snapshot of the parents list. The
-  // previous version also froze the caller's array, which surprised
-  // consumers who passed a shared list. With the cascade machinery
-  // removed, a single frozen snapshot is sufficient: the runtime
-  // walk in `is()` reads only the factory's own copy, and
-  // reassignment of `factory.inherits` is rejected by the
-  // `Object.freeze` below.
-  if (inherits !== undefined) {
-    const inheritsSnapshot: AnyErrorFactory | readonly AnyErrorFactory[] = Array.isArray(inherits)
-      ? ([...inherits] as readonly AnyErrorFactory[])
-      : inherits;
-    Object.freeze(inheritsSnapshot);
+  // R9: the snapshot built above is the single source of truth
+  // for the parents list. The factory's metadata and every
+  // produced instance share the same frozen reference. R8 froze
+  // a separate copy here and let the closure pass the caller's
+  // original list to instances; that left `instance.inherits`
+  // exposed to caller-side mutations on the shared list. Sharing
+  // the snapshot closes the gap.
+  if (inheritsSnapshot !== undefined) {
     (
       ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>
     ).inherits = inheritsSnapshot;
@@ -566,4 +679,4 @@ export function error(
 // Exports for is() function
 // ============================================================================
 
-export { FACTORY_SYMBOL };
+export { FACTORY_SYMBOL, isRegisteredInstance };

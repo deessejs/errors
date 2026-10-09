@@ -138,6 +138,27 @@ describe('R5: is() walks transitive chains without cascade', () => {
     expect(is(instance, Other)).toBe(false);
   });
 
+  it('instance.inherits is the same frozen snapshot as the factory metadata', () => {
+    // R9: the audit's repro showed that the factory's `.inherits`
+    // was the frozen snapshot but the instance's `.inherits` was
+    // the caller's original array. After R9, both reference the
+    // same frozen snapshot built once before the closure. A
+    // caller-side mutation on the shared list has no effect on
+    // either side.
+    const Parent = error({ name: 'Parent' });
+    const parents: AnyErrorFactory[] = [Parent];
+    const Child = error({ name: 'Child', inherits: parents });
+
+    expect(Child.inherits).not.toBe(parents);
+    expect(Array.isArray(Child.inherits)).toBe(true);
+    expect((Child.inherits as readonly AnyErrorFactory[]).length).toBe(1);
+
+    parents.length = 0;
+    expect((Child.inherits as readonly AnyErrorFactory[]).length).toBe(1);
+    expect(Child()).toHaveProperty('inherits');
+    expect((Child().inherits as readonly AnyErrorFactory[]).length).toBe(1);
+  });
+
   it('throws ArgsValidationError sourced from the leaf, not the parent', () => {
     // R5: when the leaf's own schema rejects, the source is the
     // leaf. The parent is not in the rejection path.

@@ -28,46 +28,15 @@ const makeSchema = <I, O>(output: O): StandardSchemaV1<I, O> => ({
 });
 
 describe('R8.1: schema output must be a non-null object', () => {
-  it('rejects at the type level when the schema returns null', () => {
-    // The type-level gate `IsObjectOutput<O>` is intended to reject
-    // schemas whose validated output is not a non-null, non-array
-    // object. In practice, TypeScript's function-arity flexibility
-    // (a 0-arg lambda is assignable to `(data: null) => string`)
-    // prevents the gate from firing at the call site. The runtime
-    // guard in `error()` (see the next three tests) is the
-    // authoritative enforcement. The test below documents the
-    // current behavior: the call type-checks, and the runtime
-    // rejects the malformed output.
-    const schema = makeSchema<unknown, null>(null);
-    const E = error({
-      name: 'E',
-      fields: schema,
-      message: () => 'x',
-    });
-    expect(() => E({})).toThrow(ArgsValidationError);
-  });
-
-  it('rejects at the type level when the schema returns an array', () => {
-    const schema = makeSchema<unknown, unknown[]>([]);
-    const E = error({
-      name: 'E',
-      fields: schema,
-      message: () => 'x',
-    });
-    expect(() => E({})).toThrow(ArgsValidationError);
-  });
-
-  it('rejects at the type level when the schema returns a primitive', () => {
-    const schema = makeSchema<unknown, number>(42);
-    const E = error({
-      name: 'E',
-      fields: schema,
-      message: () => 'x',
-    });
-    expect(() => E({})).toThrow(ArgsValidationError);
-  });
-
   it('rejects at runtime when the schema returns null (bypassed type check)', () => {
+    // The audit's R8.1 finding was that a schema with a malformed
+    // output slipped past the type-level gate. The audit confirmed
+    // a pure-type reject is not possible: TypeScript's function-
+    // arity flexibility allows a 0-arg lambda to satisfy a
+    // `(data: null) => string` constraint, so the gate cannot fire
+    // at the call site. The **runtime** guard `isObjectFields`
+    // catches the case when the schema actually runs and yields a
+    // non-record value. This test pins the runtime contract.
     const schema = makeSchema<unknown, null>(null) as unknown as StandardSchemaV1<
       unknown,
       Record<string, unknown>
@@ -203,6 +172,28 @@ describe('R8.3: is() is sound against marker spoofing', () => {
     }
     expect(instance[Symbol.for('@deessejs/errors/factory')]).toBe(original);
   });
+
+  it('rejects an Error-subclass forgery with the marker and instance methods', () => {
+    // R9: the audit found that a hand-rolled `Error` subclass
+    // carrying the marker AND the `.from`/`.addNote` methods
+    // (but no real `.fields`) used to pass `is()`. The method
+    // presence check was not a sound gate. The package-private
+    // `INSTANCE_REGISTRY` is the authoritative identity: a
+    // candidate is a real `ErrorInstance` only if `buildErrorInstance`
+    // added it. The forgery below was never produced by
+    // `error()` and is therefore rejected.
+    const E = error({ name: 'E' });
+    const fake = Object.assign(new Error('forged'), {
+      from() {
+        return this;
+      },
+      addNote() {
+        return this;
+      },
+      [Symbol.for('@deessejs/errors/factory')]: E,
+    }) as unknown as Parameters<typeof is>[0];
+    expect(is(fake, E)).toBe(false);
+  });
 });
 
 describe('R8.4: ArgsValidationError is safe against circular issues', () => {
@@ -221,5 +212,46 @@ describe('R8.4: ArgsValidationError is safe against circular issues', () => {
     // subtype) — not unknown.
     const issues: ReadonlyArray<StandardSchemaV1.Issue> = e.issues;
     expect(issues[0]?.message).toBe('oops');
+  });
+
+  it('renders string-keyed paths with dot separators', () => {
+    const e = new ArgsValidationError('X', [{ message: 'oops', path: ['user', 'email'] }], 'mock');
+    expect(e.message).toContain('user.email: oops');
+  });
+
+  it('renders numeric path segments (array index) without throwing', () => {
+    const e = new ArgsValidationError('X', [{ message: 'oops', path: ['items', 0, 'id'] }], 'mock');
+    expect(e.message).toContain('items.0.id: oops');
+  });
+
+  it('renders object path segments by extracting .key', () => {
+    const e = new ArgsValidationError('X', [{ message: 'oops', path: [{ key: 'email' }] }], 'mock');
+    expect(e.message).toContain('email: oops');
+    expect(e.message).not.toContain('[object Object]');
+  });
+
+  it('renders symbol-keyed paths via String(symbol) without throwing', () => {
+    // The audit found a real defect: a symbol in the path crashed
+    // `Array.prototype.join` with `TypeError: Cannot convert a
+    // Symbol value to a string`. The renderer must not throw.
+    const e = new ArgsValidationError('X', [{ message: 'oops', path: [Symbol('id')] }], 'mock');
+    expect(e.message).toContain('Symbol(id): oops');
+  });
+
+  it('survives null/undefined segments and missing .path', () => {
+    // The StandardSchemaV1.Issue.path is `ReadonlyArray<PropertyKey | PathSegment>`,
+    // so the segments above are well-formed: a `null` segment is
+    // not assignable to the union, so we use `0` and a numeric
+    // index to test the defensive behavior of the renderer.
+    const e1 = new ArgsValidationError(
+      'X',
+      [{ message: 'a', path: [0, 'x' as string] as ReadonlyArray<string | number> }],
+      'mock'
+    );
+    expect(e1.message).toContain('0.x: a');
+    const e2 = new ArgsValidationError('X', [{ message: 'b' }], 'mock');
+    // No path means no path prefix; only the wrapper `:` from
+    // the `Argument validation failed for "X"` header is present.
+    expect(e2.message).toBe('Argument validation failed for "X": b');
   });
 });
