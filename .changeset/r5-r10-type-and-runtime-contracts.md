@@ -5,22 +5,34 @@
 # 2.0.0
 
 This release locks in the public surface of `@deessejs/errors`. The
-two `error()` overloads — no-schema and schema — are the supported
-entry points; every other path is gone. The contracts below
-describe what shipped, not what was rejected.
+two `error()` overloads are the supported entry points; the
+constraints around `inherits`, `from`, `is`, and `causes` are
+pinned in the type system and verified by a runtime probe against
+every example in the docs.
 
 ## What shipped
 
 ### Two `error()` overloads
 
+The function is overloaded on whether a Standard Schema is supplied
+for `fields`. Both overloads share the same call-site shape for
+`name`, `message`, and `inherits`.
+
 ```ts
-// No-schema form. The factory is callable with no arguments.
+// No-schema form. The factory is callable with no arguments,
+// or with a manual generic that constrains the field shape:
+//
+//   error<{ n: string }>({ name: 'X' }).fields.n // string
+//
+// The no-schema form accepts a string `message` (with optional
+// `{field}` placeholders) or a function `message: (data) => string`.
 const E = error({ name: 'E' });
 const instance = E();
 
 // Schema form. The factory's call signature requires the
-// schema's input. `message` is a function of the post-transform
-// output.
+// schema's `InferInput` as the argument; `message` is a function
+// of the schema's `InferOutput`. A string `message` is not
+// accepted alongside a schema.
 const S = error({
   name: 'S',
   fields: z.object({ n: z.number() }),
@@ -30,18 +42,18 @@ const s = S({ n: 1 });
 ```
 
 A factory with a schema always requires its input, even for
-`z.object({})`. A no-schema factory always takes no arguments.
-There is no manual-generic form, no string-template form
-alongside a schema, and no factory that accepts both shapes
-at the same call site.
+`z.object({})`. A no-schema factory is callable with no arguments
+when `T` defaults to `Record<string, never>`, or with the input
+required by the manual generic.
 
 ### Inheritance is structural
 
-`inherits` is a static type-level relationship plus a
-recognition walk for `is()`. The leaf's `InferOutput` must be
-assignable to every parent's `InferOutput`; the constraint is
-enforced at the `error()` definition site. The walk is what
-makes `is()` match a child against any of its ancestors.
+`inherits` is a static type-level relationship plus a recognition
+walk for `is()`. The leaf's `InferOutput` (or manual generic `T`)
+must be assignable to every parent's `InferOutput`; the
+constraint is enforced at the `error()` definition site. The
+walk is what makes `is()` match a child against any of its
+ancestors.
 
 ```ts
 const Parent = error({
