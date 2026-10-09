@@ -33,6 +33,7 @@
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc --noEmit -p tsconfig.test.json",
     "test:consumer": "pnpm build && node tests/consumer-from-dist.mjs",
+    "test:docs": "pnpm build && node tests/docs-examples-typecheck.mjs",
     "lint": "eslint src/"
   },
   "keywords": [

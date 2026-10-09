@@ -86,9 +86,9 @@ const DataError = error({
 });
 ```
 
-## Legacy: string template
+## Deprecated: string template (removed in 2.0.0)
 
-The legacy string-template form (`message: "Field {field} is invalid"`) still works in the current major. It is deprecated and will be removed in the next major. New code should prefer the function form above.
+The string-template form (`message: "Field {field} is invalid"`) was deprecated in 1.4.0 and **removed in 2.0.0**. A factory declared with a string `message` is no longer accepted alongside a schema; the schema overload requires a function-form `message`. The legacy no-schema form (no `fields` schema) is the only path where a string `message` is still accepted, and it produces a message with `{field}` placeholders replaced by the corresponding entry of an empty record — for the no-schema form, the message is rendered as-is, without placeholders.
 
 ```ts title="legacy.ts"
 const ValidationError = error({
@@ -96,15 +96,15 @@ const ValidationError = error({
   message: "Field {field} is invalid",
 });
 
-const err = ValidationError({ field: "email" });
-console.log(err.message); // "Field email is invalid"
+const err = ValidationError();
+console.log(err.message); // "Field {field} is invalid"
 ```
 
 Behavior summary:
 
-- Placeholders without a value are left as-is in the output, making missing data easy to spot.
-- Modifier suffixes `:upper`, `:lower`, `:json` are still parsed and applied on top of the raw input.
-- Schema validation, when supplied, runs before template rendering; failed validation throws `ArgsValidationError`.
+- The function form is the only path that produces type-checked, post-transform fields. New code should use the function form.
+- For no-schema factories (the legacy path), a string `message` is rendered with no placeholders replaced. The function form is the recommended path.
+- Schema validation, when supplied, runs before rendering; failed validation throws `ArgsValidationError`.
 
 ## See Also
 

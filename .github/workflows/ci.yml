@@ -241,6 +241,38 @@ jobs:
         run: pnpm --filter @deessejs/errors test:consumer
 
   # ============================================================================
+  # Docs examples — public example blocks in apps/web/content/docs/*.mdx
+  # must compile against the published dist/index.d.ts. The probe
+  # walks every fenced TypeScript code block, runs tsc on each in
+  # isolation, and reports drift between the docs and the public API.
+  # ============================================================================
+  docs-examples-typecheck:
+    name: Docs examples type-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # Builds first (tsc -p tsconfig.build.json), then walks
+      # the MDX code blocks in apps/web/content/docs/ and runs
+      # tsc against the published dist/index.d.ts.
+      - name: Build and type-check public examples
+        run: pnpm --filter @deessejs/errors test:docs
+
+  # ============================================================================
   # Changeset required (PRs to staging only)
   # ============================================================================
   changeset-check:

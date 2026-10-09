@@ -15,8 +15,12 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(ValidationError({ field: 'email' }));
+// The no-schema factories have an empty input shape; the
+// call takes no arguments.
+const validationErr = ValidationError();
+const appErr = AppError();
+appErr.from(validationErr);
+appErr.from(validationErr);
 appErr.from(new Error('Network timeout'));
 
 const chain = causes(appErr);
@@ -60,8 +64,8 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(ValidationError({ field: 'email' }));
+const appErr = AppError();
+appErr.from(ValidationError());
 appErr.from(new Error('Database connection failed'));
 
 // Log each cause
@@ -86,8 +90,8 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(ValidationError({ field: 'email' }));
+const appErr = AppError();
+appErr.from(ValidationError());
 appErr.from(new Error('DB connection failed'));
 
 const summary = causes(appErr)
@@ -109,9 +113,9 @@ const AppError = error({ name: 'AppError' });
 const NetworkError = error({ name: 'NetworkError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(NetworkError({ endpoint: '/api/users' }));
-appErr.from(ValidationError({ field: 'email' }));
+const appErr = AppError();
+appErr.from(NetworkError());
+appErr.from(ValidationError());
 
 // Check if any cause is a NetworkError
 const hasNetworkFailure = causes(appErr).some(

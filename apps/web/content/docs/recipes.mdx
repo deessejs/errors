@@ -7,7 +7,7 @@ This page collects common patterns and practical examples for using @deessejs/er
 
 ## Validation Errors
 
-Validation errors are one of the most common error types. They typically include the field that failed validation and a reason for the failure.
+Validation errors are one of the most common error types. They typically include the field that failed validation and a reason for the failure. With a Standard Schema attached to the factory, the field shape is enforced at every call.
 
 ```ts title="validation.ts"
 import { error, raise } from '@deessejs/errors';
@@ -19,10 +19,17 @@ const UserSchema = z.object({
   age: z.number().min(0).max(150),
 });
 
-// Create the error factory
-const ValidationError = error<{ field: string; reason: string; value?: unknown }>({
+// Create the error factory. The schema's `InferOutput` is the
+// factory's `fields` type; the `message` function receives
+// the post-transform output.
+const ValidationError = error({
   name: 'ValidationError',
-  message: 'Validation failed for field "{field}"',
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+    value: z.unknown().optional(),
+  }),
+  message: (data) => `Validation failed for field "${data.field}": ${data.reason}`,
 });
 
 // Validation function
@@ -36,7 +43,7 @@ function validateUser(data: unknown) {
         field: issue.path.join('.'),
         reason: issue.message,
         value: (result.error as { value?: unknown }).value,
-      })
+      }),
     );
   }
 
@@ -48,18 +55,20 @@ When validation fails, you get an error with specific information about which fi
 
 ## Network Errors
 
-Network errors benefit from including the endpoint and any relevant request data.
+Network errors benefit from including the endpoint and any relevant request data. The schema's input is the call site shape; consumers can supply the response status without a separate field for it.
 
 ```ts title="network.ts"
 import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
 
-const NetworkError = error<{
-  endpoint: string;
-  method?: string;
-  statusCode?: number;
-}>({
+const NetworkError = error({
   name: 'NetworkError',
-  message: 'Request to {endpoint} failed',
+  fields: z.object({
+    endpoint: z.string(),
+    method: z.string().optional(),
+    statusCode: z.number().optional(),
+  }),
+  message: (data) => `Request to ${data.endpoint} failed`,
 });
 
 async function fetchWithError(url: string) {
@@ -70,7 +79,7 @@ async function fetchWithError(url: string) {
       NetworkError({
         endpoint: url,
         statusCode: response.status,
-      })
+      }),
     );
   }
 
@@ -82,32 +91,34 @@ You can extend this pattern to include request headers, body, or timing informat
 
 ## Database Errors
 
-Database errors typically need the query that failed and any relevant identifiers.
+Database errors typically need the query that failed and any relevant identifiers. The factory's schema keeps the input shape and the runtime output type in lockstep.
 
 ```ts title="database.ts"
-import { error, raise } from '@deessejs/errors';
+import { error } from '@deessejs/errors';
+import { z } from 'zod';
 
-const DatabaseError = error<{
-  operation: string;
-  table?: string;
-  query?: string;
-}>({
+const DatabaseError = error({
   name: 'DatabaseError',
-  message: 'Database {operation} failed',
+  fields: z.object({
+    operation: z.string(),
+    table: z.string().optional(),
+    query: z.string().optional(),
+  }),
+  message: (data) => `Database ${data.operation} failed`,
 });
 
 // Wrap database operations
-async function executeQuery(query: string, table: string) {
+async function executeQuery(db: { query: (q: string) => Promise<unknown> }, query: string, table: string) {
   try {
     return await db.query(query);
   } catch (err) {
-    raise(
-      DatabaseError({
-        operation: 'query',
-        table,
-        query,
-      }).from(err as Error)
-    );
+    // `DatabaseError()` returns a fresh instance, then `.from(err)`
+    // chains the cause. `.from()` is `this`-returning.
+    return DatabaseError({
+      operation: 'query',
+      table,
+      query,
+    }).from(err instanceof Error ? err : new Error(String(err)));
   }
 }
 ```
@@ -116,11 +127,27 @@ Chaining the original error preserves the full context of what went wrong.
 
 ## Error Handling Middleware
 
-Create a reusable error handler that processes errors based on their type.
+Create a reusable error handler that processes errors based on their type. Each `is()` check narrows the error to a specific factory's `InferOutput`, so `err.fields.field`, `err.fields.endpoint`, etc. are all type-checked.
 
 ```ts title="handler.ts"
-import { error, raise, is, causes } from '@deessejs/errors';
-import { ValidationError, NetworkError, DatabaseError } from './errors';
+import { error, is, causes } from '@deessejs/errors';
+import { z } from 'zod';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({ field: z.string() }),
+  message: (d) => `Invalid input: ${d.field}`,
+});
+
+const NetworkError = error({
+  name: 'NetworkError',
+  message: () => 'External service unavailable',
+});
+
+const DatabaseError = error({
+  name: 'DatabaseError',
+  message: () => 'Database operation failed',
+});
 
 export function handleApiError(err: unknown) {
   // Log the full error chain
@@ -159,31 +186,36 @@ This pattern centralizes error handling logic and ensures consistent responses.
 
 ## Service Layer Error Wrapping
 
-When building services that call other services, wrap errors to add context while preserving the cause chain.
+When building services that call other services, wrap errors to add context while preserving the cause chain. `.from()` replaces the previous direct cause; build the chain by attaching each layer's cause to the previous one.
 
 ```ts title="service.ts"
-import { error, raise } from '@deessejs/errors';
-import { NetworkError, UserNotFoundError } from './errors';
+import { error } from '@deessejs/errors';
+import { z } from 'zod';
 
 const AppError = error({ name: 'AppError' });
 
+const UserNotFoundError = error({
+  name: 'UserNotFoundError',
+  fields: z.object({ userId: z.string() }),
+  message: (d) => `User ${d.userId} not found`,
+});
+
 class UserService {
-  async getUser(userId: string) {
+  async getUser(userId: string, fetchUser: (id: string) => Promise<unknown>) {
     try {
-      const user = await this.fetchUser(userId);
+      const user = await fetchUser(userId);
       if (!user) {
-        raise(UserNotFoundError({ userId }));
+        // `.raise()` is the idiomatic throw; here we use
+        // throw since we're in a class method.
+        throw UserNotFoundError({ userId });
       }
       return user;
     } catch (err) {
-      // Wrap any error from lower layers
-      raise(AppError({}).from(err as Error));
+      // Wrap any error from lower layers. `err` is `unknown`
+      // in strict mode; check before .from(err).
+      const cause = err instanceof Error ? err : new Error(String(err));
+      throw AppError().from(cause);
     }
-  }
-
-  private async fetchUser(userId: string) {
-    // Implementation
-    return null;
   }
 }
 ```
@@ -192,10 +224,11 @@ The caller gets both the context of the current operation and the underlying cau
 
 ## Hierarchical Error Categories
 
-Create a hierarchy that lets you handle errors at different levels of granularity.
+Create a hierarchy that lets you handle errors at different levels of granularity. `is()` walks the factory's `inherits` graph, so a single check can match a leaf and any of its ancestors.
 
 ```ts title="hierarchy.ts"
 import { error, is } from '@deessejs/errors';
+import { z } from 'zod';
 
 // Top level
 const AppError = error({ name: 'AppError' });
@@ -204,26 +237,32 @@ const AppError = error({ name: 'AppError' });
 const UserError = error({ name: 'UserError', inherits: AppError });
 const ProductError = error({ name: 'ProductError', inherits: AppError });
 
-// Specific errors
-const UserNotFoundError = error<{ userId: string }>({
+// Specific errors. Each leaf carries its own schema; the
+// InferOutput stays scoped to that factory.
+const UserNotFoundError = error({
   name: 'UserNotFoundError',
+  fields: z.object({ userId: z.string() }),
+  message: (d) => `User ${d.userId} not found`,
   inherits: UserError,
 });
 
-const UserPermissionError = error<{ userId: string; action: string }>({
+const UserPermissionError = error({
   name: 'UserPermissionError',
+  fields: z.object({ userId: z.string(), action: z.string() }),
+  message: (d) => `User ${d.userId} cannot ${d.action}`,
   inherits: UserError,
 });
 
 function handleError(err: unknown) {
   if (is(err, AppError)) {
-    // Catches everything
+    // Catches everything in the AppError family.
   }
   if (is(err, UserError)) {
-    // Catches UserNotFoundError, UserPermissionError
+    // Catches UserNotFoundError, UserPermissionError.
   }
   if (is(err, UserNotFoundError)) {
-    // Catches only user not found errors
+    // Catches only user not found errors; `err.fields.userId`
+    // is typed as `string`.
   }
 }
 ```

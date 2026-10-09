@@ -15,11 +15,12 @@ import { error } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-// Create the original error
-const validationErr = ValidationError({ field: 'email' });
+// Create the original error. The no-schema form has an empty
+// input shape, so the call is `ValidationError()` with no args.
+const validationErr = ValidationError();
 
 // Create the wrapping error
-const appErr = AppError({});
+const appErr = AppError();
 
 // Chain the validation error as the cause
 appErr.from(validationErr);
@@ -31,7 +32,9 @@ The `from()` method returns the error instance, so you can chain method calls or
 
 ## Multiple Causes
 
-A single error has one **direct cause** at a time: each `from()` call replaces the previous cause with a new one. To build a chain, the previous cause itself carries its own `.cause` — walk the chain with the `causes()` helper, which returns the immediate cause down to the root.
+A single error has one **direct cause** at a time: each `from()` call replaces the previous cause with a new one. To build a chain of length N, the previous cause itself must carry its own `.cause`. Calling `.from()` repeatedly on the same error does **not** accumulate a list — the second call overwrites the first.
+
+Build the chain by attaching each cause to the previous one. The `causes()` helper then walks the chain by following each cause's own `.cause` link, returning the immediate cause down to the root:
 
 ```ts title="multiple.ts"
 import { error, causes } from '@deessejs/errors';
@@ -39,23 +42,22 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
+// Build the chain: the root cause is attached first, then
+// the next layer, then the leaf. Each .from() sets the
+// direct cause on the receiver.
+const databaseErr = new Error('Database connection failed');
+const validationErr = ValidationError().from(databaseErr);
+const appErr = AppError().from(validationErr);
 
-// Build the chain: each .from() sets the direct cause.
-appErr.from(ValidationError({ field: 'email' }));
-appErr.from(new Error('Database connection failed'));
-
-// The direct cause is the last .from() call.
-console.log(appErr.cause?.message); // "Database connection failed"
-
-// Walk the chain — the previous cause is reachable transitively.
+// Walk the chain — the order is immediate cause first, root
+// cause last. causes() detects cycles.
 const chain = causes(appErr);
-console.log(chain.length); // 2 — [ValidationError, Error]
+console.log(chain.length); // 2 — [validationErr, databaseErr]
 console.log(chain[0].name); // "ValidationError"
 console.log(chain[1].message); // "Database connection failed"
 ```
 
-The chain order is always immediate-cause first, root-cause last. The `causes()` helper detects cycles.
+The chain order is always immediate-cause first, root-cause last.
 
 ## Chaining with raise()
 
@@ -69,10 +71,14 @@ const ValidationError = error({ name: 'ValidationError' });
 
 try {
   // Something throws a validation error
-  throw ValidationError({ field: 'email' });
+  throw ValidationError();
 } catch (err) {
-  // Wrap it in an application error
-  raise(AppError({}).from(err));
+  // err is `unknown` in strict mode; check before .from(err).
+  if (err instanceof Error) {
+    raise(AppError().from(err));
+  } else {
+    throw err;
+  }
 }
 ```
 
@@ -85,11 +91,17 @@ const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
 try {
-  throw ValidationError({ field: 'email' });
+  throw ValidationError();
 } catch (err) {
-  raise(AppError({}).from(err));
+  if (err instanceof Error) {
+    raise(AppError().from(err));
+  } else {
+    throw err;
+  }
 }
 ```
+
+The `err instanceof Error` check is required in strict mode: TypeScript types a `catch` clause's binding as `unknown`, and `.from()` expects an `Error | ErrorInstance<any>`. Without the check, the call is a type error.
 
 ## Accessing the Full Chain
 
@@ -101,13 +113,14 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(ValidationError({ field: 'email' }));
-appErr.from(new Error('Connection timeout'));
+// Build the chain by attaching each cause to the previous.
+const root = new Error('Connection timeout');
+const middle = ValidationError().from(root);
+const appErr = AppError().from(middle);
 
 // Walk the chain via the causes() helper.
 const chain = causes(appErr);
-console.log(chain.length); // 2 — [ValidationError, Error]
+console.log(chain.length); // 2 — [middle (ValidationError), root (Error)]
 console.log(chain[0].name); // "ValidationError"
 console.log(chain[1].message); // "Connection timeout"
 ```

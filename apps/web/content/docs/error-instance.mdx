@@ -12,11 +12,11 @@ Error instances include all standard `Error` properties:
 ```ts title="properties.ts"
 import { error } from '@deessejs/errors';
 
-const AppError = error({ name: 'AppError', message: 'Something went wrong' });
-const err = AppError({});
+const AppError = error({ name: 'AppError' });
+const err = AppError();
 
 console.log(err.name); // "AppError"
-console.log(err.message); // "Something went wrong"
+console.log(err.message); // "AppError"
 console.log(err.stack); // Stack trace string
 console.log(err instanceof Error); // true
 ```
@@ -25,12 +25,16 @@ These properties behave exactly like native errors, so they work with all existi
 
 ## The fields Property
 
-The `fields` property contains the data you passed when creating the error. This is where you store structured context about what went wrong.
+The `fields` property carries the data the schema validated when the error was constructed. This is where you store structured context about what went wrong. A no-schema factory's `fields` is the empty object `{}`.
 
 ```ts title="fields.ts"
-const ValidationError = error<{ field: string; value: unknown }>({
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
+
+const ValidationError = error({
   name: 'ValidationError',
-  message: 'Invalid value',
+  fields: z.object({ field: z.string(), value: z.unknown() }),
+  message: (d) => `Invalid value`,
 });
 
 const err = ValidationError({ field: 'email', value: 'not-an-email' });
@@ -39,28 +43,27 @@ console.log(err.fields.field); // "email"
 console.log(err.fields.value); // "not-an-email"
 ```
 
-The fields object is typed based on what you defined in the error factory, providing full TypeScript support for accessing these values.
+The fields object is typed by the schema's `InferOutput`, so TypeScript checks every property access.
 
 ## The from() Method
 
 The `from()` method chains another error as the cause of the current error. This is how you preserve the full context of what led to an error.
 
 ```ts title="from-method.ts"
-import { error } from '@deessejs/errors';
+import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const validationErr = ValidationError({ field: 'email' });
-const appErr = AppError({});
+const validationErr = ValidationError();
+const appErr = AppError();
 
-// Chain the validation error as a cause
+// Chain the validation error as a cause.
 appErr.from(validationErr);
 
 console.log(appErr.cause === validationErr); // true
 // The full chain is reachable via the causes() helper, which
 // walks the cause links and returns the chain immediate-cause first.
-import { causes } from '@deessejs/errors';
 console.log(causes(appErr).length); // 1
 ```
 
@@ -71,29 +74,31 @@ The `from()` method returns the error instance, allowing you to chain multiple c
 The `cause` property holds the direct cause of the error — the error passed to the most recent `from()` call.
 
 ```ts title="cause.ts"
+import { error } from '@deessejs/errors';
+
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(ValidationError({ field: 'name' }));
+const appErr = AppError();
+appErr.from(ValidationError());
 
 console.log(appErr.cause instanceof ValidationError); // true
 ```
 
 When no cause has been set, `cause` is `null`.
 
-## The causes Array
+## The causes() helper
 
-The `causes` array contains the entire chain of errors, ordered from most recent to oldest. This gives you the full history of what happened.
+The `causes()` function returns the full chain of errors, ordered immediate cause first, root cause last. It walks the `.cause` link of each error in the chain, detects cycles, and accepts native `Error` and `null`/`undefined` (returns `[]` for those). It is a top-level function, not a property on the instance.
 
 ```ts title="causes-array.ts"
-import { causes, error } from '@deessejs/errors';
+import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError({});
-appErr.from(ValidationError({ field: 'email' }));
+const appErr = AppError();
+appErr.from(ValidationError());
 appErr.from(new Error('Database connection failed'));
 
 // Walk the chain via causes() — immediate cause first, root cause last.
@@ -107,40 +112,38 @@ When you chain multiple errors, the new cause replaces the direct cause; the pre
 
 ## The notes Property
 
-The `notes` property allows you to attach additional context to an error after it's created. This is useful for adding debugging information in catch blocks.
+The `notes` property lets you attach additional context to an error after it is created. Each `addNote()` call returns `this` for chaining, and the runtime maintains the `notes` array in the order the calls were made.
 
 ```ts title="notes.ts"
+import { error } from '@deessejs/errors';
+
 const AppError = error({ name: 'AppError' });
-const err = AppError({});
+const err = AppError();
 
 // Add context notes
-err.notes.push('Caught in user controller');
-err.notes.push('User ID was usr_123');
+err.addNote('Caught in user controller');
+err.addNote('User ID was usr_123');
 
 console.log(err.notes);
 // ["Caught in user controller", "User ID was usr_123"]
 ```
 
-Notes are stored as an array of strings and can be modified at any time.
+Notes are stored as a readonly array of strings. To add notes, use `addNote()` rather than `notes.push()`; the `notes` slot is a snapshot and is replaced on each `addNote()` call.
 
 ## The context Property
 
-The `context` property holds additional data that was injected into the error. This is useful for framework integrations or middleware that need to attach extra information.
+The `context` property holds additional data injected into the error. It is a `Record<string, unknown>`-shaped slot that consumers can assign once at construction time. For framework integrations or middleware, the slot is on the instance as a readonly `Record<string, unknown> | null`.
 
 ```ts title="context.ts"
+import { error } from '@deessejs/errors';
+
 const AppError = error({ name: 'AppError' });
-const err = AppError({});
+const err = AppError();
 
-// Attach context data
-err.context = {
-  requestId: 'req_abc123',
-  timestamp: new Date().toISOString(),
-};
-
-console.log(err.context.requestId); // "req_abc123"
+console.log(err.context); // null
 ```
 
-When no context has been set, `context` is `null`.
+When no context has been set, `context` is `null`. To inject structured context, pass it through your factory's own schema and use `fields` instead — that keeps the data flow type-checked end to end.
 
 ## See Also
 

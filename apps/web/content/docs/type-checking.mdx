@@ -18,7 +18,9 @@ const ValidationError = error({
   inherits: AppError,
 });
 
-const err = ValidationError({ field: 'email' });
+// The no-schema factories have an empty input shape; the call
+// takes no arguments.
+const err = ValidationError();
 
 console.log(is(err, ValidationError)); // true
 console.log(is(err, AppError)); // true (through inheritance)

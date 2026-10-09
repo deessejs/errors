@@ -35,7 +35,9 @@ const ValidationError = error({
   inherits: AppError,
 });
 
-const err = ValidationError({ field: 'email' });
+// The no-schema factories have an empty input shape; the call
+// takes no arguments.
+const err = ValidationError();
 
 console.log(is(err, ValidationError)); // true
 console.log(is(err, AppError)); // true (through inheritance)
@@ -73,8 +75,8 @@ function handleError(err: unknown) {
   }
 }
 
-handleError(ValidationError({ field: 'email' })); // Logs
-handleError(NetworkError({ url: '/api' })); // Logs
+handleError(ValidationError()); // Logs
+handleError(NetworkError()); // Logs
 ```
 
 This pattern lets you handle errors at different levels of granularity depending on your needs.
@@ -94,6 +96,9 @@ const ValidationError = error<{ field: string }>({
   message: 'Field "{field}" is invalid',
 });
 
+// The manual generic { field: string } means ValidationError
+// requires the input argument; the legacy string-template
+// form is allowed here because there is no schema.
 const err = ValidationError({ field: 'email' });
 console.log(err.message); // "Field "email" is invalid"
 console.log(is(err, AppError)); // true
@@ -152,9 +157,9 @@ const Parent = error({
 
 error<{ n: string }>({
   name: 'Leaf',
-  inherits: Parent,
   // @ts-expect-error — manual generic { n: string } is not
   // assignable to Parent's output { n: number }
+  inherits: Parent,
 });
 ```
 
@@ -181,20 +186,26 @@ const TemplateNotFound = error({
 });
 ```
 
-For Valibot:
+For Valibot, declare the parent schema separately and spread its entries into the leaf's schema. The factory exposes the schema via `.schema` (not `.fields` — that's the instance slot):
 
 ```ts title="compose-valibot.ts"
 import * as v from 'valibot';
+import { error } from '@deessejs/errors';
+
+// Declare the parent schema as a reusable variable. The
+// factory stores it on `.schema`; we don't read .schema
+// back, we use the local reference.
+const parentSchema = v.object({ registry: v.string() });
 
 const Parent = error({
   name: 'Parent',
-  fields: v.object({ registry: v.string() }),
+  fields: parentSchema,
   message: (d) => d.registry,
 });
 
 const TemplateNotFound = error({
   name: 'TemplateNotFound',
-  fields: v.object({ ...Parent.fields, slug: v.string() } as never),
+  fields: v.object({ ...parentSchema.entries, slug: v.string() }),
   message: (d) => `${d.slug} not found in ${d.registry}`,
   inherits: Parent,
 });
@@ -202,7 +213,7 @@ const TemplateNotFound = error({
 
 For ArkType, use `pipe`, `and`, or `merge`. The point is the same: the consumer composes the schema, the library runs it on the input, and `inherits` declares the type-level relationship.
 
-The `inherits` array is frozen at construction time, so any in-place mutation after `error()` returns throws `TypeError`.
+The factory's `inherits` slot is frozen at construction time. The caller's array is **not** mutated in place — surprising the consumer with a side effect on a shared list was a documented footgun. The factory builds a single frozen snapshot once, and both the factory's metadata and every produced instance's `inherits` share the same reference. The classification invariant is preserved across caller-side mutations on the original list.
 
 ## See Also
 
