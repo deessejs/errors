@@ -6,9 +6,18 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type { AnyErrorFactory, CompatibleWith, ErrorFactory, ErrorInstance } from './types.js';
+import type { AnyErrorFactory, ErrorFactory, ErrorInstance, ParentFor } from './types.js';
 import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
+
+// The compatibility witness symbol is imported as a runtime value
+// (despite being declared as a `unique symbol`) so that the
+// implementation can attach the witness property to the factory
+// instance. The TypeScript declaration `export declare const
+// acceptsFields: unique symbol;` produces a value-side binding
+// when emitted; importing it via the bare specifier gives us
+// access at runtime.
+import { acceptsFields } from './types.js';
 
 // ============================================================================
 // Node ambient types
@@ -217,119 +226,60 @@ function formatCallSite(): string {
  * });
  * ```
  */
-// Phase 2: schema-driven I/O inference. The overloads below
-// discriminate on `fields`. The first overload matches calls
-// that supply a schema; the second matches calls that don't.
-// TypeScript picks the first matching overload, so the schema
-// overload must be first for its inference to win.
+// The R7 design replaces the R6 conditional return type with a
+// parameter-level constraint. The compatibility witness
+// `[acceptsFields]?: (fields: Output) => void` declared on every
+// `ErrorFactory<_, Output>` is a function-typed property, so
+// under `strictFunctionTypes` its parameter is checked
+// contravariantly. A leaf whose output is `LeafOutput` can use a
+// parent only if `[LeafOutput] extends [Output]`, where `Output`
+// is the parent's output.
 //
-// Implementation note: we use a discriminated union on
-// `{ fields: S }` vs `{ fields?: never; message?: ... }` so
-// TypeScript can statically route the call. The first overload
-// is the only one where `message`'s parameter type is
-// determined by the schema.
+// To exercise this, the `inherits?` parameter of each public
+// overload is typed as `ParentFor<NoInfer<Output>>` (or
+// `ParentFor<NoInfer<T>>` in the no-schema overload). The
+// `NoInfer` keeps the leaf's output from being inferred from the
+// parent — the leaf is still driven by the schema (or the
+// explicit generic).
 //
-// The `any, any` parameters on StandardSchemaV1 let us capture
-// every concrete schema (Zod, valibot, arktype, custom mocks) and
-// derive the per-call input/output types via InferInput/InferOutput.
-// Without `any`, the call signature would require `<infer I, infer O>`
-// and the overload would lose its ability to discriminate on the
-// call site.
-// The R6 schema overload captures both `S` (the schema) and `P`
-// (the parents) as explicit generic parameters, with `P` inferred
-// directly from `inherits?: P`. The previous design threaded the
-// parents through `ConfigInherits<typeof config>` and
-// `InferInherits<P>`, which could not benefit from inference
-// because no parameter held `P`. With `inherits?: P`, TypeScript
-// infers `P` from the call site and the constraint runs against
-// the actual type supplied — not a `typeof` projection.
-//
-// `CompatibleWith<Leaf, Parents>` is the single source of truth
-// for the static inheritance contract. It uses `NoInfer<Leaf>` at
-// the comparison site so the check does not contribute to the
-// inference of `S` (which is driven by the schema's structure).
-//
-// The default `P = AnyErrorFactory | readonly AnyErrorFactory[]`
-// matches the case where `inherits` is omitted. The default value
-// is intentionally the widest possible; `CompatibleWith` falls
-// through to `true` for that case and no constraint is imposed on
-// factories with no parents.
-// The R6 schema overload: the type-level constraint runs against
-// `P`, the type of the `inherits` field. To let TypeScript infer
-// `P` from the call site, we set the parameter type of `inherits`
-// to `AnyErrorFactory | readonly AnyErrorFactory[]` (matching the
-// implementation signature) and capture `P` via `infer P` from the
-// config type itself. This keeps the overload compatible with the
-// implementation signature (TS2394-safe) while still letting the
-// caller-provided value drive the inference.
-
-/**
- * Pulls the `inherits` field's type back out of a config object
- * type. Used by the schema overload to retrieve the precise
- * `P` that the caller provided. The default (no `inherits` field)
- * resolves to the widest possible parent type so the constraint
- * falls through to `true`.
- *
- * @internal
- */
-type InferInheritsFromConfig<C> = C extends { inherits?: infer P }
-  ? P extends AnyErrorFactory | readonly AnyErrorFactory[]
-    ? P
-    : AnyErrorFactory | readonly AnyErrorFactory[]
-  : AnyErrorFactory | readonly AnyErrorFactory[];
+// The implementation signature uses `(config: any)` and returns
+// `AnyErrorFactory`. This is an explicit internal boundary: the
+// strict public overloads must be assignable to a permissive
+// implementation signature, otherwise TS2394 fires at the
+// overload declarations themselves. The `any` here is *not*
+// type erasure of the constraint — the constraint runs at the
+// public overloads' parameter types, not at the implementation.
+// The implementation body operates on `Record<string, unknown>`
+// and never reads field-level types.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function error<S extends StandardSchemaV1<any, any>>(config: {
   name: string;
   fields: S;
   message: (data: StandardSchemaV1.InferOutput<S>) => string;
-  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
-}): CompatibleWith<
-  StandardSchemaV1.InferOutput<S>,
-  InferInheritsFromConfig<typeof config>
-> extends true
-  ? ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>
-  : ErrorFactory<never, never>;
+  inherits?:
+    | ParentFor<NoInfer<StandardSchemaV1.InferOutput<S>>>
+    | readonly ParentFor<NoInfer<StandardSchemaV1.InferOutput<S>>>[];
+}): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
 
-// The R6 no-schema overload. Same shape as the schema overload
-// (parameter type matches the implementation, `T` captured via
-// the manual generic and `P` via the config's `inherits` field).
-// The leaf's `T` (the manual generic) drives the constraint
-// instead of `InferOutput<S>`. The position is contravariant:
-// `[NoInfer<T>] extends [ExtractOwnFactoryOutput<P>]` evaluates
-// the assignment without contributing to the inference of `T`
-// (explicit) or `P` (inferred from `inherits`). This closes the
-// gap where `error<{n: string}>({inherits: P})` slipped through
-// because the explicit generic took its default for subsequent
-// type parameters.
 export function error<T extends Record<string, unknown> = Record<string, never>>(config: {
   name: string;
   fields?: undefined;
   message?: string | ((data: T) => string);
-  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
-}): CompatibleWith<T, InferInheritsFromConfig<typeof config>> extends true
-  ? ErrorFactory<T>
-  : ErrorFactory<never>;
+  inherits?: ParentFor<NoInfer<T>> | readonly ParentFor<NoInfer<T>>[];
+}): ErrorFactory<T>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function error<S extends StandardSchemaV1<any, any>>(
-  config: {
-    name: string;
-    fields?: S;
-    message?: string | ((data: Record<string, unknown>) => string);
-    // The implementation signature is permissive about `inherits`:
-    // the static type-level constraint on the public overloads (the
-    // `CompatibleWith<...>` conditional in the schema and no-schema
-    // overloads) does the real work. The implementation just stores
-    // the reference and lets `is()` walk it.
-    inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
-  }
-  // The implementation returns the widest possible factory type.
-  // Public overloads return narrower types via the
-  // `CompatibleWith<...>` conditional. The cast `as ...` below
-  // reconciles the precise return type of each overload with the
-  // permissive implementation type.
-): ErrorFactory<Record<string, unknown>, Record<string, unknown>> {
+// The R7 implementation signature is `(config: any)` because the
+// public overloads (above) must be assignable to it (TS2394-safe).
+// The `any` here is an explicit internal boundary: the constraint
+// runs at the public overloads' parameter types, not at the
+// implementation. Two `eslint-disable` lines below are necessary:
+// one for the function declaration header and one for the
+// `config: any` parameter.
+export function error(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config: any
+): AnyErrorFactory {
   const { name, fields, inherits, message } = config;
 
   // Phase 3: validation is gated on the presence of `fields` alone,
@@ -465,6 +415,21 @@ export function error<S extends StandardSchemaV1<any, any>>(
   // Attach metadata to the factory function
   Object.defineProperty(ErrorFactoryInstance, 'name', {
     value: name,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+
+  // R7 compatibility witness: a hidden function-typed property used
+  // by the type checker to enforce inheritance compatibility
+  // contravariantly. The function is never called at runtime — the
+  // value is purely a marker that satisfies the `[acceptsFields]?`
+  // shape declared on `ErrorFactory`. The parameter type is
+  // `unknown` here because the implementation signature is
+  // type-erased; the actual contravariance check happens at the
+  // public overloads via `ParentFor<NoInfer<...>>`.
+  Object.defineProperty(ErrorFactoryInstance, acceptsFields, {
+    value: (_fields: unknown) => undefined,
     writable: false,
     enumerable: false,
     configurable: false,

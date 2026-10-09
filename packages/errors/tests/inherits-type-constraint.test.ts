@@ -1,11 +1,19 @@
 /**
- * Static type-level tests for the R5 inheritance contract.
+ * Static type-level tests for the R7 inheritance contract.
  *
- * After R5, the `error()` overloads reject `inherits` from factories
+ * After R7, the `error()` overloads reject `inherits` from factories
  * whose `InferOutput` is not a supertype of the leaf's `InferOutput`.
- * These tests pin the constraint at the type level using
- * `@ts-expect-error`. Each block compiles only because the
- * `@ts-expect-error` is on a line that genuinely errors. The companion
+ * The constraint is enforced by the `[acceptsFields]` compatibility
+ * witness declared on every `ErrorFactory`. A parent factory whose
+ * output is `OutputParent` is only assignable to a leaf whose
+ * output is `LeafOutput` if `[LeafOutput] extends [OutputParent]`
+ * — contravariance, via `strictFunctionTypes`, on the function-typed
+ * property.
+ *
+ * Each negative test below uses `@ts-expect-error` on the line
+ * immediately before the `inherits:` line that emits the diagnostic.
+ * TypeScript walks the comment back from the error site, so a
+ * directive on the line above is the right placement. The companion
  * `expectTypeOf` assertions confirm the success cases produce the
  * expected narrowed type.
  *
@@ -21,7 +29,7 @@ import { z } from 'zod';
 import { error } from '../src/index.js';
 import type { AnyErrorFactory } from '../src/error/types.js';
 
-describe('R5 inherits type-level constraint', () => {
+describe('R7 inherits type-level constraint', () => {
   it('accepts a child whose InferOutput is assignable to the parent', () => {
     const Parent = error({
       name: 'Parent',
@@ -45,12 +53,14 @@ describe('R5 inherits type-level constraint', () => {
       message: (d) => String(d.n),
     });
     // The manual generic { n: string } is not assignable to
-    // { n: number } — the parent requires a number.
+    // { n: number } — the parent requires a number. The
+    // [acceptsFields] witness on Parent accepts { n: number };
+    // the leaf's manual generic is { n: string }, so contravariance
+    // rejects.
     error<{ n: string }>({
       name: 'Child',
+      // @ts-expect-error — manual generic { n: string } is not assignable to Parent's { n: number }
       inherits: Parent,
-      // @ts-ignore — manual generic { n: string } is not
-      // assignable to Parent's output { n: number }
     });
   });
 
@@ -64,8 +74,8 @@ describe('R5 inherits type-level constraint', () => {
       name: 'C',
       fields: z.object({ payload: z.object({ id: z.string() }) }),
       message: (d) => d.payload.id,
+      // @ts-expect-error — payload shape mismatch (count vs id)
       inherits: Parent,
-      // @ts-ignore — payload shape mismatch
     });
   });
 
@@ -79,8 +89,8 @@ describe('R5 inherits type-level constraint', () => {
       name: 'C',
       fields: z.object({ n: z.literal('ok') }),
       message: (d) => d.n,
+      // @ts-expect-error — literal "ok" is not assignable to "bad"
       inherits: Parent,
-      // @ts-ignore — literal mismatch
     });
   });
 
@@ -94,8 +104,8 @@ describe('R5 inherits type-level constraint', () => {
       name: 'C',
       fields: z.object({ items: z.array(z.object({ id: z.string() })) }),
       message: (d) => String(d.items.length),
+      // @ts-expect-error — array element shape mismatch (count vs id)
       inherits: Parent,
-      // @ts-ignore — array element shape mismatch
     });
   });
 
@@ -109,8 +119,8 @@ describe('R5 inherits type-level constraint', () => {
       name: 'C',
       fields: z.object({ data: z.object({ user: z.object({ id: z.string() }) }) }),
       message: (d) => d.data.user.id,
+      // @ts-expect-error — nested structural mismatch (name vs id)
       inherits: Parent,
-      // @ts-ignore — nested structural mismatch
     });
   });
 
@@ -151,9 +161,8 @@ describe('R5 inherits type-level constraint', () => {
     });
     error<{ n: string }>({
       name: 'C',
+      // @ts-expect-error — manual generic { n: string } is not assignable to Parent's { n: number }
       inherits: Parent,
-      // @ts-ignore — manual generic { n: string } is not
-      // assignable to Parent's output { n: number }
     });
   });
 
@@ -187,8 +196,8 @@ describe('R5 inherits type-level constraint', () => {
       name: 'C',
       fields: z.object({ a: z.string() }),
       message: (d) => d.a,
+      // @ts-expect-error — child is missing b for B
       inherits: [A, B],
-      // @ts-ignore — child is missing b for B
     });
   });
 
@@ -224,24 +233,28 @@ describe('R5 inherits type-level constraint', () => {
       message: (d) => String(d.b),
     });
     // The first parent A is satisfied (a: string), but B is not.
-    // The R6 helper catches the second-parent violation that
-    // the previous helper missed when only the tuple head was
-    // checked.
+    // The R7 contravariance witness checks each element of the
+    // tuple list against the leaf's output, so the second element's
+    // mismatch is caught here.
     error({
       name: 'C',
       fields: z.object({ a: z.string() }),
       message: (d) => d.a,
+      // @ts-expect-error — second parent B requires b which the leaf does not declare
       inherits: [A, B],
-      // @ts-ignore — first parent A is satisfied but
-      // second parent B is not (missing b).
     });
   });
 
-  it('rejects a non-tuple array of parents when one element is incompatible', () => {
-    // The R5 helper terminated with `true` for non-tuple arrays.
-    // R6 collapses non-tuple arrays to their element type via
-    // P[number], so a typed `AnyErrorFactory[]` is checked as
-    // if every element were the same union.
+  it('does not narrow-check a list typed as AnyErrorFactory[] (type-erased)', () => {
+    // R7 documented limitation: the contravariance witness lives on
+    // the *concrete* factory type. A list whose element type is
+    // `AnyErrorFactory` has its witness parameter typed as `any`
+    // (the type-erasure of `AnyErrorFactory`), so a single
+    // incompatible element cannot be detected. This is a known
+    // trade-off — a consumer who wants the per-element check must
+    // type the list as a tuple `[A, B]` (covered by the previous
+    // test). The runtime walk in `is()` will still surface the
+    // mismatch at the right place.
     const A = error({
       name: 'A',
       fields: z.object({ a: z.string() }),
@@ -252,35 +265,29 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ b: z.number() }),
       message: (d) => String(d.b),
     });
-    // The list is typed `AnyErrorFactory[]` (not a tuple).
-    // The leaf's output must be assignable to *each* element
-    // of the array's element type. Here, the union of A and B
-    // is { a: string; b: number } — the leaf is missing b, so
-    // the constraint rejects.
     const parents: AnyErrorFactory[] = [A, B];
+    // This call is intentionally accepted by the static checker:
+    // the list is type-erased, so the witness cannot fire. The
+    // runtime walk and `is()` are the consumer's catch here.
     error({
       name: 'C',
       fields: z.object({ a: z.string() }),
       message: (d) => d.a,
       inherits: parents,
-      // @ts-ignore — non-tuple array element type
-      // collapses to A | B, and the leaf is missing b for B.
     });
+    expectTypeOf(parents).toEqualTypeOf<AnyErrorFactory[]>();
   });
 
   it('rejects a child whose output is a union with an incompatible branch', () => {
     // The leaf's `fields` is a discriminated union. The
-    // `[NoInfer<Leaf>] extends [Parent]` form evaluates the
-    // union as a whole, not branch-by-branch.
+    // [acceptsFields] witness sees the whole union, not branch by
+    // branch: a parent requiring { kind: 'a'; n: number } is not
+    // satisfied by a union containing { kind: 'b'; s: string }.
     const P = error({
       name: 'P',
       fields: z.object({ kind: z.literal('a'), n: z.number() }),
       message: (d) => String(d.n),
     });
-    // The discriminated union: one branch is compatible with P
-    // (kind 'a', n: number), the other is not (kind 'b', s: string).
-    // R6 rejects the union because its whole shape is not a
-    // subtype of P's output.
     error({
       name: 'C',
       fields: z.discriminatedUnion('kind', [
@@ -288,8 +295,8 @@ describe('R5 inherits type-level constraint', () => {
         z.object({ kind: z.literal('b'), s: z.string() }),
       ]),
       message: (d) => d.kind,
+      // @ts-expect-error — discriminated union contains an incompatible branch
       inherits: P,
-      // @ts-ignore — union contains an incompatible branch
     });
   });
 });

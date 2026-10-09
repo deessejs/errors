@@ -5,6 +5,71 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 // ============================================================================
+// Compatibility witness symbol
+// ============================================================================
+
+/**
+ * Symbol used as the key for the inheritance compatibility witness.
+ *
+ * The witness is a hidden property of `ErrorFactory` whose value is a
+ * function whose parameter type is the factory's **output** shape. Under
+ * `strictFunctionTypes`, function-typed property values are checked
+ * contravariantly in their parameters: a parent factory parameterized
+ * over `OutputParent` declares a callable that accepts `OutputParent`,
+ * so it can only be used as a parent by a child whose output is
+ * *assignable to* `OutputParent`. The TypeScript compiler enforces
+ * this at the call site of `error({...})` without any custom
+ * conditional types or `infer` tricks.
+ *
+ * The witness is purely declarative: no code calls the function. It
+ * exists only to make the contravariance visible to the type checker.
+ *
+ * The symbol is declared with `const` (not `declare const`) so that
+ * a runtime binding is emitted in the published declarations and
+ * `error()` can attach the witness property to each factory
+ * instance. The `unique symbol` annotation is preserved by the
+ * type-only cast.
+ *
+ * @internal
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const acceptsFields: unique symbol = Symbol('@deessejs/errors/acceptsFields') as any;
+
+/**
+ * Computes the parameter type of a factory's compatibility witness.
+ * For a factory whose output is the empty shape
+ * (`Record<string, never>`), the witness accepts `unknown` so that any
+ * leaf can declare it as a parent — a parent with no fields can
+ * classify children carrying data. For a non-empty output, the
+ * witness accepts exactly that output.
+ *
+ * @internal
+ */
+type AcceptsFieldsArg<Output> = [Output] extends [Record<string, never>] ? unknown : Output;
+
+/**
+ * The shape an `inherits:` value must take.
+ *
+ * `ParentFor<Output>` is a callable factory whose compatibility
+ * witness accepts `Output`. A leaf whose output is `LeafOutput` can
+ * use this factory as a parent only if `[LeafOutput] extends [Output]`
+ * — the contravariance flips the check the other way, but the
+ * resulting constraint is the same: the child must be assignable to
+ * the parent's output.
+ *
+ * The shape also requires a `name` and a callable signature so the
+ * witness cannot be satisfied by an arbitrary object literal.
+ *
+ * @internal
+ */
+export type ParentFor<Output> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (...args: never[]): ErrorInstance<any>;
+  name: string;
+  readonly [acceptsFields]?: (fields: AcceptsFieldsArg<Output>) => void;
+};
+
+// ============================================================================
 // Schema inference helpers
 // ============================================================================
 
@@ -45,7 +110,7 @@ export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, i
 export type ErrorInstanceCore = {
   /** Error name identifier */
   name: string;
-  /** Human-readable error message */
+  /** Human-readable message */
   message: string;
   /** Stack trace string */
   stack: string;
@@ -66,6 +131,15 @@ export type ErrorInstanceCore = {
  * call site. This closes the gap where a factory carrying a declared
  * `TInput` could be called with no arguments and then crash on
  * `instance.fields.x` with a confusing `TypeError` from the wrong frame.
+ *
+ * The hidden `[acceptsFields]` property is the R7 inheritance witness.
+ * It is a function typed `(fields: Output) => void`, which under
+ * `strictFunctionTypes` is checked contravariantly. A factory is a
+ * valid parent of a leaf whose output is `LeafOutput` only if
+ * `[LeafOutput] extends [Output]`, i.e. the leaf's output is
+ * assignable to the parent's. The constraint runs at the call site
+ * of `error({...})` because `inherits?` is typed as
+ * `ParentFor<NoInfer<...>>`.
  *
  * @typeParam TInput  Shape the caller must supply when invoking the factory.
  * @typeParam TOutput Shape the instance carries in `.fields` after validation.
@@ -94,6 +168,8 @@ export type ErrorFactory<
       schema?: StandardSchemaV1;
       /** The original message template or function (introspection only). */
       rawMessage?: string | ((data: TOutput) => string);
+      /** R7 compatibility witness — do not set or read. */
+      readonly [acceptsFields]?: (fields: AcceptsFieldsArg<TOutput>) => void;
     }
   : {
       /**
@@ -114,20 +190,23 @@ export type ErrorFactory<
       schema?: StandardSchemaV1;
       /** The original message template or function (introspection only). */
       rawMessage?: string | ((data: TOutput) => string);
+      /** R7 compatibility witness — do not set or read. */
+      readonly [acceptsFields]?: (fields: AcceptsFieldsArg<TOutput>) => void;
     };
 
 /**
  * Type-erased ErrorFactory. Accepts any concrete factory regardless of
- * its input/output generics. Used in `inherits` lists, the `is()`
- * discriminator, and any other surface where the field-level types are
- * not material.
+ * its input/output generics. Used in `inherits` lists at runtime
+ * (frozen on the instance), in the `is()` discriminator, and as the
+ * return type of the implementation signature of `error()`.
  *
- * The conditional on `ErrorFactory<TInput, TOutput>` makes
- * `ErrorFactory<any, any>` self-referential (the body references
- * `AnyErrorFactory` via the `inherits` field). Inlining the two branches
- * with `any` generics breaks the structural cycle: the body's `inherits`
- * now references a stand-alone alias defined *before* the conditional
- * factory, not the factory itself.
+ * The compatibility witness is exposed with an `unknown` parameter,
+ * so a `AnyErrorFactory` is a valid `ParentFor<unknown>` and can
+ * appear in any `inherits:` slot without triggering the constraint.
+ * Concrete factories expose a narrower witness and are checked
+ * against the leaf's output.
+ *
+ * @internal
  */
 export type AnyErrorFactory = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,92 +217,22 @@ export type AnyErrorFactory = {
   rawMessage?:
     | string // eslint-disable-next-line @typescript-eslint/no-explicit-any
     | ((data: any) => string);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly [acceptsFields]?: (fields: any) => void;
 };
 
 /**
  * Extract the output (post-validation `fields`) shape of a single
- * `ErrorFactory`. Mirrors `is/index.ts:ExtractOwnFactoryFields` but
- * lives in `types.ts` so the `error()` overloads can use it as a
- * compile-time constraint without an import cycle.
+ * `ErrorFactory`. Used in `is/index.ts:ExtractOwnFactoryFields` and
+ * kept here as the canonical type-level description of the
+ * extraction. The R6 design dropped the recursive walk over parents
+ * in favor of returning the queried factory's own output.
  *
  * @internal
  */
 export type ExtractOwnFactoryOutput<F> = F extends (...args: never[]) => ErrorInstance<infer O>
   ? O
   : never;
-
-/**
- * Compile-time constraint for the `inherits` field of a leaf factory.
- *
- * The R6 contract: the leaf's `InferOutput` (or manual generic `T`)
- * must be assignable to every parent's `InferOutput`. Inverting the
- * old cascade, the parent is a *supertype* of the child: the child
- * may add fields but must not drop or change the parent's required
- * ones.
- *
- * `NoInfer<Leaf>` is used at the comparison site to prevent the
- * check from contributing to the inference of `Leaf` (which is
- * driven by the schema parameter `S`, not by the constraint).
- *
- * The helper returns `true` when the constraint holds and `false`
- * (a "type-level false" / never) when it does not. The `error()`
- * overloads use this in a conditional return type so a violation
- * at the call site surfaces as a TypeScript error.
- *
- * Three cases are distinguished at the top level:
- *  - `undefined`: no parents, trivially compatible.
- *  - `AnyErrorFactory`: a single parent. The leaf's output must
- *    extend the parent's output.
- *  - `readonly AnyErrorFactory[]`: zero, one, or more parents.
- *    The list is matched by `LeafCompatibleWithEach` which handles
- *    tuples (literal lists), non-tuple arrays (e.g. `const p =
- *    [A, B]`, typed `AnyErrorFactory[]`), and empty arrays.
- *
- * The non-tuple array branch is the R6 fix: the previous helper
- * (`AssignableThroughInheritsArray`) only checked tuple literals;
- * a non-tuple array hit the fallback `true` and bypassed the
- * constraint entirely.
- *
- * @internal
- */
-export type CompatibleWith<Leaf, Parents> = Parents extends undefined
-  ? true
-  : Parents extends AnyErrorFactory
-    ? [NoInfer<Leaf>] extends [ExtractOwnFactoryOutput<Parents>]
-      ? true
-      : false
-    : Parents extends readonly AnyErrorFactory[]
-      ? LeafCompatibleWithEach<NoInfer<Leaf>, Parents>
-      : true;
-
-/**
- * Recursive helper: iterate over the parents and require each to
- * accept the leaf. The tuple branch recurses head-by-head; the
- * non-tuple array branch collapses to the element type
- * (`P[number]`) so a list typed `AnyErrorFactory[]` is checked
- * uniformly rather than via its structural declaration.
- *
- * The empty-tuple / empty-array fallback is `true` (no parents,
- * nothing to satisfy).
- *
- * @internal
- */
-type LeafCompatibleWithEach<Leaf, P extends readonly AnyErrorFactory[]> = P extends readonly [
-  infer Head,
-  ...infer Tail,
-]
-  ? Head extends AnyErrorFactory
-    ? [Leaf] extends [ExtractOwnFactoryOutput<Head>]
-      ? Tail extends readonly AnyErrorFactory[]
-        ? LeafCompatibleWithEach<Leaf, Tail>
-        : true
-      : false
-    : false
-  : P extends AnyErrorFactory[]
-    ? [Leaf] extends [ExtractOwnFactoryOutput<P[number]>]
-      ? true
-      : false
-    : true;
 
 /**
  * Error instance returned by an ErrorFactory.
