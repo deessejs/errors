@@ -29,16 +29,20 @@ Now `ValidationError` is a child of `AppError` in the hierarchy. You can verify 
 When an error inherits from another, `is()` returns true for both the error itself and all its ancestors:
 
 ```ts title="checking.ts"
+import { error, is } from '@deessejs/errors';
+
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({
   name: 'ValidationError',
   inherits: AppError,
 });
 
-const err = ValidationError({ field: 'email' });
+// The no-schema factories have an empty input shape; the call
+// takes no arguments.
+const err = ValidationError();
 
-console.log(is(err, ValidationError)); // true
-console.log(is(err, AppError)); // true (through inheritance)
+console.log(is(err, ValidationError)); // -> true
+console.log(is(err, AppError)); // -> true
 ```
 
 This is powerful for error handling — you can write a catch block for `AppError` and it will catch all errors that inherit from it, including `ValidationError`, `DatabaseError`, and any other descendants.
@@ -73,8 +77,8 @@ function handleError(err: unknown) {
   }
 }
 
-handleError(ValidationError({ field: 'email' })); // Logs
-handleError(NetworkError({ url: '/api' })); // Logs
+handleError(ValidationError()); // Logs
+handleError(NetworkError()); // Logs
 ```
 
 This pattern lets you handle errors at different levels of granularity depending on your needs.
@@ -84,19 +88,21 @@ This pattern lets you handle errors at different levels of granularity depending
 You can combine inheritance with message templates for powerful error definitions:
 
 ```ts title="with-message.ts"
-import { error, is } from '@deessejs/errors';
+import { z } from "zod";
+import { error, is } from "@deessejs/errors";
 
-const AppError = error({ name: 'AppError' });
+const AppError = error({ name: "AppError" });
 
-const ValidationError = error<{ field: string }>({
-  name: 'ValidationError',
+const ValidationError = error({
+  name: "ValidationError",
   inherits: AppError,
-  message: 'Field "{field}" is invalid',
+  fields: z.object({ field: z.string() }),
+  message: (d) => `Field "${d.field}" is invalid`,
 });
 
-const err = ValidationError({ field: 'email' });
-console.log(err.message); // "Field "email" is invalid"
-console.log(is(err, AppError)); // true
+const err = ValidationError({ field: "email" });
+console.log(err.message); // -> Field "email" is invalid
+console.log(is(err, AppError)); // -> true
 ```
 
 ## Accessing Parent Information
@@ -104,16 +110,119 @@ console.log(is(err, AppError)); // true
 The `inherits` property on the error factory lets you access parent types programmatically:
 
 ```ts title="parents.ts"
-const AppError = error({ name: 'AppError' });
+import { error } from "@deessejs/errors";
+
+const AppError = error({ name: "AppError" });
 const ValidationError = error({
-  name: 'ValidationError',
+  name: "ValidationError",
   inherits: AppError,
 });
 
-console.log(ValidationError.inherits === AppError); // true
+console.log(ValidationError.inherits === AppError); // -> true
 ```
 
 This is useful for building introspection tools or generating documentation automatically.
+
+## Schema Validation Across the Chain
+
+Inheritance declares a static type-level relationship, not a runtime cascade. Each factory runs its own schema; the parent schema does **not** validate the child's data at instantiation. The `is()` walk continues to recognize the child as an instance of the parent for type-narrowing purposes, but `instance.fields` reflects only the leaf's schema output.
+
+```ts title="composition.ts"
+import { error } from '@deessejs/errors';
+import { z } from 'zod';
+
+// Parent carries a schema.
+const Parent = error({
+  name: 'Parent',
+  fields: z.object({ id: z.string() }),
+  message: (d) => d.id,
+});
+
+// The consumer composes the leaf's schema explicitly. The library
+// does not merge two schemas for you.
+const Leaf = error({
+  name: 'Leaf',
+  fields: z.object({ id: z.string(), extra: z.string() }),
+  message: (d) => `${d.id}-${d.extra}`,
+  inherits: Parent,
+});
+```
+
+The TypeScript constraint enforces that `InferOutput<Leaf>` is assignable to `InferOutput<Parent>`. The child may add fields but must not drop or change the parent's required ones:
+
+```ts title="incompatible-inheritance.ts"
+import { z } from "zod";
+import { error } from "@deessejs/errors";
+
+// Type error: { n: string } is not assignable to { n: number }.
+const Parent = error({
+  name: "Parent",
+  fields: z.object({ n: z.coerce.number() }),
+  message: (d) => String(d.n),
+});
+
+error({
+  name: "Leaf",
+  fields: z.object({ n: z.string() }),
+  message: (d) => d.n,
+  // @ts-expect-error — { n: string } is not assignable to Parent's
+  // output { n: number }
+  inherits: Parent,
+});
+```
+
+The constraint catches every structural mismatch the previous runtime gates tried to enforce — object shape differences, literal value differences, array element differences, and nested structural differences — at the type level, before any code runs.
+
+## Composing a Parent's Schema
+
+To add fields to a parent's schema in the child, use your validator's primitives. The library does not pick a winner; the choice is yours.
+
+```ts title="compose-zod.ts"
+import { z } from "zod";
+import { error } from "@deessejs/errors";
+
+const Parent = error({
+  name: "Parent",
+  fields: z.object({ registry: z.string() }),
+  message: (d) => d.registry,
+});
+
+const TemplateNotFound = error({
+  name: "TemplateNotFound",
+  fields: z.object({ registry: z.string(), slug: z.string() }),
+  message: (d) => `${d.slug} not found in ${d.registry}`,
+  inherits: Parent,
+});
+```
+
+For Valibot, declare the parent schema separately and spread its entries into the leaf's schema. The factory exposes the schema via `.schema` (not `.fields` — that's the instance slot):
+
+```ts title="compose-valibot.ts"
+import * as v from 'valibot';
+import { error } from '@deessejs/errors';
+
+// Declare the parent schema as a reusable variable. The
+// factory stores it on `.schema`; we don't read .schema
+// back, we use the local reference.
+const parentSchema = v.object({ registry: v.string() });
+
+const Parent = error({
+  name: 'Parent',
+  fields: parentSchema,
+  message: (d) => d.registry,
+});
+
+const TemplateNotFound = error({
+  name: 'TemplateNotFound',
+  fields: v.object({ ...parentSchema.entries, slug: v.string() }),
+  message: (d) => `${d.slug} not found in ${d.registry}`,
+  inherits: Parent,
+});
+```
+
+For ArkType, use `pipe`, `and`, or `merge`. The point is the same: the consumer composes the schema, the library runs it on the input, and `inherits` declares the type-level relationship.
+
+The factory's `inherits` slot is frozen at construction time. The caller's array is **not** mutated in place — surprising the consumer with a side effect on a shared list was a documented footgun. The factory builds a single frozen snapshot once, and both the factory's metadata and every produced instance's `inherits` share the same reference. The classification invariant is preserved across caller-side mutations on the original list.
 
 ## See Also
 

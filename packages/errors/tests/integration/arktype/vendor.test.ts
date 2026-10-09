@@ -18,7 +18,7 @@ describe('arktype 2', () => {
         name: 'string',
         'age?': 'number',
       }),
-      message: (data: { name: string; age?: number }) => `${data.name} ${data.age ?? '(unknown)'}`,
+      message: (data) => `${data.name} ${data.age ?? '(unknown)'}`,
     });
     const instance = E({ name: 'ada', age: 36 });
     expect(instance.message).toBe('ada 36');
@@ -28,7 +28,7 @@ describe('arktype 2', () => {
     const E = error({
       name: 'ArkError',
       fields: type({ name: 'string' }),
-      message: (data: { name: string }) => data.name,
+      message: (data) => data.name,
     });
     expect(() => E({ name: 42 as unknown as string })).toThrow(ArgsValidationError);
   });
@@ -37,7 +37,7 @@ describe('arktype 2', () => {
     const E = error({
       name: 'ArkIssue',
       fields: type({ name: 'string' }),
-      message: (data: { name: string }) => data.name,
+      message: (data) => data.name,
     });
     let caught: unknown = null;
     try {

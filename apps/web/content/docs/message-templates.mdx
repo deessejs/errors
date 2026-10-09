@@ -23,7 +23,7 @@ const ValidationError = error({
 });
 
 const err = ValidationError({ field: "email", reason: "invalid format" });
-console.log(err.message); // 'Field "email" is invalid: invalid format'
+console.log(err.message); // -> Field "email" is invalid: invalid format
 ```
 
 The function receives the **Standard Schema output** type. After a `z.coerce.number()`, `z.brand()`, or any transform, you see the final shape.
@@ -44,7 +44,7 @@ const FormatError = error({
 });
 
 const err = FormatError({ expected: "number", actual: "string" });
-console.log(err.message); // "Expected number, got string"
+console.log(err.message); // -> Expected number, got string
 ```
 
 ### With ArkType
@@ -62,6 +62,9 @@ const ApiError = error({
   }),
   message: (data) => `${data.method.toUpperCase()} ${data.endpoint} failed with status ${data.statusCode}`,
 });
+
+const err = ApiError({ method: "post", endpoint: "/users", statusCode: 500 });
+console.log(err.message); // -> POST /users failed with status 500
 ```
 
 ### Modifiers via the function body
@@ -69,42 +72,56 @@ const ApiError = error({
 The function form replaces the legacy `:upper` / `:lower` / `:json` modifiers. Implement them inline with the JS string APIs you already know:
 
 ```ts title="modifiers.ts"
-const err = error({
+import { z } from "zod";
+import { error } from "@deessejs/errors";
+
+const UserCreatedError = error({
   name: "UserCreatedError",
   fields: z.object({ userId: z.string() }),
   message: (data) => `Created user: ${data.userId.toUpperCase()}`,
 });
+
+const err = UserCreatedError({ userId: "usr_abc" });
+console.log(err.message); // -> Created user: USR_ABC
 ```
 
 `JSON.stringify` replaces `:json`:
 
 ```ts title="json.ts"
+import { z } from "zod";
+import { error } from "@deessejs/errors";
+
 const DataError = error({
   name: "DataError",
   fields: z.object({ payload: z.object({ id: z.number(), name: z.string() }) }),
   message: (data) => `Invalid data: ${JSON.stringify(data.payload)}`,
 });
+
+const err = DataError({ payload: { id: 1, name: "Ada" } });
+console.log(err.message); // -> Invalid data: {"id":1,"name":"Ada"}
 ```
 
-## Legacy: string template
+## Deprecated: string template (removed in 2.0.0)
 
-The legacy string-template form (`message: "Field {field} is invalid"`) still works in the current major. It is deprecated and will be removed in the next major. New code should prefer the function form above.
+The string-template form (`message: "Field {field} is invalid"`) was deprecated in 1.4.0 and **removed in 2.0.0** for the schema overload. A factory declared with a string `message` is no longer accepted alongside a schema; the schema overload requires a function-form `message`. The legacy no-schema form (no `fields` schema) still accepts a string `message`, and renders it without placeholder substitution:
 
 ```ts title="legacy.ts"
+import { error } from "@deessejs/errors";
+
 const ValidationError = error({
   name: "ValidationError",
   message: "Field {field} is invalid",
 });
 
-const err = ValidationError({ field: "email" });
-console.log(err.message); // "Field email is invalid"
+const err = ValidationError();
+console.log(err.message); // -> Field {field} is invalid
 ```
 
 Behavior summary:
 
-- Placeholders without a value are left as-is in the output, making missing data easy to spot.
-- Modifier suffixes `:upper`, `:lower`, `:json` are still parsed and applied on top of the raw input.
-- Schema validation, when supplied, runs before template rendering; failed validation throws `ArgsValidationError`.
+- The function form is the only path that produces type-checked, post-transform fields. New code should use the function form.
+- For no-schema factories, a string `message` is rendered verbatim. The function form is the recommended path.
+- Schema validation, when supplied, runs before rendering; failed validation throws `ArgsValidationError`.
 
 ## See Also
 

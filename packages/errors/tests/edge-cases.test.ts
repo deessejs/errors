@@ -29,14 +29,20 @@ describe('standard schema runtime: edge cases', () => {
         vendor: 'async-vendor',
         validate: async () => ({ value: { x: 1 } }),
       }),
-      message: (data: { x: number }) => String(data.x),
+      message: (data) => String(data.x),
     });
     try {
       E({ x: 1 });
       throw new Error('expected throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ArgsValidationError);
-      expect((err as ArgsValidationError).message).toContain('Async schemas');
+      // Phase 3: .source is the factory name; .issues carries the
+      // explanatory message. Together they identify the error
+      // precisely without the redundant long-form message prefix.
+      expect((err as ArgsValidationError).source).toBe('AsyncE');
+      expect((err as ArgsValidationError).issues[0]).toEqual({
+        message: 'Async validation not supported in error()',
+      });
       expect((err as ArgsValidationError).vendor).toBe('async-vendor');
     }
   });
@@ -44,13 +50,13 @@ describe('standard schema runtime: edge cases', () => {
   it('validator that throws is wrapped in ArgsValidationError', () => {
     const E = error({
       name: 'ThrowE',
-      fields: makeSchema({
+      fields: makeSchema<{ ok: boolean }, { ok: boolean }>({
         vendor: 'throwing',
         validate: () => {
           throw new Error('kaboom');
         },
       }),
-      message: (data: { ok: boolean }) => String(data.ok),
+      message: (data) => String(data.ok),
     });
     expect(() => E({ ok: true })).toThrow(/kaboom/);
   });
@@ -59,11 +65,11 @@ describe('standard schema runtime: edge cases', () => {
     const weirdIssues = ['string', 42, { totally: 'weird' }];
     const E = error({
       name: 'WeirdE',
-      fields: makeSchema({
+      fields: makeSchema<unknown, Record<string, unknown>>({
         vendor: 'weird',
         validate: () => ({ issues: weirdIssues as never }),
       }),
-      message: (data: unknown) => String(data),
+      message: (data) => String(data),
     });
     try {
       E({});
@@ -87,7 +93,7 @@ describe('standard schema runtime: edge cases', () => {
         vendor: 'cycle',
         validate: () => ({ value: cycle }),
       }),
-      message: (data: Cycle) => data.name,
+      message: (data) => data.name,
     });
     const instance = E(cycle);
     expect(instance.message).toBe('loop');
@@ -104,7 +110,7 @@ describe('standard schema runtime: edge cases', () => {
           return { value: { x: input } };
         },
       }),
-      message: (data: { x: unknown }) => String(data.x),
+      message: (data) => String(data.x),
     });
     E({ x: 1 });
     E({ x: 2 });
@@ -162,11 +168,11 @@ describe('standard schema runtime: more edge cases', () => {
   it('schema returning Promise but not awaited is rejected loudly', () => {
     const E = error({
       name: 'PromiseSchemaE',
-      fields: makeSchema({
+      fields: makeSchema<{ ok: boolean }, { ok: boolean }>({
         vendor: 'promise-rejector',
         validate: () => new Promise(() => {}),
       }),
-      message: (data: { ok: boolean }) => String(data.ok),
+      message: (data) => String(data.ok),
     });
     expect(() => E({ ok: true })).toThrow(ArgsValidationError);
   });
@@ -174,11 +180,11 @@ describe('standard schema runtime: more edge cases', () => {
   it('error name and stack are preserved correctly on the wrapper', () => {
     const E = error({
       name: 'StackE',
-      fields: makeSchema({
+      fields: makeSchema<unknown, Record<string, unknown>>({
         vendor: 'stack',
         validate: () => ({ issues: [{ message: 'x' }] }),
       }),
-      message: (data: unknown) => String(data),
+      message: (data) => String(data),
     });
     try {
       E({});

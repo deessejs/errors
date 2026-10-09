@@ -29,6 +29,8 @@ Now this error belongs to both categories in the hierarchy.
 When an error inherits from multiple parents, `is()` returns true for any of its parents:
 
 ```ts title="checking.ts"
+import { error, is } from '@deessejs/errors';
+
 const NetworkError = error({ name: 'NetworkError' });
 const StorageError = error({ name: 'StorageError' });
 
@@ -37,11 +39,13 @@ const NetworkStorageError = error({
   inherits: [NetworkError, StorageError],
 });
 
-const err = NetworkStorageError({});
+// The no-schema factories have an empty input shape; the call
+// takes no arguments.
+const err = NetworkStorageError();
 
-console.log(is(err, NetworkStorageError)); // true
-console.log(is(err, NetworkError)); // true
-console.log(is(err, StorageError)); // true
+console.log(is(err, NetworkStorageError)); // -> true
+console.log(is(err, NetworkError)); // -> true
+console.log(is(err, StorageError)); // -> true
 ```
 
 This flexibility lets you categorize errors from multiple angles.
@@ -76,7 +80,7 @@ function handleStorageIssue(err: unknown) {
   }
 }
 
-const cacheErr = CacheError({});
+const cacheErr = CacheError();
 
 handleNetworkIssue(cacheErr); // Logs (through NetworkError inheritance)
 handleStorageIssue(cacheErr); // Logs (through StorageError inheritance)
@@ -86,33 +90,50 @@ This pattern is useful for middleware and infrastructure code that needs to resp
 
 ## Combining with Specific Error Data
 
-Multiple inheritance works seamlessly with typed fields:
+Multiple inheritance works with schema-bearing factories. Each parent declares its own schema; the leaf composes a schema whose output is assignable to **every** parent's output:
 
 ```ts title="with-fields.ts"
+import { z } from 'zod';
 import { error, is } from '@deessejs/errors';
 
-const NetworkError = error<{ endpoint: string }>({
+const NetworkError = error({
   name: 'NetworkError',
-  message: 'Network request to {endpoint} failed',
+  fields: z.object({ endpoint: z.string() }),
+  message: (d) => `Network request to ${d.endpoint} failed`,
 });
 
-const StorageError = error<{ path: string }>({
+const StorageError = error({
   name: 'StorageError',
-  message: 'Storage operation at {path} failed',
+  fields: z.object({ path: z.string() }),
+  message: (d) => `Storage operation at ${d.path} failed`,
 });
 
-const CacheError = error<{ key: string; operation: string }>({
+// The leaf's output must be assignable to every parent's output.
+// The leaf's `fields` carries its own specific data, plus the
+// keys the parents require.
+const CacheError = error({
   name: 'CacheError',
+  fields: z.object({
+    endpoint: z.string(),
+    path: z.string(),
+    key: z.string(),
+    operation: z.string(),
+  }),
+  message: (d) =>
+    `Cache ${d.operation} for key ${d.key} at ${d.endpoint} → ${d.path} failed`,
   inherits: [NetworkError, StorageError],
-  message: 'Cache {operation} for key {key} failed',
 });
 
-// The error carries its own specific data
-const err = CacheError({ key: 'user:123', operation: 'read' });
+const err = CacheError({
+  endpoint: '/api',
+  path: '/var/cache',
+  key: 'user:123',
+  operation: 'read',
+});
 console.log(err.fields.key); // "user:123"
-console.log(err.message); // "Cache read for key user:123 failed"
+console.log(err.message); // "Cache read for key user:123 at /api → /var/cache failed"
 
-// But also inherits type checking for parents
+// The leaf is also recognized as an instance of every parent.
 console.log(is(err, NetworkError)); // true
 console.log(is(err, StorageError)); // true
 ```
@@ -128,6 +149,65 @@ Multiple inheritance is appropriate when:
 **You want flexible handling** — Code can catch errors by any of their characteristics, not just their exact type.
 
 Avoid using multiple inheritance just because you can. Prefer single inheritance for most errors, and only use multiple inheritance when the error genuinely belongs to multiple categories.
+
+## Schema Validation Across Multiple Parents
+
+Multiple inheritance declares a static type-level relationship: the leaf's `InferOutput` must be assignable to **every** parent's `InferOutput`. The constraint is checked at the `error()` definition site — a violation is a TypeScript error, not a runtime throw. Each factory still runs its own schema; the parents' schemas do not validate the child's data.
+
+```ts title="composition.ts"
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
+
+const NetworkError = error({
+  name: 'NetworkError',
+  fields: z.object({ endpoint: z.string() }),
+  message: (d) => d.endpoint,
+});
+const StorageError = error({
+  name: 'StorageError',
+  fields: z.object({ path: z.string() }),
+  message: (d) => d.path,
+});
+
+// The consumer composes the leaf's schema to satisfy both
+// parents. TypeScript verifies that the leaf's output is
+// assignable to NetworkError's AND StorageError's.
+const CacheError = error({
+  name: 'CacheError',
+  fields: z.object({ endpoint: z.string(), path: z.string() }),
+  message: (d) => `${d.endpoint} → ${d.path}`,
+  inherits: [NetworkError, StorageError],
+});
+```
+
+If the leaf's output is not assignable to one of the parents, the call site errors:
+
+```ts title="sibling-incompatible.ts"
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
+
+const A = error({
+  name: 'A',
+  fields: z.object({ a: z.string() }),
+  message: (d) => d.a,
+});
+const B = error({
+  name: 'B',
+  fields: z.object({ b: z.number() }),
+  message: (d) => String(d.b),
+});
+
+// Type error: the leaf is missing `b` for B.
+error({
+  name: 'C',
+  fields: z.object({ a: z.string() }),
+  message: (d) => d.a,
+  // @ts-expect-error — child is missing b for B
+  inherits: [A, B],
+});
+```
+
+Diamond inheritance (`A ← B`, `A ← C`, `D.inherits: [B, C]`) is recognized for `is()` walks but does not cause any cascade. The leaf's schema is the only one that runs.
 
 ## See Also
 

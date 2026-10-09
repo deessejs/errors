@@ -9,7 +9,7 @@ const NoFields = error({ name: 'NoFields' });
 const WithFields = error({
   name: 'WithFields',
   fields: z.object({ x: z.string() }),
-  message: (data: { x: string }) => data.x,
+  message: (data) => data.x,
 });
 const Legacy = error<{ a: string }>({ name: 'Legacy', message: 'Hello {a}' });
 

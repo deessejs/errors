@@ -18,7 +18,9 @@ const ValidationError = error({
   inherits: AppError,
 });
 
-const err = ValidationError({ field: 'email' });
+// The no-schema factories have an empty input shape; the call
+// takes no arguments.
+const err = ValidationError();
 
 console.log(is(err, ValidationError)); // true
 console.log(is(err, AppError)); // true (through inheritance)
@@ -83,10 +85,13 @@ This lets you mix @deessejs/errors with standard JavaScript error handling seaml
 When `is()` returns true, TypeScript knows the error is of that specific type. This enables type-safe access to fields:
 
 ```ts title="type-safety.ts"
+import { z } from "zod";
 import { error, is } from '@deessejs/errors';
 
-const ValidationError = error<{ field: string; reason: string }>({
+const ValidationError = error({
   name: 'ValidationError',
+  fields: z.object({ field: z.string(), reason: z.string() }),
+  message: (d) => `${d.field}: ${d.reason}`,
 });
 
 function processError(err: unknown) {
@@ -141,14 +146,15 @@ const ValidationError = error({
   inherits: AppError,
 });
 
-const err = ValidationError({});
+const err = ValidationError();
 
 // This works
-console.log(is(err, ValidationError)); // true
-console.log(is(err, AppError)); // true
+console.log(is(err, ValidationError)); // -> true
+console.log(is(err, AppError)); // -> true
 
-// This doesn't work for @deessejs/errors
-console.log(err instanceof ValidationError); // false
+// `instanceof` does not work because @deessejs/errors
+// factories are functions, not classes. Use `is()` instead.
+console.log(err instanceof Error); // -> true
 ```
 
 Always use `is()` instead of `instanceof` when working with @deessejs/errors errors.

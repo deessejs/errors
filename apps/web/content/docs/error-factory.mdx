@@ -16,16 +16,17 @@ const NotFoundError = error({
   name: "NotFoundError",
 });
 
-const err = NotFoundError({});
-console.log(err.name); // "NotFoundError"
-console.log(err.message); // "NotFoundError"
+// The no-schema factory takes no arguments.
+const err = NotFoundError();
+console.log(err.name); // -> NotFoundError
+console.log(err.message); // -> NotFoundError
 ```
 
 When you provide only a name, the message defaults to the name. This is useful for simple errors where the name itself is descriptive enough.
 
 ## Custom Messages
 
-You can provide a custom message function that takes the validated fields and returns the final string:
+A `message` function takes the validated fields and returns the final string. The function form is the only path supported alongside a schema; the no-schema form also accepts a function so the page presents a single shape.
 
 ```ts title="custom-message.ts"
 import { error } from "@deessejs/errors";
@@ -35,24 +36,27 @@ const ValidationError = error({
   message: () => "Validation failed",
 });
 
-const err = ValidationError({});
-console.log(err.message); // "Validation failed"
+const err = ValidationError();
+console.log(err.message); // -> Validation failed
 ```
-
-The function form is recommended. The legacy string-template form (with `{placeholder}` substitution) still works but is deprecated and will be removed in the next major. See [Message Rendering](/docs/message-templates) for details.
 
 ## Creating Instances with Fields
 
-The real power of error factories comes from attaching structured data. You can declare the fields type using a generic parameter:
+The real power of error factories comes from attaching structured data. With a Standard Schema, the leaf's `fields` are typed by `InferOutput` and validated at every call.
 
 ```ts title="with-fields.ts"
-const UserError = error<{ userId: string; reason: string }>({
+import { error } from "@deessejs/errors";
+import { z } from "zod";
+
+const UserError = error({
   name: "UserError",
+  fields: z.object({ userId: z.string(), reason: z.string() }),
+  message: (data) => `User ${data.userId}: ${data.reason}`,
 });
 
 const err = UserError({ userId: "usr_123", reason: "not found" });
-console.log(err.fields.userId); // "usr_123"
-console.log(err.fields.reason); // "not found"
+console.log(err.fields.userId); // -> usr_123
+console.log(err.fields.reason); // -> not found
 ```
 
 The fields object is fully accessible on the instance — useful for logging, error monitoring, and tooling.
@@ -75,7 +79,7 @@ const ValidationError = error({
 });
 
 const err = ValidationError({ field: "email", reason: "invalid format" });
-console.log(err.message); // 'Field "email" is invalid: invalid format'
+console.log(err.message); // -> Field "email" is invalid: invalid format
 ```
 
 See [Fields and Schema](/docs/fields-schema) for the full breakdown, including vendor-neutral coverage of Zod, Valibot, and ArkType.
@@ -85,13 +89,15 @@ See [Fields and Schema](/docs/fields-schema) for the full breakdown, including v
 The function returned by `error()` has several useful properties attached to it:
 
 ```ts title="properties.ts"
+import { error } from "@deessejs/errors";
+
 const AppError = error({ name: "AppError" });
 
-console.log(AppError.name); // "AppError"
-console.log(AppError.inherits); // undefined (no parent)
+console.log(AppError.name); // -> AppError
+console.log(AppError.inherits); // -> undefined
 ```
 
-The `inherits` property exposes the parent factory or array of factories, which `is()` consults when checking inheritance. The schema is reachable via `AppError.fields` when supplied.
+The `inherits` property exposes the parent factory or array of factories, which `is()` consults when checking inheritance. The instance carries the validated `fields` shape and the parent relationships for introspection.
 
 ## Reusing Error Factories
 
@@ -99,19 +105,20 @@ Error factories are designed to be created once and reused throughout your appli
 
 ```ts title="definitions.ts"
 import { error } from "@deessejs/errors";
+import { z } from "zod";
 
-export const NotFoundError = error({
+const NotFoundError = error({
   name: "NotFoundError",
   message: () => "Resource not found",
 });
 
-export const ValidationError = error({
+const ValidationError = error({
   name: "ValidationError",
   fields: z.object({ field: z.string(), reason: z.string() }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
-export const NetworkError = error({
+const NetworkError = error({
   name: "NetworkError",
   message: () => "Network request failed",
 });
@@ -120,11 +127,16 @@ export const NetworkError = error({
 Then import and use them wherever needed:
 
 ```ts title="usage.ts"
-import { raise } from "@deessejs/errors";
-import { NotFoundError } from "./errors";
+import { error, raise, is } from "@deessejs/errors";
 
-if (!resource) {
-  raise(NotFoundError({}));
+const NotFoundError = error({ name: "NotFoundError" });
+
+try {
+  raise(NotFoundError());
+} catch (err) {
+  if (is(err, NotFoundError)) {
+    console.log(err.name); // -> NotFoundError
+  }
 }
 ```
 

@@ -7,34 +7,34 @@ Errors become much more useful when they carry structured data about what went w
 
 ## Defining Fields
 
-When you create an error factory, you can specify a generic type that defines the shape of the fields object:
+With a Standard Schema, the field shape is the schema's `InferOutput`. The factory's call signature requires the schema's `InferInput`. Inputs that don't validate throw `ArgsValidationError` at construction.
 
 ```ts title="basic.ts"
+import { z } from "zod";
 import { error } from "@deessejs/errors";
 
-const ValidationError = error<{
-  field: string;
-  reason: string;
-  value?: unknown;
-}>({
+const ValidationError = error({
   name: "ValidationError",
-  message: "Validation failed",
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+    value: z.unknown().optional(),
+  }),
+  message: (data) => `Field "${data.field}": ${data.reason}`,
 });
-```
 
-Now when you create an error instance, TypeScript ensures you provide the required fields:
-
-```ts title="usage.ts"
 const err = ValidationError({
   field: "email",
   reason: "invalid format",
 });
+console.log(err.fields.field); // -> email
 
 const err2 = ValidationError({
   field: "email",
   reason: "invalid format",
   value: "not-an-email",
 });
+console.log(err2.fields.value); // -> not-an-email
 ```
 
 The fields object is always accessible on the error instance, giving you a consistent place to look for error context.
@@ -44,24 +44,31 @@ The fields object is always accessible on the error instance, giving you a consi
 Once an error is caught, you can access its fields to provide meaningful feedback or logging:
 
 ```ts title="access.ts"
-import { error, raise } from "@deessejs/errors";
+import { z } from "zod";
+import { error, is, raise } from "@deessejs/errors";
 
-const ValidationError = error<{ field: string; reason: string }>({
+const ValidationError = error({
   name: "ValidationError",
-  message: "Validation failed",
+  fields: z.object({ field: z.string(), reason: z.string() }),
+  message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
 try {
-  raise(ValidationError({ field: "email", reason: "not a valid email address" }));
-} catch (err) {
-  // TypeScript knows the shape of fields once you narrow via is()
-  if (is(err, ValidationError)) {
-    console.log(`Error in field "${err.fields.field}": ${err.fields.reason}`);
+  try {
+    raise(ValidationError({ field: "email", reason: "not a valid email address" }));
+  } catch (err) {
+    // err is `unknown` in strict mode; narrow before reading.
+    if (is(err, ValidationError)) {
+      console.log(`Error in field "${err.fields.field}": ${err.fields.reason}`);
+    }
   }
+} catch (err) {
+  // The outer try swallows the throw so the example
+  // terminates cleanly.
 }
 ```
 
-For full type inference in catch blocks, use the [`is()`](/docs/type-checking) function with type narrowing.
+The expected output is `Error in field "email": not a valid email address`. For full type inference in catch blocks, use the [`is()`](/docs/type-checking) function with type narrowing.
 
 ## Runtime Validation via Standard Schema
 
@@ -84,15 +91,15 @@ const ValidationError = error({
 
 // Valid input -> rendered message
 const ok = ValidationError({ field: "email", reason: "invalid" });
-console.log(ok.message); // 'Field "email": invalid'
+console.log(ok.message); // -> Field "email": invalid
 
 // Invalid input -> ArgsValidationError
 try {
   ValidationError({ field: "", reason: "invalid" });
 } catch (err) {
   if (err instanceof ArgsValidationError) {
-    console.log(err.vendor);  // "zod"
-    console.log(err.issues);  // StandardSchemaV1.FailureResult['issues']
+    console.log(err.vendor); // -> zod
+    console.log(err.issues.length > 0); // -> true
   }
 }
 ```
@@ -111,6 +118,9 @@ const ValidationError = error({
   }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
+
+const err = ValidationError({ field: "email", reason: "invalid" });
+console.log(err.message); // -> Field email: invalid
 ```
 
 ### Using ArkType
@@ -127,9 +137,16 @@ const ValidationError = error({
   }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
+
+const err = ValidationError({ field: "email", reason: "invalid" });
+console.log(err.message); // -> Field email: invalid
 ```
 
-> If you don't pass a `message` function, the schema's **output** type is still validated at construction time, but `err.message` will be a JSON dump of the parsed data.
+> The schema overload requires a function-form `message`. The signature
+> `error({ fields, message: 'literal' })` is a TypeScript error: a string
+> `message` is no longer accepted alongside a schema. The function
+> receives the schema's post-transform output. The leaf's `.fields`
+> slot carries the same output.
 
 ## Why Use Schema Validation?
 
@@ -148,24 +165,39 @@ Schema validation in error factories provides several benefits:
 Here are some common patterns for error fields:
 
 ```ts title="patterns.ts"
-const DatabaseError = error<{
-  query: string;
-  table?: string;
-  code?: string;
-}>({ name: "DatabaseError" });
+import { z } from "zod";
+import { error } from "@deessejs/errors";
 
-const ApiError = error<{
-  endpoint: string;
-  statusCode: number;
-  response?: unknown;
-}>({ name: "ApiError" });
+const DatabaseError = error({
+  name: "DatabaseError",
+  fields: z.object({
+    query: z.string(),
+    table: z.string().optional(),
+    code: z.string().optional(),
+  }),
+  message: (data) => `${data.query} failed`,
+});
 
-const ValidationError = error<{
-  field: string;
-  reason: string;
-  value?: unknown;
-  constraints?: Record<string, unknown>;
-}>({ name: "ValidationError" });
+const ApiError = error({
+  name: "ApiError",
+  fields: z.object({
+    endpoint: z.string(),
+    statusCode: z.number(),
+    response: z.unknown().optional(),
+  }),
+  message: (data) => `Request to ${data.endpoint} returned ${data.statusCode}`,
+});
+
+const ValidationError = error({
+  name: "ValidationError",
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+    value: z.unknown().optional(),
+    constraints: z.string().optional(),
+  }),
+  message: (data) => `${data.field}: ${data.reason}`,
+});
 ```
 
 Design your fields to capture what's useful for debugging and logging, not just what's required to identify the error.

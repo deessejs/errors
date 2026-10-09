@@ -13,27 +13,37 @@ Creates an error factory function for defining typed, structured errors.
 const errorFactory = error<TFields>(config)
 ```
 
+There are two public overloads:
+
+- **No-schema overload**: `error<T>({ name, message?, inherits? })`. The
+  call signature accepts no arguments (or an empty object) when `T`
+  is the empty shape; otherwise the input argument is required.
+- **Schema overload**: `error({ name, fields, message, inherits? })`.
+  The factory's call signature requires the schema's `InferInput`
+  as the argument. A function-form `message` is required; a string
+  `message` is not accepted alongside a schema.
+
 ### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | config.name | string | Error name identifier (required) |
-| config.message | string or function | Legacy template, or a function (data) => string taking the validated fields |
-| config.fields | StandardSchemaV1 | Field validation schema (Zod, Valibot, ArkType, etc.) |
-| config.inherits | ErrorFactory or ErrorFactory[] | Parent error(s) to inherit from |
+| config.message | string or function | String template (legacy, `{field}` placeholders) or `(data) => string` taking the validated (post-transform) fields. **Required to be a function when a schema is supplied.** |
+| config.fields | StandardSchemaV1 | Field validation schema (Zod, Valibot, ArkType, etc.). The schema's output must be a non-null, non-array object — see [Fields and Schema](/docs/fields-schema). |
+| config.inherits | ErrorFactory or ErrorFactory[] | Parent error(s) to inherit from. The leaf's `InferOutput` must be assignable to every parent's `InferOutput` (enforced at the call site by the contravariance witness). |
 
-When fields is supplied, the input is validated against the schema at every call. Invalid inputs throw an ArgsValidationError. When message is a function, it receives the parsed (post-transform) data as its argument.
+When `fields` is supplied, the input is validated against the schema at every call. Invalid inputs throw an `ArgsValidationError`. When `message` is a function, it receives the parsed (post-transform) data as its argument.
 
 ### Returns
 
-An ErrorFactory function that creates error instances. The factory has these properties:
+An `ErrorFactory` function that creates error instances. The factory has these properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
 | name | string | The error name |
 | inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error types |
-| fields | StandardSchemaV1 or undefined | The validation schema (exposed via the factory) |
-| rawMessage | string or undefined | Original message template, only set when message is a string |
+| schema | StandardSchemaV1 or undefined | The validation schema (exposed via the factory) |
+| rawMessage | string or function or undefined | Original message template (string) or function, set when `message` is supplied |
 
 ### Example
 
@@ -41,10 +51,12 @@ An ErrorFactory function that creates error instances. The factory has these pro
 import { z } from "zod";
 import { error } from "@deessejs/errors";
 
+const AppError = error({ name: "AppError" });
+
 const ValidationError = error({
   name: "ValidationError",
   fields: z.object({ field: z.string() }),
-  message: (data) => 'Field "' + data.field + '" is invalid',
+  message: (data) => `Field "${data.field}" is invalid`,
   inherits: AppError,
 });
 
@@ -75,18 +87,28 @@ never - this function always throws.
 ### Example
 
 ```ts title="raise.ts"
-import { error, raise } from "@deessejs/errors";
+import { error, raise, is } from "@deessejs/errors";
 
 const ValidationError = error({ name: "ValidationError" });
 
-raise(ValidationError({}));
+try {
+  // The no-schema factory takes no arguments.
+  raise(ValidationError());
+} catch (err) {
+  console.log(is(err, ValidationError)); // -> true
+}
 ```
 
 ---
 
 ## is()
 
-Type guard function to check if an error is an instance of a specific error type. Supports single and multiple inheritance hierarchies.
+Type guard function to check if an error is an instance of a specific error type. Two overloads are exposed:
+
+- **Factory overload**: `is(error, factory)` narrows the input to `ErrorInstance<ExtractFactoryFields<typeof factory>>`. The walk traverses the factory's `inherits` graph (depth-first, with cycle detection) and consults the package-private `INSTANCE_REGISTRY` to reject foreign objects that imitate the factory marker.
+- **Native constructor overload**: `is(error, NativeErrorClass)` narrows the input to `InstanceType<typeof NativeErrorClass>`. A native `Error` subclass carries no `.fields`, `.notes`, `.from()`, or `.addNote()` extensions.
+
+`is()` is **per-package-load**: an instance created by a second copy of `@deessejs/errors` (a duplicate in `node_modules`, a separate bundle, a CommonJS/ESM dual load) is registered in *that* copy's internal registry, not ours. Holding a direct reference to its factory is not sufficient — the registry check fails, and `is()` returns false. To recognize cross-load instances, the consumer must call `is()` from the same load that produced the instance.
 
 ```ts title="is.ts"
 const result = is(error: unknown, ErrorType): error is ErrorInstance
@@ -114,7 +136,8 @@ const ValidationError = error({
   inherits: AppError,
 });
 
-const err = ValidationError({});
+// The no-schema factory has an empty input shape.
+const err = ValidationError();
 
 if (is(err, ValidationError)) {
   console.log("ValidationError matched");
@@ -122,13 +145,22 @@ if (is(err, ValidationError)) {
 if (is(err, AppError)) {
   console.log("AppError matched via inheritance");
 }
+
+// Native error discrimination works too.
+try {
+  JSON.parse("invalid");
+} catch (e) {
+  if (is(e, SyntaxError)) {
+    console.log("SyntaxError caught");
+  }
+}
 ```
 
 ---
 
 ## causes()
 
-Returns all causes in an error chain, ordered newest to oldest.
+Returns all causes in an error chain, ordered immediate cause first, root cause last. The walk follows each cause's own `.cause` link with cycle detection.
 
 ```ts title="causes.ts"
 const chain = causes(error: unknown): Error[]
@@ -142,7 +174,7 @@ const chain = causes(error: unknown): Error[]
 
 ### Returns
 
-Error[] - array of errors in the cause chain. Returns an empty array for null, undefined, or errors without causes.
+Error[] - array of errors in the cause chain. Returns an empty array for null, undefined, or errors without causes. The returned array is a fresh copy; mutations do not affect the underlying error.
 
 ### Example
 
@@ -150,11 +182,16 @@ Error[] - array of errors in the cause chain. Returns an empty array for null, u
 import { error, causes } from "@deessejs/errors";
 
 const AppError = error({ name: "AppError" });
-const appErr = AppError({});
-appErr.from(new Error("Original error"));
+const ValidationError = error({ name: "ValidationError" });
+
+// Build the chain by attaching each cause to the previous one.
+// The .from() call replaces the previous direct cause.
+const root = new Error("Connection timeout");
+const middle = ValidationError().from(root);
+const appErr = AppError().from(middle);
 
 const chain = causes(appErr);
-console.log(chain.length);
+console.log(chain.length); // 2 — [middle, root]
 ```
 
 
@@ -225,19 +262,18 @@ The type of object returned by error factories. It extends the native Error type
 | name | string | Error name identifier |
 | message | string | Human-readable error message |
 | stack | string | Stack trace string |
-| fields | T | Validated fields |
+| fields | T | Validated (post-transform) fields, or the empty record for the no-schema form |
 | notes | string[] | Additional notes (PEP 678) |
-| cause | Error or null | Direct cause of this error |
-| causes | Error[] | Full cause chain |
+| cause | Error or null | Direct cause of this error. Each `.from()` call replaces the previous cause; the previous cause is reachable through its own `.cause` link. Use the top-level `causes()` function to walk the full chain. |
 | context | Record&lt;string, unknown&gt; or null | Injected context data |
-| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error factories |
+| inherits | ErrorFactory or ErrorFactory[] or undefined | Parent error factories (frozen snapshot taken at construction) |
 
 ### Methods
 
 | Method | Description |
 |--------|-------------|
-| from(cause: Error or ErrorInstance) | Chains a cause error to this error. Returns this for chaining. |
-| addNote(note: string) | Appends a runtime context note (PEP 678). Returns this for chaining. |
+| from(cause: Error or ErrorInstance) | Chains a cause error to this error. Replaces the previous direct cause. Returns `this` for chaining. |
+| addNote(note: string) | Appends a runtime context note (PEP 678). Returns `this` for chaining. |
 
 ---
 
@@ -257,3 +293,95 @@ The type of object returned by error factories. It extends the native Error type
     Field validation with Standard Schema.
   </Card>
 </Cards>
+
+---
+
+## Constraints
+
+The package's contracts depend on a few consumer-side guarantees. Each is enforced at the boundary that owns it; understanding them helps avoid footguns.
+
+### TypeScript
+
+**`strictFunctionTypes` is required.** The contravariance witness
+that enforces inheritance compatibility relies on function
+parameters being checked contravariantly. Without
+`strictFunctionTypes`, the inheritance constraint is bypassed at
+compile time. `strictFunctionTypes` is enabled by `strict`, which
+is on in this project's tsconfig.
+
+**TypeScript 5.4 or later.** The public `error()` overloads use
+`NoInfer<T>`, which was introduced in TypeScript 5.4. Earlier
+versions compile but lose the `NoInfer` semantics on the `T`
+parameter.
+
+### Schemas
+
+**Output must be a non-null, non-array object.** A schema whose
+`InferOutput` is `null`, an `unknown[]`, a primitive, or
+`undefined` is rejected at compile time via the
+`fields: S & (IsObjectOutput<InferOutput<S>> extends true ? unknown : never)`
+intersection, and at runtime via the `isObjectFields` guard that
+throws `ArgsValidationError` if the schema's value is malformed.
+
+**Schemas must be synchronous.** A schema whose `validate`
+returns a `Promise` is rejected with `ArgsValidationError`. The
+Promise is still attached and a no-op `.catch` is added so a
+late rejection cannot surface as an `unhandledRejection`.
+
+**Input is required when a schema is supplied.** A factory
+declared with a Standard Schema refuses a no-arg call at compile
+time. The runtime also throws a localized `TypeError` for the
+schema-bearing path so consumers who bypass the type-checker
+still get a clear message. This applies even when the schema
+accepts the empty shape (`z.object({})`).
+
+**`.fields` carries the post-transform output.** For schemas
+that transform (e.g. `z.coerce`, `z.default`, `z.transform`),
+the leaf's `.fields` is the schema's `InferOutput`, not the
+`InferInput`. The factory's `message` function receives the
+post-transform output.
+
+### `is()` and the instance registry
+
+**`is()` is per-package-load.** An instance created by a second
+copy of `@deessejs/errors` (a duplicate in `node_modules`, a
+separate bundle, a CommonJS/ESM dual load, two copies in a
+micro-frontend) is registered in *that* copy's internal
+`INSTANCE_REGISTRY` (a `WeakSet`), not ours. Holding a direct
+reference to its factory is not sufficient: the marker slot is
+read and matches, but the registry check fails, and `is()`
+returns false. To recognize cross-load instances, the consumer
+must call `is()` from the same load that produced the instance.
+
+**The instance marker is non-writable on real instances.** Set
+via `Object.defineProperty` with `writable: false`. A foreign
+object that imitates the marker is rejected by the registry
+check; a hostile object that re-defines the marker on a real
+instance is rejected in strict mode (the assignment throws) and
+silently fails in sloppy mode (the marker is unchanged).
+
+### Inheritance
+
+**The factory's `inherits` slot is a frozen snapshot.** Built
+once at construction, before the closure, and used for both the
+factory's metadata and every produced instance's `inherits`.
+The caller's array is **not** mutated in place; classification
+is preserved across caller-side mutations on the original list.
+
+**Each factory runs its own schema.** Inheritance is a static
+type-level relationship plus a recognition walk for `is()`. The
+parent schema does **not** validate the child's data at
+instantiation. Consumers who relied on the parent-schema cascade
+to coerce a child field through a parent's transform must
+compose the schema themselves.
+
+### Legacy deprecation
+
+The string-template form (`error({ name, message: 'Hello
+{name}' })`) is deprecated in 2.0.0 and emits a one-time warning
+per call site, only when the `message` is a string with
+`{field}` placeholders, and only when
+`process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES` is not `'1'`. A
+plain string without placeholders and a function-form `message`
+do not warn. The warning is suppressed in browser bundles
+(`process` is read only when defined).
