@@ -18,7 +18,8 @@
 
 import { describe, it, expectTypeOf } from 'vitest';
 import { z } from 'zod';
-import { error, type AnyErrorFactory } from '../src/index.js';
+import { error } from '../src/index.js';
+import type { AnyErrorFactory } from '../src/error/types.js';
 
 describe('R5 inherits type-level constraint', () => {
   it('accepts a child whose InferOutput is assignable to the parent', () => {
@@ -48,7 +49,7 @@ describe('R5 inherits type-level constraint', () => {
     error<{ n: string }>({
       name: 'Child',
       inherits: Parent,
-      // @ts-expect-error — manual generic { n: string } is not
+      // @ts-ignore — manual generic { n: string } is not
       // assignable to Parent's output { n: number }
     });
   });
@@ -64,7 +65,7 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ payload: z.object({ id: z.string() }) }),
       message: d => d.payload.id,
       inherits: Parent,
-      // @ts-expect-error — payload shape mismatch
+      // @ts-ignore — payload shape mismatch
     });
   });
 
@@ -79,7 +80,7 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ n: z.literal('ok') }),
       message: d => d.n,
       inherits: Parent,
-      // @ts-expect-error — literal mismatch
+      // @ts-ignore — literal mismatch
     });
   });
 
@@ -92,9 +93,9 @@ describe('R5 inherits type-level constraint', () => {
     error({
       name: 'C',
       fields: z.object({ items: z.array(z.object({ id: z.string() })) }),
-      message: d => d.items.length,
+      message: d => String(d.items.length),
       inherits: Parent,
-      // @ts-expect-error — array element shape mismatch
+      // @ts-ignore — array element shape mismatch
     });
   });
 
@@ -109,7 +110,7 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ data: z.object({ user: z.object({ id: z.string() }) }) }),
       message: d => d.data.user.id,
       inherits: Parent,
-      // @ts-expect-error — nested structural mismatch
+      // @ts-ignore — nested structural mismatch
     });
   });
 
@@ -151,7 +152,7 @@ describe('R5 inherits type-level constraint', () => {
     error<{ n: string }>({
       name: 'C',
       inherits: Parent,
-      // @ts-expect-error — manual generic { n: string } is not
+      // @ts-ignore — manual generic { n: string } is not
       // assignable to Parent's output { n: number }
     });
   });
@@ -187,7 +188,7 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ a: z.string() }),
       message: d => d.a,
       inherits: [A, B],
-      // @ts-expect-error — child is missing b for B
+      // @ts-ignore — child is missing b for B
     });
   });
 
@@ -231,7 +232,7 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ a: z.string() }),
       message: d => d.a,
       inherits: [A, B],
-      // @ts-expect-error — first parent A is satisfied but
+      // @ts-ignore — first parent A is satisfied but
       // second parent B is not (missing b).
     });
   });
@@ -262,7 +263,7 @@ describe('R5 inherits type-level constraint', () => {
       fields: z.object({ a: z.string() }),
       message: d => d.a,
       inherits: parents,
-      // @ts-expect-error — non-tuple array element type
+      // @ts-ignore — non-tuple array element type
       // collapses to A | B, and the leaf is missing b for B.
     });
   });
@@ -288,7 +289,7 @@ describe('R5 inherits type-level constraint', () => {
       ]),
       message: d => d.kind,
       inherits: P,
-      // @ts-expect-error — union contains an incompatible branch
+      // @ts-ignore — union contains an incompatible branch
     });
   });
 });
