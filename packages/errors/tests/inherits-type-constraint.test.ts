@@ -18,7 +18,7 @@
 
 import { describe, it, expectTypeOf } from 'vitest';
 import { z } from 'zod';
-import { error } from '../src/index.js';
+import { error, type AnyErrorFactory } from '../src/index.js';
 
 describe('R5 inherits type-level constraint', () => {
   it('accepts a child whose InferOutput is assignable to the parent', () => {
@@ -209,5 +209,86 @@ describe('R5 inherits type-level constraint', () => {
       inherits: [A, B],
     });
     expectTypeOf(C).toBeCallableWith({ a: 'x', b: 1 });
+  });
+
+  it('rejects when the second parent in a list is incompatible', () => {
+    const A = error({
+      name: 'A',
+      fields: z.object({ a: z.string() }),
+      message: d => d.a,
+    });
+    const B = error({
+      name: 'B',
+      fields: z.object({ b: z.number() }),
+      message: d => String(d.b),
+    });
+    // The first parent A is satisfied (a: string), but B is not.
+    // The R6 helper catches the second-parent violation that
+    // the previous helper missed when only the tuple head was
+    // checked.
+    error({
+      name: 'C',
+      fields: z.object({ a: z.string() }),
+      message: d => d.a,
+      inherits: [A, B],
+      // @ts-expect-error — first parent A is satisfied but
+      // second parent B is not (missing b).
+    });
+  });
+
+  it('rejects a non-tuple array of parents when one element is incompatible', () => {
+    // The R5 helper terminated with `true` for non-tuple arrays.
+    // R6 collapses non-tuple arrays to their element type via
+    // P[number], so a typed `AnyErrorFactory[]` is checked as
+    // if every element were the same union.
+    const A = error({
+      name: 'A',
+      fields: z.object({ a: z.string() }),
+      message: d => d.a,
+    });
+    const B = error({
+      name: 'B',
+      fields: z.object({ b: z.number() }),
+      message: d => String(d.b),
+    });
+    // The list is typed `AnyErrorFactory[]` (not a tuple).
+    // The leaf's output must be assignable to *each* element
+    // of the array's element type. Here, the union of A and B
+    // is { a: string; b: number } — the leaf is missing b, so
+    // the constraint rejects.
+    const parents: AnyErrorFactory[] = [A, B];
+    error({
+      name: 'C',
+      fields: z.object({ a: z.string() }),
+      message: d => d.a,
+      inherits: parents,
+      // @ts-expect-error — non-tuple array element type
+      // collapses to A | B, and the leaf is missing b for B.
+    });
+  });
+
+  it('rejects a child whose output is a union with an incompatible branch', () => {
+    // The leaf's `fields` is a discriminated union. The
+    // `[NoInfer<Leaf>] extends [Parent]` form evaluates the
+    // union as a whole, not branch-by-branch.
+    const P = error({
+      name: 'P',
+      fields: z.object({ kind: z.literal('a'), n: z.number() }),
+      message: d => String(d.n),
+    });
+    // The discriminated union: one branch is compatible with P
+    // (kind 'a', n: number), the other is not (kind 'b', s: string).
+    // R6 rejects the union because its whole shape is not a
+    // subtype of P's output.
+    error({
+      name: 'C',
+      fields: z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('a'), n: z.number() }),
+        z.object({ kind: z.literal('b'), s: z.string() }),
+      ]),
+      message: d => d.kind,
+      inherits: P,
+      // @ts-expect-error — union contains an incompatible branch
+    });
   });
 });

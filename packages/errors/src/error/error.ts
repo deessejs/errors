@@ -8,7 +8,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 import type {
   AnyErrorFactory,
-  AssignableThroughInherits,
+  CompatibleWith,
   ErrorFactory,
   ErrorInstance,
 } from './types.js';
@@ -240,21 +240,48 @@ function formatCallSite(): string {
 // Without `any`, the call signature would require `<infer I, infer O>`
 // and the overload would lose its ability to discriminate on the
 // call site.
-// `ConfigInherits<C>` extracts the type of the `inherits` field from
-// a config object type. Implemented as `C extends { inherits?: infer P } ? P : undefined`,
-// but inlined as a helper for readability. When the field is missing
-// or `undefined`, the result is `undefined` and the constraint
-// `AssignableThroughInherits<Leaf, undefined>` short-circuits to
-// `true`.
-type ConfigInherits<C> = C extends { inherits?: infer P } ? P : undefined;
+// The R6 schema overload captures both `S` (the schema) and `P`
+// (the parents) as explicit generic parameters, with `P` inferred
+// directly from `inherits?: P`. The previous design threaded the
+// parents through `ConfigInherits<typeof config>` and
+// `InferInherits<P>`, which could not benefit from inference
+// because no parameter held `P`. With `inherits?: P`, TypeScript
+// infers `P` from the call site and the constraint runs against
+// the actual type supplied — not a `typeof` projection.
+//
+// `CompatibleWith<Leaf, Parents>` is the single source of truth
+// for the static inheritance contract. It uses `NoInfer<Leaf>` at
+// the comparison site so the check does not contribute to the
+// inference of `S` (which is driven by the schema's structure).
+//
+// The default `P = AnyErrorFactory | readonly AnyErrorFactory[]`
+// matches the case where `inherits` is omitted. The default value
+// is intentionally the widest possible; `CompatibleWith` falls
+// through to `true` for that case and no constraint is imposed on
+// factories with no parents.
+// The R6 schema overload: the type-level constraint runs against
+// `P`, the type of the `inherits` field. To let TypeScript infer
+// `P` from the call site, we set the parameter type of `inherits`
+// to `AnyErrorFactory | readonly AnyErrorFactory[]` (matching the
+// implementation signature) and capture `P` via `infer P` from the
+// config type itself. This keeps the overload compatible with the
+// implementation signature (TS2394-safe) while still letting the
+// caller-provided value drive the inference.
 
-type InferInherits<P> = P extends undefined
-  ? undefined
-  : P extends AnyErrorFactory
+/**
+ * Pulls the `inherits` field's type back out of a config object
+ * type. Used by the schema overload to retrieve the precise
+ * `P` that the caller provided. The default (no `inherits` field)
+ * resolves to the widest possible parent type so the constraint
+ * falls through to `true`.
+ *
+ * @internal
+ */
+type InferInheritsFromConfig<C> = C extends { inherits?: infer P }
+  ? P extends AnyErrorFactory | readonly AnyErrorFactory[]
     ? P
-    : P extends readonly AnyErrorFactory[]
-      ? P
-      : undefined;
+    : AnyErrorFactory | readonly AnyErrorFactory[]
+  : AnyErrorFactory | readonly AnyErrorFactory[];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function error<S extends StandardSchemaV1<any, any>>(config: {
@@ -262,37 +289,52 @@ export function error<S extends StandardSchemaV1<any, any>>(config: {
   fields: S;
   message: (data: StandardSchemaV1.InferOutput<S>) => string;
   inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
-}): AssignableThroughInherits<
+}): CompatibleWith<
   StandardSchemaV1.InferOutput<S>,
-  InferInherits<ConfigInherits<typeof config>>
+  InferInheritsFromConfig<typeof config>
 > extends true
   ? ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>
   : ErrorFactory<never, never>;
 
-export function error<
-  T extends Record<string, unknown> = Record<string, never>,
->(config: {
+// The R6 no-schema overload. Same shape as the schema overload
+// (parameter type matches the implementation, `T` captured via
+// the manual generic and `P` via the config's `inherits` field).
+// The leaf's `T` (the manual generic) drives the constraint
+// instead of `InferOutput<S>`. The position is contravariant:
+// `[NoInfer<T>] extends [ExtractOwnFactoryOutput<P>]` evaluates
+// the assignment without contributing to the inference of `T`
+// (explicit) or `P` (inferred from `inherits`). This closes the
+// gap where `error<{n: string}>({inherits: P})` slipped through
+// because the explicit generic took its default for subsequent
+// type parameters.
+export function error<T extends Record<string, unknown> = Record<string, never>>(config: {
   name: string;
   fields?: undefined;
   message?: string | ((data: T) => string);
   inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
-}): AssignableThroughInherits<T, InferInherits<ConfigInherits<typeof config>>> extends true
+}): CompatibleWith<T, InferInheritsFromConfig<typeof config>> extends true
   ? ErrorFactory<T>
   : ErrorFactory<never>;
 
-export function error<T extends Record<string, unknown> = Record<string, unknown>>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function error<S extends StandardSchemaV1<any, any>>(
   config: {
     name: string;
-    fields?: StandardSchemaV1;
-    message?: string | ((data: T) => string);
+    fields?: S;
+    message?: string | ((data: Record<string, unknown>) => string);
     // The implementation signature is permissive about `inherits`:
     // the static type-level constraint on the public overloads (the
-    // `AssignableThroughInherits<...>` conditional in the schema and
-    // no-schema overloads) does the real work. The implementation
-    // just stores the reference and lets `is()` walk it.
+    // `CompatibleWith<...>` conditional in the schema and no-schema
+    // overloads) does the real work. The implementation just stores
+    // the reference and lets `is()` walk it.
     inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
   }
-): ErrorFactory<T> {
+  // The implementation returns the widest possible factory type.
+  // Public overloads return narrower types via the
+  // `CompatibleWith<...>` conditional. The cast `as ...` below
+  // reconciles the precise return type of each overload with the
+  // permissive implementation type.
+): ErrorFactory<Record<string, unknown>, Record<string, unknown>> {
   const { name, fields, inherits, message } = config;
 
   // Phase 3: validation is gated on the presence of `fields` alone,
@@ -305,7 +347,9 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
   /**
    * Error factory function - creates error instances.
    */
-  const ErrorFactoryInstance: ErrorFactory<T> = (input?: Partial<T>): ErrorInstance<T> => {
+  const ErrorFactoryInstance: ErrorFactory<Record<string, unknown>, Record<string, unknown>> = (
+    input?: Partial<Record<string, unknown>>
+  ): ErrorInstance<Record<string, unknown>> => {
     // Runtime safety net for the audit's P1 #1 finding: when a
     // factory carries a schema, the input is required at the call
     // site. The type signature accepts `input?` for backward
@@ -342,7 +386,7 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       }
       fieldsData = (result.value as Record<string, unknown>) ?? {};
       if (hasFunctionMessage && typeof message === 'function') {
-        errorMessage = (message as (data: T) => string)(fieldsData as unknown as T);
+        errorMessage = (message as (data: Record<string, unknown>) => string)(fieldsData);
       }
       // else: errorMessage stays as the factory name. The validated
       // fields are still on the instance; consumers that want a
@@ -360,7 +404,7 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       } else if (typeof message === 'string') {
         errorMessage = message;
       } else if (hasFunctionMessage && typeof message === 'function') {
-        errorMessage = (message as (data: T) => string)(fieldsData as unknown as T);
+        errorMessage = (message as (data: Record<string, unknown>) => string)(fieldsData);
       }
       // The deprecation marker is gated by the warning once per call site.
       // Set `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES = "1"` to silence.
@@ -385,9 +429,9 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     );
 
     // Create error instance using native Error
-    const instance = new Error(errorMessage) as ErrorInstance<T>;
+    const instance = new Error(errorMessage) as ErrorInstance<Record<string, unknown>>;
     instance.name = name;
-    instance.fields = fieldsData as unknown as T;
+    instance.fields = fieldsData;
     instance.notes = [];
     instance.cause = null;
     instance.context = null;
@@ -400,13 +444,13 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     // `causes(error)` in src/causes/index.ts. This keeps the type
     // model honest: an instance has a single direct cause, not
     // a flat history.
-    instance.from = (cause: Error): ErrorInstance<T> => {
+    instance.from = (cause: Error): ErrorInstance<Record<string, unknown>> => {
       instance.cause = cause;
       return instance;
     };
 
     // Add .addNote() method for runtime context (PEP 678)
-    instance.addNote = (note: string): ErrorInstance<T> => {
+    instance.addNote = (note: string): ErrorInstance<Record<string, unknown>> => {
       instance.notes.push(note);
       return instance;
     };
@@ -453,15 +497,18 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       ? ([...inherits] as readonly AnyErrorFactory[])
       : inherits;
     Object.freeze(inheritsSnapshot);
-    (ErrorFactoryInstance as ErrorFactory<T>).inherits = inheritsSnapshot;
+    (ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>).inherits =
+      inheritsSnapshot;
   }
 
   if (fields !== undefined) {
-    (ErrorFactoryInstance as ErrorFactory<T>).schema = fields;
+    (ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>).schema =
+      fields;
   }
 
   if (message !== undefined) {
-    (ErrorFactoryInstance as ErrorFactory<T>).rawMessage = message;
+    (ErrorFactoryInstance as ErrorFactory<Record<string, unknown>, Record<string, unknown>>).rawMessage =
+      message;
   }
 
   // Phase 4: freeze the factory's metadata so consumers cannot

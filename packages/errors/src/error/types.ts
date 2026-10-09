@@ -155,49 +155,75 @@ export type ExtractOwnFactoryOutput<F> = F extends (...args: never[]) => ErrorIn
 /**
  * Compile-time constraint for the `inherits` field of a leaf factory.
  *
- * The new (post-R5) contract: the leaf's `InferOutput` (or manual
- * generic `T`) must be assignable to every parent's `InferOutput`.
- * Inverting the old cascade, the parent is a *supertype* of the
- * child: the child may add fields but must not drop or change the
- * parent's required ones.
+ * The R6 contract: the leaf's `InferOutput` (or manual generic `T`)
+ * must be assignable to every parent's `InferOutput`. Inverting the
+ * old cascade, the parent is a *supertype* of the child: the child
+ * may add fields but must not drop or change the parent's required
+ * ones.
+ *
+ * `NoInfer<Leaf>` is used at the comparison site to prevent the
+ * check from contributing to the inference of `Leaf` (which is
+ * driven by the schema parameter `S`, not by the constraint).
  *
  * The helper returns `true` when the constraint holds and `false`
  * (a "type-level false" / never) when it does not. The `error()`
  * overloads use this in a conditional return type so a violation
  * at the call site surfaces as a TypeScript error.
  *
- * Special cases:
- *  - When the `inherits` list is empty or `undefined`, the
- *    constraint trivially holds: there are no parents to satisfy.
- *  - For a single factory, the leaf's output must extend the
- *    parent's output.
- *  - For an array, the leaf's output must extend every element's
- *    output (each parent is a separate constraint).
+ * Three cases are distinguished at the top level:
+ *  - `undefined`: no parents, trivially compatible.
+ *  - `AnyErrorFactory`: a single parent. The leaf's output must
+ *    extend the parent's output.
+ *  - `readonly AnyErrorFactory[]`: zero, one, or more parents.
+ *    The list is matched by `LeafCompatibleWithEach` which handles
+ *    tuples (literal lists), non-tuple arrays (e.g. `const p =
+ *    [A, B]`, typed `AnyErrorFactory[]`), and empty arrays.
+ *
+ * The non-tuple array branch is the R6 fix: the previous helper
+ * (`AssignableThroughInheritsArray`) only checked tuple literals;
+ * a non-tuple array hit the fallback `true` and bypassed the
+ * constraint entirely.
  *
  * @internal
  */
-export type AssignableThroughInherits<Leaf, Parents> = Parents extends undefined
+export type CompatibleWith<Leaf, Parents> = Parents extends undefined
   ? true
   : Parents extends AnyErrorFactory
-    ? Leaf extends ExtractOwnFactoryOutput<Parents>
+    ? [NoInfer<Leaf>] extends [ExtractOwnFactoryOutput<Parents>]
       ? true
       : false
     : Parents extends readonly AnyErrorFactory[]
-      ? AssignableThroughInheritsArray<Leaf, Parents>
+      ? LeafCompatibleWithEach<NoInfer<Leaf>, Parents>
       : true;
 
-type AssignableThroughInheritsArray<Leaf, Parents extends readonly AnyErrorFactory[]> = Parents extends readonly [
+/**
+ * Recursive helper: iterate over the parents and require each to
+ * accept the leaf. The tuple branch recurses head-by-head; the
+ * non-tuple array branch collapses to the element type
+ * (`P[number]`) so a list typed `AnyErrorFactory[]` is checked
+ * uniformly rather than via its structural declaration.
+ *
+ * The empty-tuple / empty-array fallback is `true` (no parents,
+ * nothing to satisfy).
+ *
+ * @internal
+ */
+type LeafCompatibleWithEach<Leaf, P extends readonly AnyErrorFactory[]> = P extends readonly [
   infer Head,
   ...infer Tail,
 ]
   ? Head extends AnyErrorFactory
-    ? Leaf extends ExtractOwnFactoryOutput<Head>
+    ? [Leaf] extends [ExtractOwnFactoryOutput<Head>]
       ? Tail extends readonly AnyErrorFactory[]
-        ? AssignableThroughInheritsArray<Leaf, Tail>
-        : false
+        ? LeafCompatibleWithEach<Leaf, Tail>
+        : true
       : false
     : false
-  : true;
+  : P extends AnyErrorFactory[]
+    ? [Leaf] extends [ExtractOwnFactoryOutput<P[number]>]
+      ? true
+      : false
+    : true;
 
 /**
  * Error instance returned by an ErrorFactory.
