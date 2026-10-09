@@ -20,9 +20,10 @@ for `fields`. Both overloads share the same call-site shape for
 
 ```ts
 // No-schema form. The factory is callable with no arguments,
-// or with a manual generic that constrains the field shape:
+// or with a manual generic that constrains the field shape.
 //
-//   error<{ n: string }>({ name: 'X' }).fields.n // string
+//   const X = error<{ n: string }>({ name: 'X' });
+//   X({ n: 'value' }).fields.n // string
 //
 // The no-schema form accepts a string `message` (with optional
 // `{field}` placeholders) or a function `message: (data) => string`.
@@ -106,6 +107,38 @@ The walk consults a package-private `WeakSet` keyed on
 instance identity, in addition to the factory marker. A
 foreign object that imitates the marker slot is rejected by
 the registry check. See the Caveats for the per-load limit.
+
+## Breaking changes from 1.x
+
+- **Required input argument.** A factory declared with a
+  Standard Schema or a non-empty manual generic refuses a
+  no-arg call at compile time. Legacy call patterns
+  (`error({ name })`, `error({ name, message: 'literal' })`)
+  keep the optional argument because their default `TInput`
+  is the empty shape.
+
+- **Schema overload requires a function-form `message`.** A
+  string `message` is no longer accepted alongside a schema.
+  Consumers that relied on `{ fields: schema }` without a
+  function `message` must add one.
+
+- **Factory call signature takes the full shape, not `Partial<T>`.**
+  The 1.x signature accepted `Partial<T>` so any field could
+  be omitted. The 2.0 signature accepts `T` (or `TInput` when
+  a schema is supplied). Callers must either supply the full
+  shape or annotate fields as optional in the schema.
+
+- **The flat `causes: Error[]` field on `ErrorInstance` is gone.**
+  The previous field conflated historical `.from()` calls
+  with a true causal chain. `cause: Error | null` is now the
+  only direct field. Use the top-level `causes(error)`
+  function to walk the chain.
+
+- **`is()` is split into two overloads.** The factory
+  overload narrows to `ErrorInstance<...>`; the
+  native-constructor overload narrows to `Error` and
+  does not promise `.fields`, `.notes`, `.from()`, or
+  `.addNote()`.
 
 ## Caveats
 
