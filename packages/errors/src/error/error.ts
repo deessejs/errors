@@ -6,7 +6,12 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type { AnyErrorFactory, ErrorFactory, ErrorInstance } from './types.js';
+import type {
+  AnyErrorFactory,
+  AssignableThroughInherits,
+  ErrorFactory,
+  ErrorInstance,
+} from './types.js';
 import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
 
@@ -104,43 +109,6 @@ function runSchema(
 }
 
 // ============================================================================
-// Shape-kind classification
-// ============================================================================
-
-/**
- * Coarse runtime kind of a value, used by the cascade's shape gate.
- * The categories are primitive kind + reference-kind (array vs object);
- * the gate allows same-kind transitions and rejects cross-category
- * ones (e.g. number → string). This is the "Option A" fallback for
- * the no-manual-generic path; the typed-child path uses the
- * strict per-key rule in `validateAncestors`.
- *
- * @internal
- */
-type ShapeKind =
-  | 'number'
-  | 'string'
-  | 'boolean'
-  | 'bigint'
-  | 'null'
-  | 'array'
-  | 'object'
-  | 'function'
-  | 'symbol'
-  | 'undefined';
-
-function kindOf(value: unknown): ShapeKind {
-  if (value === null) return 'null';
-  if (Array.isArray(value)) return 'array';
-  if (typeof value === 'object') return 'object';
-  return typeof value as ShapeKind;
-}
-
-function kindsCompatible(prior: ShapeKind, next: ShapeKind): boolean {
-  return prior === next;
-}
-
-// ============================================================================
 // ArgsValidationError
 // ============================================================================
 
@@ -193,214 +161,6 @@ export class ArgsValidationError extends Error {
     this.vendor = vendor;
     Object.setPrototypeOf(this, ArgsValidationError.prototype);
   }
-}
-
-// ============================================================================
-// Inheritance walk
-// ============================================================================
-
-/**
- * Recursively validates `data` against the schema of every reachable
- * ancestor of `root` (following the `inherits` chain), and applies
- * each ancestor's transformed output to `data` as it cascades
- * downstream.
- *
- * Cycle protection: the `seen` set is passed in by the caller (pre-
- * seeded with `root` itself to skip self-loops) and shared across
- * siblings so diamond inheritance does not re-validate the same
- * ancestor twice on the same `data`. The pattern is the same as
- * `is/index.ts:197, 203-206`.
- *
- * The walk reads from `(parent as ErrorFactory<unknown>).inherits`
- * — the Phase 4 frozen snapshot, not the caller's original array.
- * This keeps a single source of truth shared with `is()`.
- *
- * Round 3: the cascade enforces the invariant "every instance must
- * simultaneously satisfy the types of the child AND the parents
- * recognized by `is()`" — i.e. the same intersection that the
- * type-level `ExtractFactoryFields` implements in
- * `is/index.ts:42-118`. For each key K a parent writes:
- *
- *  - If the child declared a manual generic (`error<T>()`) and K
- *    is in T's keys, the parent is forbidden from rewriting K
- *    (the child's contract is load-bearing). Throws
- *    `ArgsValidationError` with `source: <parent.name>` and
- *    `path: [K]`.
- *  - Otherwise, if K already had a value in `data` (from a prior
- *    parent or the child's own schema), the new value's shape kind
- *    must equal the prior value's kind. Cross-category changes
- *    (e.g. number → string) throw with `path: [K]`, `from`, `to`.
- *  - Same-kind transitions (number → number, string → string) and
- *    brand-new keys (no prior value) are allowed.
- *
- * @internal
- */
-function validateAncestors(
-  root: AnyErrorFactory,
-  data: Record<string, unknown>,
-  seen: Set<AnyErrorFactory>,
-  childKeys: ReadonlySet<string> | null,
-  parentWrites: Map<string, ShapeKind>,
-  leafSchema: StandardSchemaV1 | undefined,
-  leafName: string
-): Record<string, unknown> {
-  const rootInherits = root.inherits;
-  if (rootInherits === undefined) return data;
-  const parents: AnyErrorFactory[] = Array.isArray(rootInherits) ? rootInherits : [rootInherits];
-  for (const parent of parents) {
-    if (seen.has(parent)) continue;
-    seen.add(parent);
-    const parentSchema = (parent as { schema?: unknown }).schema;
-    if (parentSchema !== undefined && parentSchema !== null) {
-      const result = runSchema(parentSchema as StandardSchemaV1, data, parent.name);
-      if (!result.ok) {
-        throw new ArgsValidationError(
-          parent.name,
-          result.issues as ReadonlyArray<unknown>,
-          (parentSchema as StandardSchemaV1)['~standard'].vendor
-        );
-      }
-      // Per-key merge with childKeys check (Option C) and shape-kind
-      // gate (Option A). A single `{ ...data, ...transformed }` spread
-      // would silently overwrite child-constrained keys and silently
-      // accept cross-category rewrites — both are the bug. Walking
-      // key by key lets us surface each as `ArgsValidationError` with
-      // `path: [K]`.
-      //
-      // The shape gate's "prior" is the kind recorded in
-      // `parentWrites` (a sibling/grandparent that wrote K earlier
-      // in declaration order), NOT the input value. The input is
-      // data, not a contract; the load-bearing prior is the
-      // previous parent's transformed output. This is what
-      // detects the user's scenario 2: P1 writes number, P2
-      // writes string on the same key — the cross-category
-      // between two parents fires.
-      const transformed = result.value as Record<string, unknown> | undefined;
-      if (transformed !== undefined) {
-        const vendor = (parentSchema as StandardSchemaV1)['~standard'].vendor;
-        // Round 4 strict-by-default for the no-schema leaf path.
-        // The runtime cannot recover the keys of a manual generic
-        // `<T>` (TypeScript erases them), so when the leaf has no
-        // schema, ANY parent write is a potential contract
-        // violation: the consumer may have typed `<{n: string}>`
-        // and a parent might transform `n`. We cannot prove the
-        // violation without the leaf's schema, so we throw
-        // conservatively. Consumers who want permissive behaviour
-        // on this path can either drop the manual generic (and
-        // use the no-generic form `error({name:'X', inherits: P})`
-        // — which has no contract) or add a schema to the leaf
-        // (so the leaf re-validation block above can verify
-        // structural compatibility). The exception is a parent
-        // whose `result.value` is empty (no writes), which is
-        // always safe: a non-mutating schema like `z.object({})`
-        // does not violate any contract.
-        if (leafSchema === undefined) {
-          throw new ArgsValidationError(
-            parent.name,
-            [
-              {
-                message: `parent "${parent.name}" writes to a no-schema child "${leafName}"; per-key protection requires a schema on the child (or drop the manual generic)`,
-                path: [],
-              },
-            ],
-            vendor
-          );
-        }
-        for (const key of Object.keys(transformed)) {
-          const next = transformed[key];
-          const nextKind = kindOf(next);
-          if (childKeys !== null && childKeys.has(key)) {
-            // The leaf declared this key. The parent's schema
-            // already ran on `data` (which includes the leaf's
-            // value) and accepted it. The parent is now trying to
-            // overwrite the leaf's value. This is a kind-level
-            // check: if the parent's output has the same shape
-            // kind as the leaf's existing value, the rewrite is
-            // safe (e.g. z.coerce.number() with number input
-            // produces a number — same kind as the leaf's
-            // declared type). If the kinds differ, the parent is
-            // changing the type, which the strict rule forbids.
-            const priorKind = kindOf(data[key]);
-            if (!kindsCompatible(priorKind, nextKind)) {
-              throw new ArgsValidationError(
-                parent.name,
-                [
-                  {
-                    message: `parent "${parent.name}" rewrites child-constrained key "${key}" with incompatible kind`,
-                    path: [key],
-                    from: priorKind,
-                    to: nextKind,
-                  },
-                ],
-                vendor
-              );
-            }
-            // Same kind: allow the rewrite (the parent's value
-            // replaces the leaf's value of the same kind).
-          }
-          const priorKind = parentWrites.get(key);
-          if (priorKind !== undefined && !kindsCompatible(priorKind, nextKind)) {
-            // A previous parent (in declaration order) wrote this
-            // key with a different kind. The current parent's
-            // transformation is incompatible with that.
-            throw new ArgsValidationError(
-              parent.name,
-              [
-                {
-                  message: `parent "${parent.name}" produces incompatible transformation on key "${key}"`,
-                  path: [key],
-                  from: priorKind,
-                  to: nextKind,
-                },
-              ],
-              vendor
-            );
-          }
-          // Record this parent's write so a later parent can be
-          // gated against it. We use a fresh map for the recursion
-          // so a sibling that doesn't touch K doesn't see this
-          // write.
-          parentWrites.set(key, nextKind);
-          data = { ...data, [key]: next };
-        }
-      }
-
-      // Round 4: re-validate the merged data against the leaf's
-      // schema. The leaf's schema is the oracle for the user's
-      // invariant: every instance must simultaneously satisfy the
-      // types of the child and the parents recognized by `is()`.
-      // The leaf's schema knows about literals (`z.literal('ok')`),
-      // object shapes (`z.object({id: z.string()})`), array shapes,
-      // and nested structures — none of which the kind gate can
-      // detect. Running the leaf's schema on the merged data is
-      // the only vendor-neutral oracle.
-      if (leafSchema !== undefined) {
-        const leafResult = runSchema(leafSchema, data, leafName);
-        if (!leafResult.ok) {
-          throw new ArgsValidationError(
-            parent.name,
-            leafResult.issues as ReadonlyArray<unknown>,
-            (leafSchema as StandardSchemaV1)['~standard'].vendor
-          );
-        }
-        // Re-apply the leaf's transformed output (in case the leaf
-        // applies defaults or strips unknown keys). This keeps
-        // the cascade consistent: every key the leaf re-validates
-        // is the value the next parent's runSchema will see.
-        const leafTransformed = leafResult.value as Record<string, unknown> | undefined;
-        if (leafTransformed !== undefined) {
-          data = leafTransformed;
-        }
-      }
-    }
-    // Recurse into the parent's own inherits. The walk matches the
-    // type-level `ExtractFactoryFields` recursion in is/index.ts:42-118,
-    // so the runtime narrowing and the runtime fields agree. The
-    // childKeys set is rooted at the leaf factory, so the same
-    // restriction applies transitively.
-    data = validateAncestors(parent, data, seen, childKeys, parentWrites, leafSchema, leafName);
-  }
-  return data;
 }
 
 // ============================================================================
@@ -480,27 +240,59 @@ function formatCallSite(): string {
 // Without `any`, the call signature would require `<infer I, infer O>`
 // and the overload would lose its ability to discriminate on the
 // call site.
+// `ConfigInherits<C>` extracts the type of the `inherits` field from
+// a config object type. Implemented as `C extends { inherits?: infer P } ? P : undefined`,
+// but inlined as a helper for readability. When the field is missing
+// or `undefined`, the result is `undefined` and the constraint
+// `AssignableThroughInherits<Leaf, undefined>` short-circuits to
+// `true`.
+type ConfigInherits<C> = C extends { inherits?: infer P } ? P : undefined;
+
+type InferInherits<P> = P extends undefined
+  ? undefined
+  : P extends AnyErrorFactory
+    ? P
+    : P extends readonly AnyErrorFactory[]
+      ? P
+      : undefined;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function error<S extends StandardSchemaV1<any, any>>(config: {
   name: string;
   fields: S;
   message: (data: StandardSchemaV1.InferOutput<S>) => string;
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
-}): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
+}): AssignableThroughInherits<
+  StandardSchemaV1.InferOutput<S>,
+  InferInherits<ConfigInherits<typeof config>>
+> extends true
+  ? ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>
+  : ErrorFactory<never, never>;
 
-export function error<T extends Record<string, unknown> = Record<string, never>>(config: {
+export function error<
+  T extends Record<string, unknown> = Record<string, never>,
+>(config: {
   name: string;
   fields?: undefined;
   message?: string | ((data: T) => string);
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
-}): ErrorFactory<T>;
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
+}): AssignableThroughInherits<T, InferInherits<ConfigInherits<typeof config>>> extends true
+  ? ErrorFactory<T>
+  : ErrorFactory<never>;
 
-export function error<T extends Record<string, unknown> = Record<string, unknown>>(config: {
-  name: string;
-  fields?: StandardSchemaV1;
-  message?: string | ((data: T) => string);
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
-}): ErrorFactory<T> {
+export function error<T extends Record<string, unknown> = Record<string, unknown>>(
+  config: {
+    name: string;
+    fields?: StandardSchemaV1;
+    message?: string | ((data: T) => string);
+    // The implementation signature is permissive about `inherits`:
+    // the static type-level constraint on the public overloads (the
+    // `AssignableThroughInherits<...>` conditional in the schema and
+    // no-schema overloads) does the real work. The implementation
+    // just stores the reference and lets `is()` walk it.
+    inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
+  }
+): ErrorFactory<T> {
   const { name, fields, inherits, message } = config;
 
   // Phase 3: validation is gated on the presence of `fields` alone,
@@ -534,21 +326,6 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     let fieldsData: Record<string, unknown> = {};
     let errorMessage = name;
 
-    // Round 3: the child-constrained key set is derived from the
-    // schema's actual output for THIS input (i.e. the keys of
-    // `fieldsData` after the schema branch has populated it). This
-    // means the strict rule applies to whatever the schema
-    // produced — not to a static, probed set. Probing the schema
-    // at construction time (the alternative) was rejected because
-    // schemas with strict required-keys throw on empty input, and
-    // some test schemas (async, throwing) would not survive a
-    // probe. The downside of the per-input derivation: when the
-    // user passes empty input that yields `{}` (no defaults), the
-    // childKeys set is empty and the shape gate (Option A) runs.
-    // The user's scenarios both pass non-empty input, so this is
-    // fine in practice.
-    let childKeys: ReadonlySet<string> | null = null;
-
     if (hasSchema) {
       // Unreachable at runtime when isStandard is true; the overloads
       // guarantee that, when `fields` is present, we go through here.
@@ -570,12 +347,6 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       // else: errorMessage stays as the factory name. The validated
       // fields are still on the instance; consumers that want a
       // rendered message can supply `message`.
-      // Round 3: derive childKeys from the schema's output. The
-      // keys of `fieldsData` are the load-bearing child contract
-      // for this instantiation.
-      if (Object.keys(fieldsData).length > 0) {
-        childKeys = new Set(Object.keys(fieldsData));
-      }
     } else {
       // Legacy path — no schema. Accepts a string template, a plain
       // string, or a function-form message. Function-form is now
@@ -594,47 +365,6 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
       // The deprecation marker is gated by the warning once per call site.
       // Set `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES = "1"` to silence.
       warnLegacy(formatCallSite());
-    }
-
-    // Validate the child's fields against every reachable ancestor that
-    // carries a schema. Without this, a child factory whose `fields`
-    // do not satisfy a parent's contract would still be classified as
-    // the parent by `is()`, but its `.fields` would not satisfy the
-    // parent's contract — a runtime lie that the type-checker now
-    // actively tells (the type-level `ExtractFactoryFields` in
-    // `is/index.ts` already intersects every reachable ancestor's
-    // output). The walk below covers the full transitive chain with
-    // a `Set`-based cycle guard, and applies each ancestor's
-    // transformed output to `fieldsData` as it cascades.
-    //
-    // Round 3: the cascade also enforces the "child + parents agree"
-    // invariant via the childKeys set computed above. When T is the
-    // empty shape, childKeys is `null` and the cascade falls back to
-    // the per-key shape-kind gate.
-    //
-    // Round 4: the leaf's schema is the oracle for the deep-shape
-    // contract. After every parent writes, the cascade re-validates
-    // the merged data against the leaf's schema. For the no-schema
-    // path, we cannot re-validate; the strict-by-default rule for
-    // the no-schema leaf applies *per-parent* inside
-    // `validateAncestors`: a parent that carries a schema and
-    // writes any key is rejected when the leaf has no schema (we
-    // cannot tell at runtime whether the consumer declared a
-    // manual generic, so the conservative answer is to forbid any
-    // schema-bearing parent from writing to a no-schema leaf).
-    // All-no-schema inheritance remains permissive under the
-    // shape gate.
-    const rootInherits = (ErrorFactoryInstance as ErrorFactory<T>).inherits;
-    if (rootInherits !== undefined) {
-      fieldsData = validateAncestors(
-        ErrorFactoryInstance as AnyErrorFactory,
-        fieldsData,
-        new Set<AnyErrorFactory>([ErrorFactoryInstance as AnyErrorFactory]),
-        childKeys,
-        new Map<string, ShapeKind>(),
-        hasSchema ? fields : undefined,
-        name
-      );
     }
 
     // Capture stack trace.
@@ -719,8 +449,8 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     if (Array.isArray(inherits)) {
       Object.freeze(inherits);
     }
-    const inheritsSnapshot: AnyErrorFactory | AnyErrorFactory[] = Array.isArray(inherits)
-      ? [...inherits]
+    const inheritsSnapshot: AnyErrorFactory | readonly AnyErrorFactory[] = Array.isArray(inherits)
+      ? ([...inherits] as readonly AnyErrorFactory[])
       : inherits;
     Object.freeze(inheritsSnapshot);
     (ErrorFactoryInstance as ErrorFactory<T>).inherits = inheritsSnapshot;

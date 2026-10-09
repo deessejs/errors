@@ -91,7 +91,7 @@ console.log(AppError.name); // "AppError"
 console.log(AppError.inherits); // undefined (no parent)
 ```
 
-The `inherits` property exposes the parent factory or array of factories, which `is()` consults when checking inheritance. The schema is reachable via `AppError.fields` when supplied.
+The `inherits` property exposes the parent factory or array of factories, which `is()` consults when checking inheritance. The instance carries the validated `fields` shape and the parent relationships for introspection.
 
 ## Reusing Error Factories
 

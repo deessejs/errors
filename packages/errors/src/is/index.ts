@@ -215,10 +215,10 @@ function is(
         if (inherits !== undefined) {
           if (Array.isArray(inherits)) {
             for (let i = 0; i < inherits.length; i++) {
-              stack.push(inherits[i]);
+              stack.push(inherits[i] as AnyErrorFactory);
             }
           } else {
-            stack.push(inherits);
+            stack.push(inherits as AnyErrorFactory);
           }
         }
       }

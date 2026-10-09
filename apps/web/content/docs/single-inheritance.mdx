@@ -117,46 +117,92 @@ This is useful for building introspection tools or generating documentation auto
 
 ## Schema Validation Across the Chain
 
-When a parent factory carries a Standard Schema, the child must produce a `fields` shape that satisfies every reachable ancestor's schema at instantiation. The validation walks the entire `inherits` chain — `Parent → Middle → Leaf` is validated transitively, not just at the direct parent — and applies each ancestor's transformations to the child's fields in the order the parents appear. A failure throws `ArgsValidationError` with `source: <ancestor.name>`; the leaf's `instance.fields` reflects every parent's transformation. The `inherits` array itself is frozen at construction time, so any in-place mutation after `error()` returns throws `TypeError`.
+Inheritance declares a static type-level relationship, not a runtime cascade. Each factory runs its own schema; the parent schema does **not** validate the child's data at instantiation. The `is()` walk continues to recognize the child as an instance of the parent for type-narrowing purposes, but `instance.fields` reflects only the leaf's schema output.
 
-## Transformation Compatibility
+```ts title="composition.ts"
+import { error } from '@deessejs/errors';
+import { z } from 'zod';
 
-The cascade enforces that an instance simultaneously satisfies the leaf's contract AND every ancestor's `InferOutput`. The cascade runs three checks in order:
-
-1. **Per-key shape kind (Round 3).** A parent whose schema writes the same key the leaf declared, with a different shape kind (number vs. string, object vs. array), throws `ArgsValidationError` with `source: <ancestor.name>`, `issues[0].path: ['n']`, and `from` / `to` shape kinds.
-
-2. **Leaf re-validation oracle (Round 4).** After every parent writes, the cascade re-validates the merged `data` against the leaf's schema. The leaf's schema is the only vendor-neutral oracle that can detect:
-   - **Object shape mismatches.** `{id: string}` vs `{count: number}` — both are "object" at the `typeof` level, but the leaf's `z.object({id: z.string()})` rejects the parent's `{count: 1}`.
-   - **Literal value mismatches.** `z.literal('ok')` vs `z.literal('bad')` — both are strings at the `typeof` level, but the leaf's `z.literal('ok')` rejects `'bad'`.
-   - **Array element shapes.** `z.array(z.object({id: z.string()}))` vs `z.array(z.object({count: z.number()}))` — both are arrays, but the leaf's element schema rejects the parent's elements.
-   - **Nested structures.** `data.user.id` vs `data.user.name` — the kind gate passes at every level, but the leaf's nested `z.object` rejects the parent's `name` field.
-
-3. **Strict-by-default on the manual-generic path (Round 4).** When the leaf declares a manual generic (`error<{n: string}>()`) but no schema, the runtime cannot recover the generic's keys (TypeScript erases them). The cascade now rejects any parent that writes a key when the leaf has no schema — strict by default. Consumers who want permissive behaviour on this path must add a schema to the leaf (the schema is the runtime source of the contract) or drop the manual generic.
-
-```ts title="incompatible-rewrite.ts"
-// Scenario 1: an ancestor's schema rewrites a key the leaf declared.
-// The leaf's schema says `n: z.string()`; an ancestor coerces `n`
-// to number. The runtime would otherwise overwrite the leaf's
-// `n: string` with `n: number`. The cascade now throws
-// `ArgsValidationError` with `source: <ancestor.name>`,
-// `issues[0].path: ['n']`, and `from` / `to` shape kinds.
-const Leaf = error({
-  name: 'Leaf',
-  fields: z.object({ n: z.string() }),
-  message: (d) => d.n,
-  inherits: error({
-    name: 'Parent',
-    fields: z.object({ n: z.coerce.number() }),
-    message: (d) => String(d.n),
-  }),
+// Parent carries a schema.
+const Parent = error({
+  name: 'Parent',
+  fields: z.object({ id: z.string() }),
+  message: (d) => d.id,
 });
 
-Leaf({ n: '42' }); // throws ArgsValidationError
+// The consumer composes the leaf's schema explicitly. The library
+// does not merge two schemas for you.
+const Leaf = error({
+  name: 'Leaf',
+  fields: z.object({ id: z.string(), extra: z.string() }),
+  message: (d) => `${d.id}-${d.extra}`,
+  inherits: Parent,
+});
 ```
 
-Same-kind transitions are still allowed. If the leaf's schema and the ancestor's schema agree on the kind (e.g. both produce `number`), the cascade applies the ancestor's transformation without throwing — the leaf's narrowed type and the instance's actual type still agree.
+The TypeScript constraint enforces that `InferOutput<Leaf>` is assignable to `InferOutput<Parent>`. The child may add fields but must not drop or change the parent's required ones:
 
-The all-no-schema inheritance path (no parent has a schema either) remains permissive under the shape-kind gate. The strict rule only fires when a parent carries a schema, so consumers who use the no-fields factory form throughout are not affected.
+```ts title="incompatible-inheritance.ts"
+// Type error: { n: string } is not assignable to { n: number }.
+const Parent = error({
+  name: 'Parent',
+  fields: z.object({ n: z.coerce.number() }),
+  message: (d) => String(d.n),
+});
+
+error<{ n: string }>({
+  name: 'Leaf',
+  inherits: Parent,
+  // @ts-expect-error — manual generic { n: string } is not
+  // assignable to Parent's output { n: number }
+});
+```
+
+The constraint catches every structural mismatch the previous runtime gates tried to enforce — object shape differences, literal value differences, array element differences, and nested structural differences — at the type level, before any code runs.
+
+## Composing a Parent's Schema
+
+To add fields to a parent's schema in the child, use your validator's primitives. The library does not pick a winner; the choice is yours.
+
+```ts title="compose-zod.ts"
+import { z } from 'zod';
+
+const Parent = error({
+  name: 'Parent',
+  fields: z.object({ registry: z.string() }),
+  message: (d) => d.registry,
+});
+
+const TemplateNotFound = error({
+  name: 'TemplateNotFound',
+  fields: z.object({ registry: z.string(), slug: z.string() }),
+  message: (d) => `${d.slug} not found in ${d.registry}`,
+  inherits: Parent,
+});
+```
+
+For Valibot:
+
+```ts title="compose-valibot.ts"
+import * as v from 'valibot';
+
+const Parent = error({
+  name: 'Parent',
+  fields: v.object({ registry: v.string() }),
+  message: (d) => d.registry,
+});
+
+const TemplateNotFound = error({
+  name: 'TemplateNotFound',
+  fields: v.object({ ...Parent.fields, slug: v.string() } as never),
+  message: (d) => `${d.slug} not found in ${d.registry}`,
+  inherits: Parent,
+});
+```
+
+For ArkType, use `pipe`, `and`, or `merge`. The point is the same: the consumer composes the schema, the library runs it on the input, and `inherits` declares the type-level relationship.
+
+The `inherits` array is frozen at construction time, so any in-place mutation after `error()` returns throws `TypeError`.
 
 ## See Also
 

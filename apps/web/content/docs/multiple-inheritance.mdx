@@ -131,46 +131,58 @@ Avoid using multiple inheritance just because you can. Prefer single inheritance
 
 ## Schema Validation Across Multiple Parents
 
-When parents in a multiple-inheritance chain carry Standard Schemas, the child must satisfy every parent's schema. The validation walks the array in declaration order and applies each parent's transformations to the child's fields in turn — the second parent sees the first parent's post-transform output, not the raw input. A diamond (`A ← B`, `A ← C`, `D.inherits: [B, C]`) is validated against the shared root exactly once via a `Set`-based cycle guard shared across siblings. The `inherits` array is frozen at construction, so any in-place mutation of the caller's array after `error()` returns throws `TypeError`. The narrowed `instance.fields` and the type-level `is()` discrimination are guaranteed to agree: a factory that does not produce a schema-satisfying `fields` shape cannot yield a classify-able instance.
+Multiple inheritance declares a static type-level relationship: the leaf's `InferOutput` must be assignable to **every** parent's `InferOutput`. The constraint is checked at the `error()` definition site — a violation is a TypeScript error, not a runtime throw. Each factory still runs its own schema; the parents' schemas do not validate the child's data.
 
-## Transformation Compatibility Across Siblings
+```ts title="composition.ts"
+import { z } from 'zod';
 
-When two parents in a multi-inheritance chain transform the same key in incompatible ways, the cascade now rejects the call. The cascade runs three checks in order: per-key shape kind (Round 3), leaf re-validation (Round 4), and strict-by-default on the manual-generic path (Round 4). A parent that overwrites a key already written by an earlier parent in the cascade with a different shape kind throws `ArgsValidationError` with `source: <parent.name>`, `issues[0].path: [<key>]`, and `from` / `to` shape kinds.
+const NetworkError = error({
+  name: 'NetworkError',
+  fields: z.object({ endpoint: z.string() }),
+  message: (d) => d.endpoint,
+});
+const StorageError = error({
+  name: 'StorageError',
+  fields: z.object({ path: z.string() }),
+  message: (d) => d.path,
+});
+
+// The consumer composes the leaf's schema to satisfy both
+// parents. TypeScript verifies that the leaf's output is
+// assignable to NetworkError's AND StorageError's.
+const CacheError = error({
+  name: 'CacheError',
+  fields: z.object({ endpoint: z.string(), path: z.string() }),
+  message: (d) => `${d.endpoint} → ${d.path}`,
+  inherits: [NetworkError, StorageError],
+});
+```
+
+If the leaf's output is not assignable to one of the parents, the call site errors:
 
 ```ts title="sibling-incompatible.ts"
-// Two parents in a multi-inheritance chain, each with a
-// transforming schema on the same key. The first parent coerces
-// `n` to number; the second expects `n` to be a string. The
-// second parent's `runSchema` would otherwise run on the
-// post-first-parent value (a number) and either silently
-// accept it (the input type is permissive) or throw. The
-// cascade now throws on the second parent's rewrite with
-// `from: 'number'`, `to: 'string'`.
 const A = error({
   name: 'A',
-  fields: z.object({ n: z.coerce.number() }),
-  message: (d) => String(d.n),
+  fields: z.object({ a: z.string() }),
+  message: (d) => d.a,
 });
 const B = error({
   name: 'B',
-  fields: z.object({ n: z.string() }),
-  message: (d) => d.n,
-});
-const C = error({
-  name: 'C',
-  fields: z.object({ n: z.coerce.number() }),
-  message: (d) => String(d.n),
-  inherits: [A, B],
+  fields: z.object({ b: z.number() }),
+  message: (d) => String(d.b),
 });
 
-C({ n: '42' }); // throws ArgsValidationError, source: 'B'
+// Type error: the leaf is missing `b` for B.
+error({
+  name: 'C',
+  fields: z.object({ a: z.string() }),
+  message: (d) => d.a,
+  inherits: [A, B],
+  // @ts-expect-error — child is missing b for B
+});
 ```
 
-Same-kind sibling transitions (e.g. both produce `number`) remain valid. The shape gate only fires on cross-category rewrites. Parents that add disjoint keys still merge freely.
-
-### Deep-Shape Contract (Round 4)
-
-The Round 3 shape gate is too coarse for object-shape mismatches, literal value mismatches, array element shapes, and nested structures. The leaf's schema is the only vendor-neutral oracle that can detect these cases. After every parent writes, the cascade re-validates the merged `data` against the leaf's schema. The leaf re-validation closes the "two objects can have incompatible structures" gap, the "two strings can be different literals" gap, the "array of incompatible elements" gap, and the "nested structural difference" gap. The cost is one extra `runSchema` call per parent per instantiation.
+Diamond inheritance (`A ← B`, `A ← C`, `D.inherits: [B, C]`) is recognized for `is()` walks but does not cause any cascade. The leaf's schema is the only one that runs.
 
 ## See Also
 

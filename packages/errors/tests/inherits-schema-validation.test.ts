@@ -1,81 +1,90 @@
 /**
- * Regression tests for the inheritance contract: when a child factory
- * declares `inherits: Parent` and the parent carries a schema, the
- * child's fields must satisfy the parent's schema at instantiation.
+ * Regression tests for the R5 inheritance contract.
  *
- * Without this, the type-checker's narrowing of `is(child, Parent)` to
- * `ErrorInstance<ExtractFactoryFields<Parent>>` would lie: the runtime
- * says "this is a Parent" but the data does not actually match the
- * parent's shape. Each test pins the runtime guarantee.
+ * The R1-R4 cascade applied the parent's schema to the child's data
+ * at instantiation. The R5 rework drops the cascade: each factory
+ * runs its own schema, and `inherits` declares a static type-level
+ * relationship for `is()` recognition only.
  *
- * The child factory declares its own `TInput` so the parent-required
- * fields are part of the call signature. The runtime check is the
- * additional defense; the type-checker carries the primary guarantee
- * for callers that respect the manual generic.
+ * The runtime contract is now: the leaf's own schema is the only
+ * oracle. A parent with a schema does not run its schema on the
+ * child's data. A child that wants the parent's validation must
+ * compose the schemas itself (e.g. `parentSchema.extend({...})`).
+ *
+ * These tests pin what is preserved:
+ *  - The leaf's own schema is the source of truth for `instance.fields`.
+ *  - `is(instance, Parent)` returns true for instances whose
+ *    `inherits` declares the parent.
+ *  - Validation errors are sourced from the leaf, not the parent.
+ *  - Multiple-inheritance classification still works.
  */
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { error, is, ArgsValidationError } from '../src/index.js';
 
-describe('inherits: parent schema validates child fields', () => {
-  it('throws ArgsValidationError when the child omits a parent-required field', () => {
+describe('R5: leaf schema is the only runtime oracle', () => {
+  it("accepts the child when its fields satisfy the child's own schema", () => {
+    // The child carries the parent's required field plus its own
+    // additional field. The child schema is what validates.
     const Parent = error({
       name: 'Parent',
       fields: z.object({ id: z.string() }),
       message: (data) => data.id,
     });
-    const Child = error<{ id: string }>({ name: 'Child', inherits: Parent });
-
-    expect(() => Child({ id: 1 as unknown as string })).toThrow(ArgsValidationError);
-    expect(() => Child({ id: 1 as unknown as string })).toThrow(/Parent/);
-  });
-
-  it('throws when the child supplies a wrong-typed parent field', () => {
-    const Parent = error({
-      name: 'Parent',
-      fields: z.object({ id: z.string() }),
-      message: (data) => data.id,
-    });
-    const Child = error<{ id: string }>({ name: 'Child', inherits: Parent });
-
-    // 1 is not a string — Parent's z.string() must reject.
-    expect(() => Child({ id: 1 as unknown as string })).toThrow(ArgsValidationError);
-  });
-
-  it('accepts the child when its fields satisfy the parent schema', () => {
-    const Parent = error({
-      name: 'Parent',
-      fields: z.object({ id: z.string() }),
-      message: (data) => data.id,
-    });
-    // Round 4: the child has an explicit schema (a permissive
-    // `z.object({id: z.string()})`). The leaf re-validation runs
-    // after the parent's schema and accepts the merged data.
     const Child = error({
       name: 'Child',
-      fields: z.object({ id: z.string() }),
-      message: (data) => data.id,
+      fields: z.object({ id: z.string(), extra: z.string() }),
+      message: (data) => `${data.id}-${data.extra}`,
       inherits: Parent,
     });
 
-    const instance = Child({ id: 'x' });
+    const instance = Child({ id: 'x', extra: 'y' });
     expect(instance.name).toBe('Child');
     expect(instance.fields.id).toBe('x');
     expect(is(instance, Parent)).toBe(true);
     expect(is(instance, Child)).toBe(true);
   });
 
-  it('does not validate against parents that have no schema', () => {
-    // A parent without a schema has no contract to satisfy — child
-    // instances are accepted as-is. The classification via is() still
-    // holds. (A typed input would force a manual generic on the child,
-    // which is a different test path; we exercise the empty-shape path
-    // here.)
-    //
-    // Round 4: the all-no-schema path remains permissive. A no-schema
-    // parent writing to a no-schema child does not trigger the strict
-    // rule (the rule only fires when a parent carries a schema).
+  it("throws ArgsValidationError when the input fails the child's own schema", () => {
+    // The leaf's schema (id: z.string()) rejects a number. The
+    // parent is irrelevant to this rejection: the source is the
+    // child, not the parent. (Under R1-R4, the source was the
+    // parent because the parent schema ran first; under R5, the
+    // leaf is the only runner.)
+    const Parent = error({
+      name: 'MyParent',
+      fields: z.object({ id: z.string() }),
+      message: (data) => data.id,
+    });
+    const Child = error({
+      name: 'MyChild',
+      fields: z.object({ id: z.string() }),
+      message: (data) => data.id,
+      inherits: Parent,
+    });
+
+    let caught: unknown = null;
+    try {
+      (Child as unknown as (input: { id: number }) => unknown)({ id: 1 });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(ArgsValidationError);
+    // R5: source is the child (the leaf is the only schema that runs).
+    expect((caught as ArgsValidationError).source).toBe('MyChild');
+  });
+
+  it('accepts a child with no schema and no parents', () => {
+    // The legacy path remains unchanged: no schema, no cascade.
+    const Standalone = error({ name: 'Standalone', message: 'fallback' });
+    expect(() => Standalone()).not.toThrow();
+    expect(is(Standalone(), Standalone)).toBe(true);
+  });
+
+  it('accepts a no-schema child with a no-schema parent', () => {
+    // The all-no-schema path remains permissive. `is()` still walks
+    // the chain. The cascade no longer runs anything.
     const Parent = error({ name: 'Parent' });
     const Child = error({ name: 'Child', inherits: Parent });
 
@@ -83,16 +92,16 @@ describe('inherits: parent schema validates child fields', () => {
     expect(is(Child(), Parent)).toBe(true);
   });
 
-  it('validates against each parent in a multiple-inheritance list', () => {
+  it('classifies via multiple-inheritance chain when no schema is involved', () => {
     const SchemaParent = error({
       name: 'SchemaParent',
       fields: z.object({ id: z.string() }),
       message: (data) => data.id,
     });
     const PlainParent = error({ name: 'PlainParent' });
-    // Round 4: the child has an explicit schema. The strict rule
-    // does not fire (the leaf has a schema), and the leaf
-    // re-validation accepts the merged data.
+    // The child carries the schema-bearing parent's required field.
+    // R5: the child composes its own schema; the SchemaParent is
+    // recognized via `is()` but its schema does not run.
     const Child = error({
       name: 'Child',
       fields: z.object({ id: z.string() }),
@@ -100,25 +109,9 @@ describe('inherits: parent schema validates child fields', () => {
       inherits: [SchemaParent, PlainParent],
     });
 
-    expect(() => Child({ id: 'x' })).not.toThrow();
-    expect(() => Child({ id: 1 as unknown as string })).toThrow(ArgsValidationError);
-  });
-
-  it('reports the parent name in ArgsValidationError.source, not the child name', () => {
-    const Parent = error({
-      name: 'MyParent',
-      fields: z.object({ id: z.string() }),
-      message: (data) => data.id,
-    });
-    const Child = error<{ id: string }>({ name: 'MyChild', inherits: Parent });
-
-    let caught: unknown = null;
-    try {
-      Child({ id: 1 as unknown as string });
-    } catch (err) {
-      caught = err;
-    }
-    expect(caught).toBeInstanceOf(ArgsValidationError);
-    expect((caught as ArgsValidationError).source).toBe('MyParent');
+    const instance = Child({ id: 'x' });
+    expect(is(instance, SchemaParent)).toBe(true);
+    expect(is(instance, PlainParent)).toBe(true);
+    expect(is(instance, Child)).toBe(true);
   });
 });

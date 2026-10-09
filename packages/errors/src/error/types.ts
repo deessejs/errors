@@ -89,7 +89,7 @@ export type ErrorFactory<
       /** Error name identifier. */
       name: string;
       /** Parent error factories for type checking. */
-      inherits?: AnyErrorFactory | AnyErrorFactory[];
+      inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
       /** The Standard Schema used to validate the args at instantiation time. */
       schema?: StandardSchemaV1;
       /** The original message template or function (introspection only). */
@@ -109,7 +109,7 @@ export type ErrorFactory<
       /** Error name identifier. */
       name: string;
       /** Parent error factories for type checking. */
-      inherits?: AnyErrorFactory | AnyErrorFactory[];
+      inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
       /** The Standard Schema used to validate the args at instantiation time. */
       schema?: StandardSchemaV1;
       /** The original message template or function (introspection only). */
@@ -133,12 +133,71 @@ export type AnyErrorFactory = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (input?: any): ErrorInstance<any>;
   name: string;
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
   schema?: StandardSchemaV1;
   rawMessage?:
     | string // eslint-disable-next-line @typescript-eslint/no-explicit-any
     | ((data: any) => string);
 };
+
+/**
+ * Extract the output (post-validation `fields`) shape of a single
+ * `ErrorFactory`. Mirrors `is/index.ts:ExtractOwnFactoryFields` but
+ * lives in `types.ts` so the `error()` overloads can use it as a
+ * compile-time constraint without an import cycle.
+ *
+ * @internal
+ */
+export type ExtractOwnFactoryOutput<F> = F extends (...args: never[]) => ErrorInstance<infer O>
+  ? O
+  : never;
+
+/**
+ * Compile-time constraint for the `inherits` field of a leaf factory.
+ *
+ * The new (post-R5) contract: the leaf's `InferOutput` (or manual
+ * generic `T`) must be assignable to every parent's `InferOutput`.
+ * Inverting the old cascade, the parent is a *supertype* of the
+ * child: the child may add fields but must not drop or change the
+ * parent's required ones.
+ *
+ * The helper returns `true` when the constraint holds and `false`
+ * (a "type-level false" / never) when it does not. The `error()`
+ * overloads use this in a conditional return type so a violation
+ * at the call site surfaces as a TypeScript error.
+ *
+ * Special cases:
+ *  - When the `inherits` list is empty or `undefined`, the
+ *    constraint trivially holds: there are no parents to satisfy.
+ *  - For a single factory, the leaf's output must extend the
+ *    parent's output.
+ *  - For an array, the leaf's output must extend every element's
+ *    output (each parent is a separate constraint).
+ *
+ * @internal
+ */
+export type AssignableThroughInherits<Leaf, Parents> = Parents extends undefined
+  ? true
+  : Parents extends AnyErrorFactory
+    ? Leaf extends ExtractOwnFactoryOutput<Parents>
+      ? true
+      : false
+    : Parents extends readonly AnyErrorFactory[]
+      ? AssignableThroughInheritsArray<Leaf, Parents>
+      : true;
+
+type AssignableThroughInheritsArray<Leaf, Parents extends readonly AnyErrorFactory[]> = Parents extends readonly [
+  infer Head,
+  ...infer Tail,
+]
+  ? Head extends AnyErrorFactory
+    ? Leaf extends ExtractOwnFactoryOutput<Head>
+      ? Tail extends readonly AnyErrorFactory[]
+        ? AssignableThroughInheritsArray<Leaf, Tail>
+        : false
+      : false
+    : false
+  : true;
 
 /**
  * Error instance returned by an ErrorFactory.
@@ -173,7 +232,7 @@ export type ErrorInstance<TFields extends Record<string, unknown> = Record<strin
     /** Injected context data */
     context: Record<string, unknown> | null;
     /** Parent error factories for type checking */
-    inherits?: AnyErrorFactory | AnyErrorFactory[];
+    inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
   };
 
 /**
@@ -196,7 +255,7 @@ export type StandardErrorConfig<
   /** Standard Schema field definitions (zod, valibot, arktype, etc.) */
   fields: S;
   /** Single parent error factory, or list of parents, to inherit from */
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
   /** Message-as-function, receives the validated output */
   message: M;
 };
@@ -210,7 +269,7 @@ export type LegacyErrorConfig = {
   /** Error name identifier */
   name: string;
   /** @deprecated Single parent error factory to inherit from */
-  inherits?: AnyErrorFactory | AnyErrorFactory[];
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
   /** @deprecated Message template with `{field}` placeholders */
   message?: string;
 };
