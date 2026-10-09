@@ -42,7 +42,7 @@ const ValidationError = error({
 const err = ValidationError();
 
 console.log(is(err, ValidationError)); // -> true
-console.log(is(err, AppError)); // -> true (through inheritance)
+console.log(is(err, AppError)); // -> true
 ```
 
 This is powerful for error handling — you can write a catch block for `AppError` and it will catch all errors that inherit from it, including `ValidationError`, `DatabaseError`, and any other descendants.

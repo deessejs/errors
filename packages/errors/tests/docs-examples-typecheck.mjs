@@ -33,6 +33,19 @@
  * new probe runs every block standalone — if a block uses
  * `ValidationError` without defining it, the run fails.
  *
+ * Probe integrity: a regex that doesn't actually match the
+ * docs is a probe that never fails. Two safeguards:
+ *
+ *   - The annotation regex accepts `// ->` AND `//->` (with
+ *     any whitespace before the `->`). A doc that uses
+ *     `// ->` is matched.
+ *   - When at least one annotation is in scope and the probe
+ *     matches zero of them, the run fails. The probe also
+ *     self-tests by running a deliberately-wrong expected
+ *     value through the same code path; if that self-test
+ *     does not report a failure, the regex is not actually
+ *     checking the value.
+ *
  * Run: `pnpm build && node tests/docs-examples-typecheck.mjs`.
  * Exits 0 only when every block type-checks AND every
  * `// ->` annotation matches the captured stdout.
@@ -66,7 +79,11 @@ if (mdxFiles.length === 0) {
 }
 
 const importLineRe = /^\s*import\s.+from\s+['"][^'"]+['"];?\s*$/;
-const expectRe = /^\s*console\.log\((.*?)\);\s*\/\/->\s*(.*?)\s*$/;
+// Match `console.log(...) // -> <value>` with optional
+// whitespace before and after the `->`. Both `//->` and
+// `// ->` are accepted, as are leading whitespace inside the
+// comment.
+const expectRe = /^\s*console\.log\((.*?)\);\s*\/\/\s*->\s*(.*?)\s*$/;
 
 /**
  * Extract fenced TypeScript code blocks from an MDX file.
@@ -314,6 +331,37 @@ if (!process.env.DOCS_PROBE_KEEP) {
 console.log(
   `docs-examples-typecheck: ${passBlocks} block(s) pass, ${sigBlocks} signature-only, ${totalBlocks - sigBlocks - passBlocks} fail (${totalBlocks} total from ${mdxFiles.length} files); ${totalAnnotations} annotation(s) verified`,
 );
+
+// Self-test: a probe that never fails is not a probe. The
+// regex must be tight enough that a deliberately wrong
+// expected value is reported as a mismatch. Run the same
+// matching code on a synthetic block whose console.log
+// output is `"actual"` but the annotation says `"wrong"`,
+// and verify that the regex surfaces the difference.
+{
+  const syntheticBlock = `console.log('actual'); // -> wrong\n`;
+  const expectations = collectExpectations(syntheticBlock);
+  const stdoutLines = ['actual'];
+  let selfTestFailed = false;
+  for (let i = 0; i < expectations.length; i++) {
+    if (expectations[i] !== stdoutLines[i]) {
+      selfTestFailed = true;
+    }
+  }
+  if (expectations.length === 0 || !selfTestFailed) {
+    console.error(
+      '\nFATAL: probe self-test failed — annotation regex does not match the expected format, or the expectation matcher does not detect mismatches. The probe cannot be trusted to verify the docs.',
+    );
+    process.exit(2);
+  }
+}
+
+if (totalAnnotations === 0) {
+  console.error(
+    '\nFATAL: no // -> annotations found across the docs. The probe cannot verify announced values. Either the docs lack annotations, or the regex does not match them.',
+  );
+  process.exit(2);
+}
 
 if (failures.length > 0) {
   console.error('\nFailures:');
