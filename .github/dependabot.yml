@@ -1,4 +1,11 @@
 version: 2
+
+# Repository setting `security_and_analysis.dependabot_security_updates` is
+# enabled at the repo level (configured 2026-10-09 during the bulk dependabot
+# alert cleanup tracked in PRs #101-#104). When a CVE with a patched version
+# affects a dependency in this repo, Dependabot will now open a PR
+# automatically. The `groups` block below is for the *version* PR stream
+# (weekly schedule); security updates do not flow through this group.
 updates:
   - package-ecosystem: 'npm'
     directory: '/'
