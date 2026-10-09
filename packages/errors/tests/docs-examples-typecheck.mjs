@@ -1,26 +1,41 @@
 /**
- * Docs-examples type-check.
+ * Docs-examples type-check AND runtime probe.
  *
  * Walks `apps/web/content/docs/*.mdx`, extracts every fenced
- * TypeScript code block, and type-checks each block **in its
- * own synthetic module** against `dist/index.d.ts`. A block
- * that fails is reported with the file label, block index, and
- * the TypeScript diagnostics; the probe continues to the next
- * block so a single broken example does not cascade into false
- * positives for later examples.
+ * TypeScript code block, and for each block produces a
+ * synthetic ESM module that:
  *
- * Why per-block: TypeScript's type-checker cascades parse and
- * type errors forward. A syntax error in block N pollutes the
- * inferred types of every later block, producing false
- * diagnostics that mask the real drift. Per-block checks are
- * slower in aggregate (one tsc invocation per block) but each
- * diagnostic lands on the real source.
+ *   1. Hoists the union of every block's `import` statements
+ *      to the top, deduplicated.
+ *   2. Wraps the block body in an IIFE so its top-level
+ *      `const`/`let` declarations stay block-scoped and do
+ *      not collide across blocks.
+ *
+ * The synthetic module is then:
+ *
+ *   a. Type-checked with `tsc --noEmit` against
+ *      `dist/index.d.ts` (the published types).
+ *   b. Executed under `node --experimental-strip-types`; the
+ *      captured stdout is matched line-by-line against the
+ *      `console.log(...) // -> <expected>` annotations that
+ *      appear in the block body.
+ *
+ * Why this is more than a type-check: the page text announces
+ * values (`// 2`, `// true`). A type-checker cannot see whether
+ * the printed value actually matches the announced one. The
+ * probe executes each block and verifies the announcement.
+ *
+ * Why each block is isolated: a block that references
+ * factories defined in a previous block in the same MDX file
+ * is treated as broken. The page presents independent
+ * examples; the previous probe silently ignored such blocks
+ * with the cross-block-dependent detector, hiding drift. The
+ * new probe runs every block standalone — if a block uses
+ * `ValidationError` without defining it, the run fails.
  *
  * Run: `pnpm build && node tests/docs-examples-typecheck.mjs`.
- * Exits 0 only when every example block type-checks cleanly.
- * Signature-only display blocks are skipped (their canonical
- * form lives in `dist/index.d.ts`, which the package tests
- * already verify).
+ * Exits 0 only when every block type-checks AND every
+ * `// ->` annotation matches the captured stdout.
  */
 
 import { readFileSync, readdirSync, statSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
@@ -51,6 +66,7 @@ if (mdxFiles.length === 0) {
 }
 
 const importLineRe = /^\s*import\s.+from\s+['"][^'"]+['"];?\s*$/;
+const expectRe = /^\s*console\.log\((.*?)\);\s*\/\/->\s*(.*?)\s*$/;
 
 /**
  * Extract fenced TypeScript code blocks from an MDX file.
@@ -127,156 +143,77 @@ function isSignatureOnlyBlock(code) {
 }
 
 /**
- * Detect blocks that depend on another code block in the same
- * MDX file. These reference factories or values defined in a
- * previous block (e.g. `import { NotFoundError } from './errors'`
- * where `./errors` is a sibling code block, not a real module,
- * or `const err = ValidationError(...)` where `ValidationError`
- * is defined in a previous code block in the same MDX file).
- * The probe runs each block in isolation and cannot resolve
- * cross-block references, so such blocks are skipped.
+ * Collect `console.log(...) // -> <expected>` annotations from
+ * a block. The expected value is the literal text the runtime
+ * should print (already stringified). Returns an array of
+ * expected values in source order.
  */
-function isCrossBlockDependent(code, allBlocksSameFile, blockIndex) {
-  // Relative-import dependency (explicit).
-  if (/from\s+['"]\.\.?\/[^'"]+['"]/m.test(code)) return true;
-
-  // Implicit dependency: a block that uses identifiers defined
-  // in earlier blocks in the same file. Detect: if the block
-  // has no `const Name = error(...)` definition but uses an
-  // identifier that *only* appears in earlier blocks, it's
-  // cross-block dependent. We use a conservative check: the
-  // block has no factory declaration AND uses at least one
-  // identifier that looks like an ErrorFactory.
-  const hasFactoryDecl = /\b(?:const|let|var)\s+[$_\w][\w$]*\s*=\s*error\s*\(/.test(code);
-  if (hasFactoryDecl) return false;
-
-  // Collect PascalCase identifiers used in this block. Filter
-  // out the obvious imports (z, v, type, error, raise, is,
-  // causes, ArgsValidationError) and the common TypeScript
-  // builtins.
-  const builtinNames = new Set([
-    'Error',
-    'ArgsValidationError',
-    'TypeError',
-    'SyntaxError',
-    'Object',
-    'Array',
-    'Promise',
-    'Function',
-    'String',
-    'Number',
-    'Boolean',
-    'Date',
-    'Math',
-    'JSON',
-    'Map',
-    'Set',
-    'RegExp',
-    'Error',
-    'Symbol',
-    'BigInt',
-  ]);
-  const importNames = new Set(['z', 'v', 'type', 'error', 'raise', 'is', 'causes', 'ArgsValidationError']);
-  const idRe = /\b([A-Z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*)\b/g;
-  const usedIds = new Set();
-  for (const match of code.matchAll(idRe)) {
-    const name = match[1];
-    if (builtinNames.has(name)) continue;
-    if (importNames.has(name)) continue;
-    // Skip lowercase JS builtins-like names; they may be
-    // locals. PascalCase names are the signal we want.
-    if (/^[a-z]/.test(name)) continue;
-    usedIds.add(name);
-  }
-
-  if (usedIds.size === 0) return false;
-
-  // Look for at least one of these identifiers defined in an
-  // earlier block in the same MDX file. If yes, the block is
-  // cross-block dependent.
-  for (let i = 0; i < blockIndex; i++) {
-    const prev = allBlocksSameFile[i];
-    for (const name of usedIds) {
-      const declRe = new RegExp(`\\b(?:const|let|var|function|class)\\s+${name}\\b`);
-      if (declRe.test(prev.code)) return true;
+function collectExpectations(code) {
+  const out = [];
+  for (const line of code.split('\n')) {
+    const m = line.match(expectRe);
+    if (m) {
+      out.push(m[2].trim());
     }
   }
-  return false;
+  return out;
 }
 
-const sharedHeader = [
-  `// Auto-generated by tests/docs-examples-typecheck.mjs. Do not edit.`,
-  `import * as z from 'zod';`,
-  `import * as v from 'valibot';`,
-  `import { type } from '@ark/type';`,
-  `import { error, raise, is, causes, ArgsValidationError } from '@deessejs/errors';`,
-  ``,
-].join('\n');
-
-const allBlocks = mdxFiles.flatMap((f) => extractCodeBlocks(f));
-if (allBlocks.length === 0) {
-  console.error('docs-examples-typecheck: no fenced code blocks found');
-  process.exit(1);
+/**
+ * Build a synthetic ESM module for a single block. The
+ * module hoists the block's `import` statements to the top
+ * (so `error`, `raise`, etc. are in scope), then wraps the
+ * body in an IIFE so its top-level declarations stay
+ * block-scoped. The body keeps its `export` declarations
+ * where they appear — they are valid at the top of an ESM
+ * file.
+ */
+function buildSyntheticModule(block) {
+  const imports = [];
+  const bodyLines = [];
+  for (const line of block.code.split('\n')) {
+    if (importLineRe.test(line)) {
+      imports.push(line.trim());
+    } else {
+      bodyLines.push(line);
+    }
+  }
+  const body = bodyLines.join('\n');
+  return `${imports.join('\n')}\n\n// ---- ${block.file} block #${block.index} ----\n(function () {\n${body}\n})();\n`;
 }
 
-// Per-block isolation: write each example block into its own
-// fixture file so a syntax error in one block does not cascade
-// to the rest. The shared header carries the imports.
-const pkgProbeDir = join(pkgRoot, 'tests', '.docs-probe');
+const probeDir = join(pkgRoot, 'tests', '.docs-probe');
 try {
-  rmSync(pkgProbeDir, { recursive: true, force: true });
+  rmSync(probeDir, { recursive: true, force: true });
 } catch {
   // ignore
 }
-mkdirSync(pkgProbeDir, { recursive: true });
+mkdirSync(probeDir, { recursive: true });
 
 const tscBin = resolve(pkgRoot, 'node_modules', 'typescript', 'bin', 'tsc');
 
-let pass = 0;
-let skip = 0;
-let fail = 0;
+let totalAnnotations = 0;
+let totalBlocks = 0;
+let sigBlocks = 0;
+let passBlocks = 0;
 const failures = [];
 
-// Group blocks by file so the cross-block detector can look
-// for declarations in earlier blocks in the same file.
-const blocksByFile = new Map();
+const allBlocks = mdxFiles.flatMap((f) => extractCodeBlocks(f));
 for (const block of allBlocks) {
-  if (!blocksByFile.has(block.file)) blocksByFile.set(block.file, []);
-  blocksByFile.get(block.file).push(block);
-}
-
-for (const block of allBlocks) {
+  totalBlocks += 1;
   if (isSignatureOnlyBlock(block.code)) {
-    skip += 1;
-    continue;
-  }
-  const sameFileBlocks = blocksByFile.get(block.file) || [];
-  const earlier = sameFileBlocks.filter((b) => b.index < block.index);
-  if (isCrossBlockDependent(block.code, earlier, block.index)) {
-    skip += 1;
+    sigBlocks += 1;
     continue;
   }
 
-  const fixture = join(pkgProbeDir, `block-${block.file.replace(/[^A-Za-z0-9]+/g, '_')}-${block.index}.ts`);
-  const tsconfig = join(pkgProbeDir, `tsconfig-${block.file.replace(/[^A-Za-z0-9]+/g, '_')}-${block.index}.json`);
+  const expectations = collectExpectations(block.code);
+  totalAnnotations += expectations.length;
 
-  const body = block.code
-    .split('\n')
-    .filter((l) => !importLineRe.test(l))
-    // Strip `export ` keyword on declarations: the probe wraps
-    // each block in a function expression for scope isolation,
-    // which is incompatible with top-level `export` statements.
-    // The probe only verifies type correctness, not module
-    // exports.
-    .map((l) => l.replace(/^(\s*)export\s+(const|let|var|function|class|interface|type|enum|abstract|declare|async)\b/, '$1$2'))
-    .join('\n');
-  // Wrap in a function expression so top-level `const`/`let`
-  // declarations stay block-scoped and do not collide with any
-  // other block (we still get per-block isolation, but the wrap
-  // is defensive in case a future change reuses the file).
-  const fixtureSrc = `${sharedHeader}\n(function () {\n${body}\n})();\n`;
-  writeFileSync(fixture, fixtureSrc);
-
+  const synthetic = buildSyntheticModule(block);
+  const safeName = `${block.file.replace(/[^A-Za-z0-9]+/g, '_')}_${block.index}`;
+  const fixture = join(probeDir, `${safeName}.mts`);
+  const tsconfig = join(probeDir, `tsconfig-${safeName}.json`);
+  writeFileSync(fixture, synthetic);
   writeFileSync(
     tsconfig,
     JSON.stringify(
@@ -286,12 +223,12 @@ for (const block of allBlocks) {
           module: 'ESNext',
           moduleResolution: 'bundler',
           lib: ['ES2022', 'DOM'],
-          strict: true,
           noEmit: true,
+          strict: true,
           esModuleInterop: true,
           skipLibCheck: true,
-          // Force `@deessejs/errors` to resolve to the published
-          // dist so a broken build fails fast.
+          // Force `@deessejs/errors` to resolve to the
+          // published dist so a broken build fails fast.
           paths: {
             '@deessejs/errors': [join(pkgRoot, 'dist', 'index.d.ts')],
           },
@@ -303,38 +240,86 @@ for (const block of allBlocks) {
     ),
   );
 
-  const result = spawnSync(process.execPath, [tscBin, '-p', tsconfig, '--pretty', 'false'], {
+  // Type check.
+  const typeResult = spawnSync(process.execPath, [tscBin, '-p', tsconfig, '--pretty', 'false'], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-
-  if (result.status === 0) {
-    pass += 1;
+  if (typeResult.status !== 0) {
+    failures.push({
+      file: block.file,
+      index: block.index,
+      kind: 'type',
+      output: (typeResult.stdout || '').trim() + (typeResult.stderr ? '\n' + typeResult.stderr.trim() : ''),
+    });
     continue;
   }
 
-  fail += 1;
-  const output = (result.stdout || '').trim() + (result.stderr ? '\n' + result.stderr.trim() : '');
-  failures.push({ block, output });
+  // Execute. Node 22+ supports `--experimental-strip-types`,
+  // which transpiles TypeScript-syntax ESM at load time. The
+  // synthetic file is a `.mts` so the flag applies.
+  const runResult = spawnSync(
+    process.execPath,
+    ['--experimental-strip-types', '--no-warnings', fixture],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  if (runResult.status !== 0) {
+    failures.push({
+      file: block.file,
+      index: block.index,
+      kind: 'runtime',
+      output: `exit ${runResult.status}\nstdout: ${(runResult.stdout || '').trim()}\nstderr: ${(runResult.stderr || '').trim()}`,
+    });
+    continue;
+  }
+
+  // Match captured stdout lines against the // -> annotations.
+  // Each annotation corresponds to a single console.log line
+  // in the synthetic output. The match is by ordinal.
+  const stdoutLines = (runResult.stdout || '')
+    .split('\n')
+    .map((l) => l.replace(/\r$/, ''))
+    .filter((l) => l.length > 0);
+  const mismatches = [];
+  for (let i = 0; i < expectations.length; i++) {
+    const expected = expectations[i];
+    const actual = stdoutLines[i] ?? '<EOF>';
+    if (actual !== expected) {
+      mismatches.push({ i, expected, actual });
+    }
+  }
+  if (mismatches.length > 0) {
+    failures.push({
+      file: block.file,
+      index: block.index,
+      kind: 'expectation',
+      output: mismatches
+        .map((m) => `  console.log #${m.i + 1} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`)
+        .join('\n'),
+    });
+    continue;
+  }
+
+  passBlocks += 1;
 }
 
 if (!process.env.DOCS_PROBE_KEEP) {
   try {
-    rmSync(pkgProbeDir, { recursive: true, force: true });
+    rmSync(probeDir, { recursive: true, force: true });
   } catch {
     // Best-effort cleanup.
   }
 }
 
 console.log(
-  `docs-examples-typecheck: ${pass} pass, ${skip} signature-only, ${fail} fail (${allBlocks.length} total from ${mdxFiles.length} files)`,
+  `docs-examples-typecheck: ${passBlocks} block(s) pass, ${sigBlocks} signature-only, ${totalBlocks - sigBlocks - passBlocks} fail (${totalBlocks} total from ${mdxFiles.length} files); ${totalAnnotations} annotation(s) verified`,
 );
 
-if (fail > 0) {
-  console.error('\nFailed blocks:');
-  for (const { block, output } of failures) {
-    console.error(`\n--- ${block.file} block #${block.index} ---`);
-    console.error(output);
+if (failures.length > 0) {
+  console.error('\nFailures:');
+  for (const f of failures) {
+    console.error(`\n--- ${f.file} block #${f.index} [${f.kind}] ---`);
+    console.error(f.output);
   }
   process.exit(1);
 }

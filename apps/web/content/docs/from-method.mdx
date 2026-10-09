@@ -64,20 +64,30 @@ The chain order is always immediate-cause first, root-cause last.
 You can combine `from()` with `raise()` for concise error handling:
 
 ```ts title="with-raise.ts"
-import { error, raise } from '@deessejs/errors';
+import { error, raise, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
 try {
-  // Something throws a validation error
-  throw ValidationError();
+  try {
+    // Something throws a validation error.
+    raise(ValidationError());
+  } catch (err) {
+    // err is `unknown` in strict mode; check before .from(err).
+    if (err instanceof Error) {
+      raise(AppError().from(err));
+    } else {
+      throw err;
+    }
+  }
 } catch (err) {
-  // err is `unknown` in strict mode; check before .from(err).
-  if (err instanceof Error) {
-    raise(AppError().from(err));
-  } else {
-    throw err;
+  // The outer try swallows the chained throw so the
+  // example terminates cleanly. In real code the raise
+  // propagates to the caller.
+  if (is(err, AppError)) {
+    console.log(err.cause !== null); // -> true
+    console.log(is(err.cause, ValidationError)); // -> true
   }
 }
 ```
@@ -85,18 +95,25 @@ try {
 Since `from()` returns the error instance, you can write this more compactly:
 
 ```ts title="compact.ts"
-import { error, raise } from '@deessejs/errors';
+import { error, raise, is } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
 try {
-  throw ValidationError();
+  try {
+    raise(ValidationError());
+  } catch (err) {
+    if (err instanceof Error) {
+      raise(AppError().from(err));
+    } else {
+      throw err;
+    }
+  }
 } catch (err) {
-  if (err instanceof Error) {
-    raise(AppError().from(err));
-  } else {
-    throw err;
+  if (is(err, AppError)) {
+    console.log(err.cause !== null); // -> true
+    console.log(is(err.cause, ValidationError)); // -> true
   }
 }
 ```

@@ -3,13 +3,15 @@ title: The causes() Function
 description: Use the causes() function to traverse error chains and access all causes in an error.
 ---
 
-The `causes()` function provides a safe way to access the cause chain of any error. It works with both @deessejs/errors instances and native JavaScript errors, returning an empty array for errors without causes.
+The `causes()` function walks the cause chain of an error, returning every link in order — the **immediate cause first**, the **root cause last**. It accepts `@deessejs/errors` instances, native `Error` instances, and `null`/`undefined` (returns `[]` for those). The walk detects cycles and returns a fresh array on each call.
 
-## Basic Usage
+A single error has one **direct cause** at a time: each `.from()` call replaces the previous one. To build a chain of length N, the previous cause itself must carry its own `.cause`. Calling `.from()` repeatedly on the same error does **not** accumulate causes — the second call overwrites the first.
 
-Call `causes()` with an error to get its cause chain as an array:
+## Building a Chain
 
-```ts title="basic.ts"
+Build the chain by attaching each cause to the previous one. The leaf at the top carries its own cause; the cause carries the next layer's cause, and so on.
+
+```ts title="chain.ts"
 import { error, causes } from '@deessejs/errors';
 
 const AppError = error({ name: 'AppError' });
@@ -17,20 +19,17 @@ const ValidationError = error({ name: 'ValidationError' });
 
 // The no-schema factories have an empty input shape; the
 // call takes no arguments.
-const validationErr = ValidationError();
-const appErr = AppError();
-appErr.from(validationErr);
-appErr.from(validationErr);
-appErr.from(new Error('Network timeout'));
+const root = new Error('Network timeout');
+const validationErr = ValidationError().from(root);
+const appErr = AppError().from(validationErr);
 
 const chain = causes(appErr);
-
-console.log(chain.length); // 2
-console.log(chain[0].name); // "ValidationError"
-console.log(chain[1].message); // "Network timeout"
+console.log(chain.length); // -> 2
+console.log(chain[0].name); // -> ValidationError
+console.log(chain[1].message); // -> Network timeout
 ```
 
-The returned array contains only the errors that were explicitly added using `from()`, ordered from newest to oldest.
+The chain is `[validationErr, root]` — immediate cause first, root cause last. `causes()` walks each link's own `.cause`, so the chain is recoverable even though only the topmost error has its `.cause` slot set directly.
 
 ## Why Use causes() Instead of Direct Access?
 
@@ -42,14 +41,14 @@ import { causes } from '@deessejs/errors';
 // Works with native errors (no causes property)
 const nativeError = new Error('Something failed');
 const chain1 = causes(nativeError);
-console.log(chain1.length); // 0
+console.log(chain1.length); // -> 0
 
 // Works with null/undefined (returns empty array)
 const chain2 = causes(null);
-console.log(chain2.length); // 0
+console.log(chain2.length); // -> 0
 
 const chain3 = causes(undefined);
-console.log(chain3.length); // 0
+console.log(chain3.length); // -> 0
 ```
 
 This robustness makes `causes()` ideal for writing generic error handling code that doesn't need to check the error type first.
@@ -64,21 +63,19 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError();
-appErr.from(ValidationError());
-appErr.from(new Error('Database connection failed'));
+// Build the chain: ValidationError -> DatabaseError -> AppError.
+const databaseErr = new Error('Database connection failed');
+const validationErr = ValidationError().from(databaseErr);
+const appErr = AppError().from(validationErr);
 
-// Log each cause
 for (const cause of causes(appErr)) {
   console.log(`[${cause.name}] ${cause.message}`);
 }
-
-// Output:
-// [ValidationError] ValidationError
-// [Error] Database connection failed
+// -> [ValidationError] ValidationError
+// -> [Error] Database connection failed
 ```
 
-This is useful for building detailed error logs or monitoring dashboards that track where errors originate.
+The walk is order-preserving: the immediate cause is yielded first.
 
 ## Building Error Summaries
 
@@ -90,21 +87,22 @@ import { error, causes } from '@deessejs/errors';
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError();
-appErr.from(ValidationError());
-appErr.from(new Error('DB connection failed'));
+// Build the chain: ValidationError -> DatabaseError -> AppError.
+const databaseErr = new Error('DB connection failed');
+const validationErr = ValidationError().from(databaseErr);
+const appErr = AppError().from(validationErr);
 
 const summary = causes(appErr)
   .map((cause) => `${cause.name}: ${cause.message}`)
-  .join(' → ');
+  .join(' -> ');
 
 console.log(summary);
-// "ValidationError: ValidationError → Error: DB connection failed"
+// -> ValidationError: ValidationError -> Error: DB connection failed
 ```
 
 ## Combining with is()
 
-Use `causes()` with `is()` to search for specific error types in the chain:
+Use `causes()` with `is()` to search for specific error types in the chain. Each layer of the chain carries its own type, so the walk checks every link.
 
 ```ts title="combined.ts"
 import { error, causes, is } from '@deessejs/errors';
@@ -113,19 +111,47 @@ const AppError = error({ name: 'AppError' });
 const NetworkError = error({ name: 'NetworkError' });
 const ValidationError = error({ name: 'ValidationError' });
 
-const appErr = AppError();
-appErr.from(NetworkError());
-appErr.from(ValidationError());
+// The chain is NetworkError -> ValidationError -> AppError.
+const validationErr = ValidationError();
+const networkErr = NetworkError().from(validationErr);
+const appErr = AppError().from(networkErr);
 
-// Check if any cause is a NetworkError
+// The walk finds the NetworkError at chain[0] and the
+// ValidationError at chain[1] (the root cause, last).
 const hasNetworkFailure = causes(appErr).some(
-  (cause) => is(cause, NetworkError)
+  (cause) => is(cause, NetworkError),
 );
+console.log(hasNetworkFailure); // -> true
 
-console.log(hasNetworkFailure); // true
+const hasValidationError = causes(appErr).some(
+  (cause) => is(cause, ValidationError),
+);
+console.log(hasValidationError); // -> true
 ```
 
-This pattern is useful when you need to know not just that an error happened, but what kind of errors were involved in its chain.
+If you replace the direct cause of `appErr` with something that is not a `NetworkError`, the search returns `false` — `causes()` follows the chain, not the replacement history:
+
+```ts title="replacement.ts"
+import { error, causes, is } from '@deessejs/errors';
+
+const AppError = error({ name: 'AppError' });
+const NetworkError = error({ name: 'NetworkError' });
+const ValidationError = error({ name: 'ValidationError' });
+
+// First link: NetworkError -> ValidationError -> AppError.
+const validationErr = ValidationError();
+const networkErr = NetworkError().from(validationErr);
+const appErr = AppError().from(networkErr);
+
+// Replacing the direct cause drops the NetworkError from
+// the walk. The previous cause is no longer reachable
+// through .cause.
+appErr.from(new Error('Disk full'));
+
+console.log(
+  causes(appErr).some((cause) => is(cause, NetworkError)),
+); // -> false
+```
 
 ## See Also
 

@@ -29,6 +29,8 @@ Now this error belongs to both categories in the hierarchy.
 When an error inherits from multiple parents, `is()` returns true for any of its parents:
 
 ```ts title="checking.ts"
+import { error, is } from '@deessejs/errors';
+
 const NetworkError = error({ name: 'NetworkError' });
 const StorageError = error({ name: 'StorageError' });
 
@@ -41,9 +43,9 @@ const NetworkStorageError = error({
 // takes no arguments.
 const err = NetworkStorageError();
 
-console.log(is(err, NetworkStorageError)); // true
-console.log(is(err, NetworkError)); // true
-console.log(is(err, StorageError)); // true
+console.log(is(err, NetworkStorageError)); // -> true
+console.log(is(err, NetworkError)); // -> true
+console.log(is(err, StorageError)); // -> true
 ```
 
 This flexibility lets you categorize errors from multiple angles.
@@ -154,6 +156,7 @@ Multiple inheritance declares a static type-level relationship: the leaf's `Infe
 
 ```ts title="composition.ts"
 import { z } from 'zod';
+import { error } from '@deessejs/errors';
 
 const NetworkError = error({
   name: 'NetworkError',

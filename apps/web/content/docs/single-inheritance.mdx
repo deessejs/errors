@@ -29,6 +29,8 @@ Now `ValidationError` is a child of `AppError` in the hierarchy. You can verify 
 When an error inherits from another, `is()` returns true for both the error itself and all its ancestors:
 
 ```ts title="checking.ts"
+import { error, is } from '@deessejs/errors';
+
 const AppError = error({ name: 'AppError' });
 const ValidationError = error({
   name: 'ValidationError',
@@ -39,8 +41,8 @@ const ValidationError = error({
 // takes no arguments.
 const err = ValidationError();
 
-console.log(is(err, ValidationError)); // true
-console.log(is(err, AppError)); // true (through inheritance)
+console.log(is(err, ValidationError)); // -> true
+console.log(is(err, AppError)); // -> true (through inheritance)
 ```
 
 This is powerful for error handling — you can write a catch block for `AppError` and it will catch all errors that inherit from it, including `ValidationError`, `DatabaseError`, and any other descendants.
@@ -86,22 +88,21 @@ This pattern lets you handle errors at different levels of granularity depending
 You can combine inheritance with message templates for powerful error definitions:
 
 ```ts title="with-message.ts"
-import { error, is } from '@deessejs/errors';
+import { z } from "zod";
+import { error, is } from "@deessejs/errors";
 
-const AppError = error({ name: 'AppError' });
+const AppError = error({ name: "AppError" });
 
-const ValidationError = error<{ field: string }>({
-  name: 'ValidationError',
+const ValidationError = error({
+  name: "ValidationError",
   inherits: AppError,
-  message: 'Field "{field}" is invalid',
+  fields: z.object({ field: z.string() }),
+  message: (d) => `Field "${d.field}" is invalid`,
 });
 
-// The manual generic { field: string } means ValidationError
-// requires the input argument; the legacy string-template
-// form is allowed here because there is no schema.
-const err = ValidationError({ field: 'email' });
-console.log(err.message); // "Field "email" is invalid"
-console.log(is(err, AppError)); // true
+const err = ValidationError({ field: "email" });
+console.log(err.message); // -> Field "email" is invalid
+console.log(is(err, AppError)); // -> true
 ```
 
 ## Accessing Parent Information
@@ -109,13 +110,15 @@ console.log(is(err, AppError)); // true
 The `inherits` property on the error factory lets you access parent types programmatically:
 
 ```ts title="parents.ts"
-const AppError = error({ name: 'AppError' });
+import { error } from "@deessejs/errors";
+
+const AppError = error({ name: "AppError" });
 const ValidationError = error({
-  name: 'ValidationError',
+  name: "ValidationError",
   inherits: AppError,
 });
 
-console.log(ValidationError.inherits === AppError); // true
+console.log(ValidationError.inherits === AppError); // -> true
 ```
 
 This is useful for building introspection tools or generating documentation automatically.
@@ -148,17 +151,22 @@ const Leaf = error({
 The TypeScript constraint enforces that `InferOutput<Leaf>` is assignable to `InferOutput<Parent>`. The child may add fields but must not drop or change the parent's required ones:
 
 ```ts title="incompatible-inheritance.ts"
+import { z } from "zod";
+import { error } from "@deessejs/errors";
+
 // Type error: { n: string } is not assignable to { n: number }.
 const Parent = error({
-  name: 'Parent',
+  name: "Parent",
   fields: z.object({ n: z.coerce.number() }),
   message: (d) => String(d.n),
 });
 
-error<{ n: string }>({
-  name: 'Leaf',
-  // @ts-expect-error — manual generic { n: string } is not
-  // assignable to Parent's output { n: number }
+error({
+  name: "Leaf",
+  fields: z.object({ n: z.string() }),
+  message: (d) => d.n,
+  // @ts-expect-error — { n: string } is not assignable to Parent's
+  // output { n: number }
   inherits: Parent,
 });
 ```
@@ -170,16 +178,17 @@ The constraint catches every structural mismatch the previous runtime gates trie
 To add fields to a parent's schema in the child, use your validator's primitives. The library does not pick a winner; the choice is yours.
 
 ```ts title="compose-zod.ts"
-import { z } from 'zod';
+import { z } from "zod";
+import { error } from "@deessejs/errors";
 
 const Parent = error({
-  name: 'Parent',
+  name: "Parent",
   fields: z.object({ registry: z.string() }),
   message: (d) => d.registry,
 });
 
 const TemplateNotFound = error({
-  name: 'TemplateNotFound',
+  name: "TemplateNotFound",
   fields: z.object({ registry: z.string(), slug: z.string() }),
   message: (d) => `${d.slug} not found in ${d.registry}`,
   inherits: Parent,

@@ -112,9 +112,11 @@ async function executeQuery(db: { query: (q: string) => Promise<unknown> }, quer
   try {
     return await db.query(query);
   } catch (err) {
-    // `DatabaseError()` returns a fresh instance, then `.from(err)`
-    // chains the cause. `.from()` is `this`-returning.
-    return DatabaseError({
+    // `DatabaseError(...)` returns a fresh instance, then
+    // `.from(err)` chains the cause. `.from()` is `this`-returning.
+    // Re-throw so callers see the failure rather than a
+    // resolved promise with an error value.
+    throw DatabaseError({
       operation: 'query',
       table,
       query,
@@ -149,7 +151,7 @@ const DatabaseError = error({
   message: () => 'Database operation failed',
 });
 
-export function handleApiError(err: unknown) {
+function handleApiError(err: unknown) {
   // Log the full error chain
   console.error('Error chain:', causes(err).map((e) => e.message));
 

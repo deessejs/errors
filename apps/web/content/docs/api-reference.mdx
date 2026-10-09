@@ -87,11 +87,16 @@ never - this function always throws.
 ### Example
 
 ```ts title="raise.ts"
-import { error, raise } from "@deessejs/errors";
+import { error, raise, is } from "@deessejs/errors";
 
 const ValidationError = error({ name: "ValidationError" });
 
-raise(ValidationError({}));
+try {
+  // The no-schema factory takes no arguments.
+  raise(ValidationError());
+} catch (err) {
+  console.log(is(err, ValidationError)); // -> true
+}
 ```
 
 ---
