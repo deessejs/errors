@@ -31,7 +31,12 @@ const createTypedMockSchema = <Input, Output>(name = 'mock'): StandardSchemaV1<I
       version: 1,
       vendor: name,
       types: { input: undefined as unknown as Input, output: undefined as unknown as Output },
-      validate: () => ({ value: undefined as unknown as Output }),
+      // R8: a schema's validated output must be a non-null object (the
+      // runtime guard `isObjectFields` rejects `undefined`). The mock
+      // returns an empty object cast to `Output` so type-inference
+      // tests can run without the consumer caring about the value's
+      // shape; the type contract is exercised at compile time.
+      validate: () => ({ value: {} as unknown as Output }),
     },
   };
 };

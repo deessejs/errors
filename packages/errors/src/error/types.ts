@@ -24,16 +24,19 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
  * The witness is purely declarative: no code calls the function. It
  * exists only to make the contravariance visible to the type checker.
  *
- * The symbol is declared with `const` (not `declare const`) so that
- * a runtime binding is emitted in the published declarations and
- * `error()` can attach the witness property to each factory
- * instance. The `unique symbol` annotation is preserved by the
- * type-only cast.
+ * The `unique symbol` type is preserved without an `as any` cast: the
+ * const is annotated explicitly as the unique-symbol type, and the
+ * `Symbol(...)` call is the only expression that produces a value
+ * narrowable to that type.
+ *
+ * **Requires `strictFunctionTypes`.** Without it, function-typed
+ * property values are checked bivariantly and the contravariance
+ * check is bypassed. `strictFunctionTypes` is enabled by `strict`,
+ * which is on in this project's tsconfig.
  *
  * @internal
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const acceptsFields: unique symbol = Symbol('@deessejs/errors/acceptsFields') as any;
+export const acceptsFields: unique symbol = Symbol('@deessejs/errors/acceptsFields');
 
 /**
  * Computes the parameter type of a factory's compatibility witness.
@@ -46,6 +49,35 @@ export const acceptsFields: unique symbol = Symbol('@deessejs/errors/acceptsFiel
  * @internal
  */
 type AcceptsFieldsArg<Output> = [Output] extends [Record<string, never>] ? unknown : Output;
+
+/**
+ * Compile-time gate: the schema's `InferOutput` must be a non-null,
+ * non-array object. Schemas whose transformation yields `null`,
+ * primitives, or arrays are rejected at the call site of `error()`.
+ *
+ * The predicate is intentionally narrow. The leaf's top-level
+ * `fields` slot is a record (a fixed shape produced by the leaf's
+ * schema), and the consumer's downstream code reads it as
+ * `Record<string, unknown>`. A schema that returns a primitive, a
+ * nullable, or an array would silently violate the consumer's
+ * expectation at runtime; rejecting it at compile time closes the
+ * gap before the consumer can write a single line of code.
+ *
+ * Individual field values inside the record are still unconstrained
+ * — `z.object({ n: z.coerce.number() })` is accepted because the
+ * top-level output is `{ n: number }` (a record), even though `n` is
+ * a primitive. The audit's repro (`z.object({}).transform(() => null)`)
+ * is rejected because the top-level output is `null`.
+ *
+ * @internal
+ */
+export type IsObjectOutput<O> = [O] extends [Record<string, never>]
+  ? true
+  : [O] extends [Record<string, unknown>]
+    ? [O] extends [readonly unknown[]]
+      ? false
+      : true
+    : false;
 
 /**
  * The shape an `inherits:` value must take.
@@ -104,6 +136,52 @@ export type InferStandardSchemaInput<S> = S extends StandardSchemaV1<infer I, un
 export type InferStandardSchemaOutput<S> = S extends StandardSchemaV1<unknown, infer O> ? O : never;
 
 /**
+ * Restricts a Standard Schema to those whose inferred output is a
+ * non-null, non-array object. Used by the public `error()` overloads
+ * to **advise** that the schema's output will land in a
+ * `Record<string, unknown>` slot on the instance.
+ *
+ * **Type-level enforcement is advisory, not authoritative.** The
+ * audit found that a pure-type gate cannot reject every malformed
+ * schema at the call site: TypeScript's function-arity flexibility
+ * means a 0-arg lambda `() => 'x'` is assignable to a function
+ * whose parameter type is `null` or `never`. The constraint below
+ * narrows the schema in the *positive* case (object outputs are
+ * accepted) but does not reject the negative case (null, arrays,
+ * primitives) at compile time. The **runtime guard**
+ * `isObjectFields` in `error.ts` is the authoritative enforcement:
+ * any schema whose validated value is `null`, a primitive, or an
+ * array throws `ArgsValidationError`.
+ *
+ * The constraint placeholder is `StandardSchemaV1<any, any>`, the
+ * spec's default-typed alias. Widening to `any` lets the overload
+ * accept any concrete schema before the gate evaluates; the gate
+ * then specializes the constraint to `S` (object output) or
+ * `StandardSchemaV1<I, never>` (non-object output). A consumer that
+ * reaches the negative branch and supplies the result will get a
+ * `SchemaErrorFactory<unknown, never>`, which propagates `never` to
+ * downstream code, but the call itself does not fail to compile
+ * (the type checker does not see the `IsObjectOutput<O>` evaluation
+ * as a hard reject because of the arity flexibility described
+ * above).
+ *
+ * The predicate `IsObjectOutput<O>` is still useful for the
+ * "accepts a record" half of the gate: a `StandardSchemaV1<unknown,
+ * { x: number }>` is correctly identified as a record and the
+ * overload returns the typed `SchemaErrorFactory`. A
+ * `StandardSchemaV1<unknown, null>` slips through to the runtime
+ * guard.
+ *
+ * @internal
+ */
+export type ObjectOutputSchema<S> =
+  S extends StandardSchemaV1<infer I, infer O>
+    ? IsObjectOutput<O> extends true
+      ? S
+      : StandardSchemaV1<I, never>
+    : never;
+
+/**
  * Core properties present on every error instance.
  * These are guaranteed to exist regardless of how the error was created.
  */
@@ -117,29 +195,72 @@ export type ErrorInstanceCore = {
 };
 
 /**
- * Error factory function type.
+ * Error factory function type for **schema-bearing** factories.
  *
- * Creates typed, structured errors. The two type parameters separate the
- * *input* contract (what the caller passes) from the *output* contract
- * (what the instance carries in its `fields` slot). With a Standard Schema,
- * the input and output are independently inferred from the schema and may
- * differ when the schema transforms (coercion, defaults, branding).
+ * The call signature is *not* conditional: a factory with a schema
+ * always requires its input at the call site, even when the schema
+ * accepts the empty shape (`z.object({})`). The audit found a gap
+ * where `Empty()` (no args, `z.object({})` schema) compiled but
+ * threw at runtime — the conditional `[TInput] extends
+ * [Record<string, never>]` in the original `ErrorFactory` treated
+ * the empty shape as optional. Splitting this case into a separate
+ * type removes the gap: a schema-bearing factory is required to
+ * receive an input.
  *
- * The call signature is conditional on `TInput`: when `TInput` is the empty
- * shape (`Record<string, never>`), the factory is callable with no
- * arguments; when it is non-empty, the input argument is required at the
- * call site. This closes the gap where a factory carrying a declared
- * `TInput` could be called with no arguments and then crash on
- * `instance.fields.x` with a confusing `TypeError` from the wrong frame.
- *
- * The hidden `[acceptsFields]` property is the R7 inheritance witness.
- * It is a function typed `(fields: Output) => void`, which under
- * `strictFunctionTypes` is checked contravariantly. A factory is a
- * valid parent of a leaf whose output is `LeafOutput` only if
+ * The hidden `[acceptsFields]` property is the R7 inheritance
+ * witness. It is a function typed `(fields: Output) => void`, which
+ * under `strictFunctionTypes` is checked contravariantly. A factory
+ * is a valid parent of a leaf whose output is `LeafOutput` only if
  * `[LeafOutput] extends [Output]`, i.e. the leaf's output is
  * assignable to the parent's. The constraint runs at the call site
  * of `error({...})` because `inherits?` is typed as
  * `ParentFor<NoInfer<...>>`.
+ *
+ * @typeParam TInput  Shape the caller must supply when invoking the factory.
+ * @typeParam TOutput Shape the instance carries in `.fields` after validation.
+ */
+export type SchemaErrorFactory<
+  TInput extends Record<string, unknown>,
+  TOutput extends Record<string, unknown>,
+> = {
+  /**
+   * Invoke the factory to mint a new instance.
+   *
+   * The input is always required. A factory with a non-empty `TInput`
+   * called with no arguments is a type error; the runtime also throws
+   * a localized `TypeError` when a schema-bearing factory is called
+   * without input.
+   */
+  (input: TInput): ErrorInstance<TOutput>;
+  /** Error name identifier. */
+  name: string;
+  /** Parent error factories for type checking. */
+  inherits?: AnyErrorFactory | readonly AnyErrorFactory[];
+  /** The Standard Schema used to validate the args at instantiation time. */
+  schema?: StandardSchemaV1;
+  /** The original message template or function (introspection only). */
+  rawMessage?: string | ((data: TOutput) => string);
+  /** R7 compatibility witness — do not set or read. */
+  readonly [acceptsFields]?: (fields: AcceptsFieldsArg<TOutput>) => void;
+};
+
+/**
+ * Error factory function type.
+ *
+ * Creates typed, structured errors. The two type parameters separate the
+ * *input* contract (what the caller passes) from the *output* contract
+ * (what the instance carries in its `fields` slot).
+ *
+ * The call signature is conditional on `TInput`: when `TInput` is the empty
+ * shape (`Record<string, never>`), the factory is callable with no
+ * arguments; when it is non-empty, the input argument is required at the
+ * call site. This is the legacy form. **Schema-bearing factories use
+ * `SchemaErrorFactory` instead**, which is never conditional — a
+ * factory with a schema must always receive an input.
+ *
+ * The hidden `[acceptsFields]` property is the R7 inheritance witness.
+ * It is a function typed `(fields: Output) => void`, which under
+ * `strictFunctionTypes` is checked contravariantly.
  *
  * @typeParam TInput  Shape the caller must supply when invoking the factory.
  * @typeParam TOutput Shape the instance carries in `.fields` after validation.
@@ -180,6 +301,11 @@ export type ErrorFactory<
        * with a non-empty `TInput` called with no arguments is a type
        * error; the runtime also throws a localized `TypeError` when a
        * schema-bearing factory is called without input.
+       *
+       * For schema-bearing factories, prefer `SchemaErrorFactory`, which
+       * has the same shape but is documented as the *only* factory type
+       * used in the schema path. `ErrorFactory` is the type-erased form
+       * surfaced in `AnyErrorFactory` and at runtime.
        */
       (input: TInput): ErrorInstance<TOutput>;
       /** Error name identifier. */

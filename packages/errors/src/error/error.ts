@@ -6,18 +6,17 @@
 
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-import type { AnyErrorFactory, ErrorFactory, ErrorInstance, ParentFor } from './types.js';
+import type {
+  AnyErrorFactory,
+  ErrorFactory,
+  ErrorInstance,
+  ObjectOutputSchema,
+  ParentFor,
+  SchemaErrorFactory,
+} from './types.js';
+import { acceptsFields } from './types.js';
 import { captureStack } from './capture.js';
 import { formatTemplate, hasTemplatePlaceholders } from './format.js';
-
-// The compatibility witness symbol is imported as a runtime value
-// (despite being declared as a `unique symbol`) so that the
-// implementation can attach the witness property to the factory
-// instance. The TypeScript declaration `export declare const
-// acceptsFields: unique symbol;` produces a value-side binding
-// when emitted; importing it via the bare specifier gives us
-// access at runtime.
-import { acceptsFields } from './types.js';
 
 // ============================================================================
 // Node ambient types
@@ -25,6 +24,9 @@ import { acceptsFields } from './types.js';
 
 // The package ships pure ESM and intentionally does not depend on `@types/node`
 // at runtime. For this single use site we declare the narrow subset we need.
+// `process` is read only inside `warnLegacy`, which guards the read with
+// `typeof process !== 'undefined'` to survive environments where the
+// identifier is not present (e.g. browser bundles without a polyfill).
 declare const process:
   | {
       env: Record<string, string | undefined>;
@@ -37,7 +39,9 @@ declare const process:
 
 /**
  * Symbol used to identify factory-created errors.
- * Stored on the error instance to enable reliable instanceof checks.
+ * Stored on the error instance to enable reliable recognition by
+ * `is()`. Uses `Symbol.for` so the same key resolves across
+ * realms/bundles.
  *
  * @internal
  */
@@ -48,18 +52,22 @@ const FACTORY_SYMBOL = Symbol.for('@deessejs/errors/factory');
 // ============================================================================
 
 /**
- * Tracks call sites that still use the legacy message-template form. The
- * runtime emits a single warning per site so consumers can find and migrate
- * their `error({ name, message: 'string' })` calls.
+ * Tracks call sites that still use the legacy string-template form
+ * (`error({ name, message: 'Hello {name}' })`). The runtime emits a
+ * single warning per site so consumers can find and migrate.
  *
  * Set `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES = '1'` to silence.
+ *
+ * The warning is now scoped to the *template* form (string with
+ * `{field}` placeholders) only. A plain string `message` (no
+ * placeholders) and a function-form `message` do not warn.
  *
  * @internal
  */
 const warnedLegacyCallSites = new Set<string>();
 function warnLegacy(callSite: string): void {
-  const legacyGate = (process as { env?: Record<string, string | undefined> } | undefined)?.env
-    ?.DEESSEJS_ERRORS_LEGACY_TEMPLATES;
+  if (typeof process === 'undefined') return;
+  const legacyGate = process.env?.DEESSEJS_ERRORS_LEGACY_TEMPLATES;
   if (legacyGate === '1') return;
   if (warnedLegacyCallSites.has(callSite)) return;
   warnedLegacyCallSites.add(callSite);
@@ -76,11 +84,9 @@ function warnLegacy(callSite: string): void {
 // ============================================================================
 
 /**
- * Run a `StandardSchemaV1` validator and return either the validated output
- * or the failure result. Mirrors the shape documented in `@standard-schema/spec`.
- *
- * The output is typed as `unknown` here; the caller (which knows the
- * concrete `T`) is responsible for the cast.
+ * Run a `StandardSchemaV1` validator and return either the validated
+ * output or the failure result. Reuses `StandardSchemaV1.Result` and
+ * `StandardSchemaV1.Issue` from the spec rather than re-typing them.
  *
  * @internal
  */
@@ -88,28 +94,43 @@ function runSchema(
   schema: StandardSchemaV1,
   input: unknown,
   factoryName: string
-): { ok: true; value: unknown } | { ok: false; issues: ReadonlyArray<unknown> } {
-  const handle = schema;
-  const result = handle['~standard'].validate(input) as unknown;
+): { ok: true; value: unknown } | { ok: false; issues: ReadonlyArray<StandardSchemaV1.Issue> } {
+  const result = schema['~standard'].validate(input);
   if (result && typeof (result as Promise<unknown>).then === 'function') {
     // The schema returned a Promise, but error() is synchronous. We
-    // refuse to wait (that's what "async schemas are not supported"
-    // means). The Promise itself is still in flight; if we let it
-    // settle, its rejection would surface as an unhandledRejection.
-    // Attach a no-op catch so the rejection is contained. Consumers
-    // who need async validation should call the schema directly.
+    // refuse to wait. The Promise itself is still in flight; attach a
+    // no-op catch so its rejection is contained.
     (result as Promise<unknown>).catch(() => undefined);
     throw new ArgsValidationError(
       factoryName,
       [{ message: 'Async validation not supported in error()' }],
-      handle['~standard'].vendor ?? 'unknown'
+      schema['~standard'].vendor ?? 'unknown'
     );
   }
-  const r = result as { value?: unknown; issues?: unknown };
+  const r = result as { value?: unknown; issues?: ReadonlyArray<StandardSchemaV1.Issue> };
   if (r && Array.isArray(r.issues)) {
-    return { ok: false, issues: r.issues as ReadonlyArray<unknown> };
+    return { ok: false, issues: r.issues };
   }
-  return { ok: true, value: r.value as unknown };
+  return { ok: true, value: r.value };
+}
+
+/**
+ * Runtime guard: a schema's validated output must be a non-null,
+ * non-array object. Schemas whose transformation returns a primitive,
+ * null, or array violate the public contract
+ * (`instance.fields: Record<string, unknown>`); the consumer's
+ * downstream code would crash.
+ *
+ * The type-level gate `IsObjectOutput<O>` rejects the same case at
+ * compile time. This guard is the runtime equivalent: it catches
+ * schemas whose output type passed the type check (e.g. through
+ * `any`) but whose value is malformed.
+ */
+function isObjectFields(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  return true;
 }
 
 // ============================================================================
@@ -117,13 +138,45 @@ function runSchema(
 // ============================================================================
 
 /**
+ * Render a list of `StandardSchemaV1.Issue`s as a human-readable
+ * string. Reads each issue's `message` field (the standard guarantees
+ * one) and joins them with newlines. The `.path` is included when
+ * present so the consumer can locate the failing input.
+ *
+ * The function is defensive: a malformed issue (no `message`,
+ * non-string `message`) does not throw. The audit found that the
+ * previous `JSON.stringify(issues, null, 2)` would itself throw on a
+ * circular issue, hiding the `ArgsValidationError` behind a
+ * `TypeError`.
+ */
+const renderIssues = (issues: ReadonlyArray<StandardSchemaV1.Issue>): string => {
+  const parts: string[] = [];
+  for (const issue of issues) {
+    if (issue === null || typeof issue !== 'object') {
+      parts.push(String(issue));
+      continue;
+    }
+    const message = typeof issue.message === 'string' ? issue.message : '';
+    const path = Array.isArray(issue.path) ? issue.path.join('.') : '';
+    parts.push(path ? `${path}: ${message}` : message);
+  }
+  return parts.join('\n');
+};
+
+/**
  * Thrown when args supplied to a Standard Schema-backed factory fail
  * validation. Wraps the validator's issues verbatim so consumers can
  * introspect or serialize them.
  *
  * Catching this error lets the consumer decide whether to surface a
- * user-facing message, log to a structured sink, or convert to a different
- * format. The validator's raw output is exposed via `.issues` and `.vendor`.
+ * user-facing message, log to a structured sink, or convert to a
+ * different format. The validator's raw output is exposed via
+ * `.issues` and `.vendor`.
+ *
+ * The `message` is built from the issues' `.message` fields rather
+ * than `JSON.stringify` so a circular issue (or any issue whose
+ * structure is hostile to JSON) does not turn the validation error
+ * into a `TypeError` from the formatter.
  *
  * @example
  * ```ts
@@ -140,8 +193,8 @@ function runSchema(
  *   ValidationError({ field: 1 as unknown as string });
  * } catch (e) {
  *   if (e instanceof Error && e.name === 'ArgsValidationError') {
- *     console.error(e.message); // "Argument validation failed for ValidationError: ..."
- *     console.error(e.issues); // raw issues
+ *     console.error(e.message);
+ *     console.error(e.issues);
  *   }
  * }
  * ```
@@ -152,13 +205,17 @@ export class ArgsValidationError extends Error {
   /** The vendor of the Standard Schema that produced the failure. */
   public readonly vendor: string;
   /**
-   * The validator's raw failure result. Typed loosely because each validator
-   * has its own issue shape; consult your validator's docs for details.
+   * The validator's raw failure result. Typed as
+   * `ReadonlyArray<StandardSchemaV1.Issue>` so consumers can read
+   * `.message` and `.path` without re-casting.
    */
-  public readonly issues: ReadonlyArray<unknown>;
-  /** Internal constructor, but exported as a class so consumers can `instanceof`. */
-  public constructor(source: string, issues: ReadonlyArray<unknown>, vendor: string) {
-    super(`Argument validation failed for "${source}": ${JSON.stringify(issues, null, 2)}`);
+  public readonly issues: ReadonlyArray<StandardSchemaV1.Issue>;
+  public constructor(
+    source: string,
+    issues: ReadonlyArray<StandardSchemaV1.Issue>,
+    vendor: string
+  ) {
+    super(`Argument validation failed for "${source}": ${renderIssues(issues)}`);
     this.name = 'ArgsValidationError';
     this.source = source;
     this.issues = issues;
@@ -172,32 +229,131 @@ export class ArgsValidationError extends Error {
 // ============================================================================
 
 /**
- * Format the call-site string used in deprecation warnings. Inlined here
- * (rather than importing `callsites`) to keep the bundle small.
+ * Format the call-site string used in deprecation warnings.
  *
  * @internal
  */
 function formatCallSite(): string {
   const err = new Error();
   const stack = err.stack ?? '';
-  // Walk past the top frames (this function and its callers in error.ts) and
-  // capture the first userland frame. The format is V8-style
-  // "    at file:line:col".
   const match = stack.match(/^\s+at\s+(.+?):\d+:\d+\s*$/m);
   if (match && match[1]) return match[1];
   return 'unknown';
 }
 
 /**
- * Creates an error factory function for defining typed, structured errors.
+ * The normalized view of the public config that the implementation
+ * body operates on. The `(config: any)` signature at the
+ * implementation boundary exists so the strict public overloads are
+ * TS2394-assignable, but the body does not read field-level types
+ * from it. Destructuring into a `NormalizedConfig` confines the
+ * `any` to a single structural read: the four fields below are
+ * typed independently, so the cast does not propagate into the rest
+ * of the body.
  *
- * Two configurations are supported:
+ * @internal
+ */
+interface NormalizedConfig {
+  name: string;
+  fields: StandardSchemaV1 | undefined;
+  inherits: AnyErrorFactory | readonly AnyErrorFactory[] | undefined;
+  message: string | ((data: unknown) => string) | undefined;
+}
+
+const normalize = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  raw: any
+): NormalizedConfig => ({
+  name: typeof raw?.name === 'string' ? raw.name : '',
+  fields: raw?.fields,
+  inherits: raw?.inherits,
+  message: raw?.message,
+});
+
+/**
+ * Fields required to assemble a complete `ErrorInstance`. Lifted
+ * from the body of `error()` so the helper can construct the
+ * instance once, with all fields populated before any consumer
+ * reads it. The previous version assigned `.fields`, `.notes`,
+ * `.cause`, etc. on a `new Error(...)` cast, leaving a window
+ * where the type system believed the instance was complete but
+ * some fields were still undefined.
+ *
+ * @internal
+ */
+interface InstanceSeed {
+  name: string;
+  message: string;
+  fields: Record<string, unknown>;
+  inherits: AnyErrorFactory | readonly AnyErrorFactory[] | undefined;
+  stack: string;
+}
+
+/**
+ * Builds a complete `ErrorInstance` from a seed + the factory
+ * reference. The factory is attached via a non-writable property
+ * descriptor on the FACTORY_SYMBOL key, so the marker cannot be
+ * reassigned by a hostile object. Returns a value typed as the
+ * full `ErrorInstance<Record<string, unknown>>` extension (the
+ * body is type-erased; the precise shape is conveyed through
+ * the public overloads' return type).
+ */
+const buildErrorInstance = (
+  factory: AnyErrorFactory,
+  seed: InstanceSeed
+): ErrorInstance<Record<string, unknown>> => {
+  const instance = new Error(seed.message) as ErrorInstance<Record<string, unknown>>;
+  // The native Error carries its own `.message`; we don't reassign it.
+  Object.defineProperty(instance, 'name', {
+    value: seed.name,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+  instance.fields = seed.fields;
+  instance.notes = [];
+  instance.cause = null;
+  instance.context = null;
+  instance.inherits = seed.inherits;
+  instance.stack = seed.stack;
+  instance.from = (cause: Error): ErrorInstance<Record<string, unknown>> => {
+    instance.cause = cause;
+    return instance;
+  };
+  instance.addNote = (note: string): ErrorInstance<Record<string, unknown>> => {
+    instance.notes.push(note);
+    return instance;
+  };
+  // Non-writable marker: a consumer or hostile object cannot
+  // reassign this slot to make the instance pass `is()` checks
+  // for a different factory.
+  Object.defineProperty(instance, FACTORY_SYMBOL, {
+    value: factory,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+  return instance;
+};
+
+/**
+ * Creates an error factory function for defining typed, structured
+ * errors. Two configurations are supported:
  *
  * **Standard path** (RFC 0001): pass `fields: standardSchema` and a
- * function-form `message`. Args are validated at instantiation.
+ * function-form `message`. Args are validated at instantiation. The
+ * schema's `InferOutput` is constrained to a non-null, non-array
+ * object at the type level via `ObjectOutputSchema`, and a runtime
+ * guard rejects malformed outputs.
  *
- * **Legacy path** (deprecated in 1.4.0, removed in 2.0.0): pass a string
- * `message`. No validation runs.
+ * **Legacy path** (deprecated in 1.4.0, removed in 2.0.0): pass a
+ * string `message`. No validation runs.
+ *
+ * The schema overload returns `SchemaErrorFactory<I, O>`, whose
+ * call signature is *not* conditional: a factory with a schema
+ * always requires its input, even for `z.object({})`. The no-schema
+ * overload returns `ErrorFactory<T>`, the legacy form, which keeps
+ * the optional-input form for the no-input legacy case.
  *
  * @param config - Error configuration
  *
@@ -226,41 +382,20 @@ function formatCallSite(): string {
  * });
  * ```
  */
-// The R7 design replaces the R6 conditional return type with a
-// parameter-level constraint. The compatibility witness
-// `[acceptsFields]?: (fields: Output) => void` declared on every
-// `ErrorFactory<_, Output>` is a function-typed property, so
-// under `strictFunctionTypes` its parameter is checked
-// contravariantly. A leaf whose output is `LeafOutput` can use a
-// parent only if `[LeafOutput] extends [Output]`, where `Output`
-// is the parent's output.
-//
-// To exercise this, the `inherits?` parameter of each public
-// overload is typed as `ParentFor<NoInfer<Output>>` (or
-// `ParentFor<NoInfer<T>>` in the no-schema overload). The
-// `NoInfer` keeps the leaf's output from being inferred from the
-// parent — the leaf is still driven by the schema (or the
-// explicit generic).
-//
-// The implementation signature uses `(config: any)` and returns
-// `AnyErrorFactory`. This is an explicit internal boundary: the
-// strict public overloads must be assignable to a permissive
-// implementation signature, otherwise TS2394 fires at the
-// overload declarations themselves. The `any` here is *not*
-// type erasure of the constraint — the constraint runs at the
-// public overloads' parameter types, not at the implementation.
-// The implementation body operates on `Record<string, unknown>`
-// and never reads field-level types.
+// R7 + R8: the schema overload constrains the schema's output to a
+// non-null, non-array object via `ObjectOutputSchema`. The `inherits`
+// parameter is constrained via `ParentFor<NoInfer<...>>` (a
+// contravariance witness — requires `strictFunctionTypes`).
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function error<S extends StandardSchemaV1<any, any>>(config: {
+export function error<S extends ObjectOutputSchema<StandardSchemaV1<any, any>>>(config: {
   name: string;
   fields: S;
   message: (data: StandardSchemaV1.InferOutput<S>) => string;
   inherits?:
     | ParentFor<NoInfer<StandardSchemaV1.InferOutput<S>>>
     | readonly ParentFor<NoInfer<StandardSchemaV1.InferOutput<S>>>[];
-}): ErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
+}): SchemaErrorFactory<StandardSchemaV1.InferInput<S>, StandardSchemaV1.InferOutput<S>>;
 
 export function error<T extends Record<string, unknown> = Record<string, never>>(config: {
   name: string;
@@ -269,41 +404,31 @@ export function error<T extends Record<string, unknown> = Record<string, never>>
   inherits?: ParentFor<NoInfer<T>> | readonly ParentFor<NoInfer<T>>[];
 }): ErrorFactory<T>;
 
-// The R7 implementation signature is `(config: any)` because the
-// public overloads (above) must be assignable to it (TS2394-safe).
-// The `any` here is an explicit internal boundary: the constraint
-// runs at the public overloads' parameter types, not at the
-// implementation. Two `eslint-disable` lines below are necessary:
-// one for the function declaration header and one for the
-// `config: any` parameter.
+// The implementation signature is `(config: any)` because the public
+// overloads (above) must be assignable to it (TS2394-safe). The
+// `any` is an explicit internal boundary: the constraint runs at
+// the public overloads' parameter types, not at the implementation.
+// The body destructures through `normalize()` so the `any` is read
+// once and confined; the rest of the body operates on a typed
+// `NormalizedConfig`.
 export function error(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: any
 ): AnyErrorFactory {
-  const { name, fields, inherits, message } = config;
+  const { name, fields, inherits, message } = normalize(config);
 
-  // Phase 3: validation is gated on the presence of `fields` alone,
-  // not on the conjunction with a function-form `message`. A schema
-  // without a function message still validates; the resulting error
-  // carries the validated fields and the error name as the message.
   const hasSchema = fields !== undefined;
   const hasFunctionMessage = typeof message === 'function';
 
-  /**
-   * Error factory function - creates error instances.
-   */
   const ErrorFactoryInstance: ErrorFactory<Record<string, unknown>, Record<string, unknown>> = (
     input?: Partial<Record<string, unknown>>
   ): ErrorInstance<Record<string, unknown>> => {
-    // Runtime safety net for the audit's P1 #1 finding: when a
-    // factory carries a schema, the input is required at the call
-    // site. The type signature accepts `input?` for backward
-    // compatibility, but the runtime throws if the consumer calls
-    // without arguments. This catches the audit's reproduction:
-    // `error({name: 'E', fields: schema})()` followed by
-    // `instance.fields.x` would crash with a generic TypeError
-    // on `undefined`; this version makes the failure explicit
-    // and localized.
+    // Runtime safety net: when a factory carries a schema, the
+    // input is required at the call site. The schema path now also
+    // has a non-optional call signature (see `SchemaErrorFactory`),
+    // so this is the safety net for JS callers and any
+    // `error({fields: schema})()` call that bypassed the type
+    // system.
     if (input === undefined && hasSchema) {
       throw new TypeError(
         `error("${name}") was called with no arguments. The factory ` +
@@ -316,100 +441,69 @@ export function error(
     let errorMessage = name;
 
     if (hasSchema) {
-      // Unreachable at runtime when isStandard is true; the overloads
-      // guarantee that, when `fields` is present, we go through here.
       if (fields === undefined) {
         throw new Error('Internal: schema branch entered without fields');
       }
       const result = runSchema(fields, input, name);
       if (!result.ok) {
+        throw new ArgsValidationError(name, result.issues, fields['~standard'].vendor);
+      }
+      if (!isObjectFields(result.value)) {
+        // Runtime mirror of the type-level `IsObjectOutput` gate.
+        // A schema whose validated output is null, a primitive, or
+        // an array violates the `instance.fields: Record<string,
+        // unknown>` contract. The previous version silently coerced
+        // to `{}` via `?? {}`, hiding the bug from the consumer.
         throw new ArgsValidationError(
           name,
-          result.issues as ReadonlyArray<unknown>,
+          [
+            {
+              message:
+                'Schema output must be a non-null object. The transformation returned ' +
+                (result.value === null
+                  ? 'null'
+                  : Array.isArray(result.value)
+                    ? 'an array'
+                    : `a ${typeof result.value} value`) +
+                '.',
+            },
+          ],
           fields['~standard'].vendor
         );
       }
-      fieldsData = (result.value as Record<string, unknown>) ?? {};
+      fieldsData = result.value;
       if (hasFunctionMessage && typeof message === 'function') {
         errorMessage = (message as (data: Record<string, unknown>) => string)(fieldsData);
       }
-      // else: errorMessage stays as the factory name. The validated
-      // fields are still on the instance; consumers that want a
-      // rendered message can supply `message`.
     } else {
       // Legacy path — no schema. Accepts a string template, a plain
-      // string, or a function-form message. Function-form is now
-      // invoked (the audit's P2 finding: it was previously dropped on
-      // the floor, leaving the factory's `name` as the rendered
-      // message). The cast mirrors the schema branch's invocation at
-      // line ~311.
-      fieldsData = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+      // string, or a function-form message.
+      if (input !== undefined && typeof input === 'object' && input !== null) {
+        fieldsData = input as Record<string, unknown>;
+      }
       if (typeof message === 'string' && hasTemplatePlaceholders(message)) {
+        // The legacy deprecation is for the *template* form: a
+        // string `message` with `{field}` placeholders. A plain
+        // string (no placeholders) and a function-form message do
+        // not warn.
+        warnLegacy(formatCallSite());
         errorMessage = formatTemplate(message, fieldsData);
       } else if (typeof message === 'string') {
         errorMessage = message;
       } else if (hasFunctionMessage && typeof message === 'function') {
         errorMessage = (message as (data: Record<string, unknown>) => string)(fieldsData);
       }
-      // The deprecation marker is gated by the warning once per call site.
-      // Set `process.env.DEESSEJS_ERRORS_LEGACY_TEMPLATES = "1"` to silence.
-      warnLegacy(formatCallSite());
     }
 
-    // Capture stack trace.
-    // Phase 11: pass the *factory* itself (the closure that the
-    // consumer invokes) as the second argument so V8's
-    // captureStackTrace excludes this factory's frames from the
-    // captured trace. Passing the outer `error` function would
-    // exclude all frames because `error` is not in the call chain
-    // at runtime — the consumer calls the factory returned by
-    // `error()`, not `error` itself. On non-V8 engines the
-    // argument is ignored and the fallback path post-processes
-    // the string.
-    // Cast: ErrorFactoryInstance is an overloaded callable;
-    // captureStackTrace accepts any callable.
-    const stack = captureStack(
-      errorMessage,
-      ErrorFactoryInstance as (...args: unknown[]) => unknown
-    );
+    const stack = captureStack(errorMessage, ErrorFactoryInstance);
 
-    // Create error instance using native Error
-    const instance = new Error(errorMessage) as ErrorInstance<Record<string, unknown>>;
-    instance.name = name;
-    instance.fields = fieldsData;
-    instance.notes = [];
-    instance.cause = null;
-    instance.context = null;
-    instance.inherits = inherits ?? undefined;
-    instance.stack = stack;
-
-    // Add .from() method for exception chaining. Phase 4b: only
-    // `.cause` is mutated. The historical chain (the deprecated
-    // `causes: Error[]` field) is reconstructed on demand by
-    // `causes(error)` in src/causes/index.ts. This keeps the type
-    // model honest: an instance has a single direct cause, not
-    // a flat history.
-    instance.from = (cause: Error): ErrorInstance<Record<string, unknown>> => {
-      instance.cause = cause;
-      return instance;
-    };
-
-    // Add .addNote() method for runtime context (PEP 678)
-    instance.addNote = (note: string): ErrorInstance<Record<string, unknown>> => {
-      instance.notes.push(note);
-      return instance;
-    };
-
-    // Mark this instance as created by this factory (for is() checks).
-    // Cast: ErrorFactoryInstance's call signature is conditional on
-    // TInput (empty vs non-empty), so the simplest way to assign through
-    // the symbol-keyed marker is via `unknown` and then a single callable
-    // shape that captureStack accepts.
-    (instance as unknown as Record<typeof FACTORY_SYMBOL, (...args: never[]) => unknown>)[
-      FACTORY_SYMBOL
-    ] = ErrorFactoryInstance as unknown as (...args: never[]) => unknown;
-
-    return instance;
+    return buildErrorInstance(ErrorFactoryInstance, {
+      name,
+      message: errorMessage,
+      fields: fieldsData,
+      inherits,
+      stack,
+    });
   };
 
   // Attach metadata to the factory function
@@ -422,12 +516,7 @@ export function error(
 
   // R7 compatibility witness: a hidden function-typed property used
   // by the type checker to enforce inheritance compatibility
-  // contravariantly. The function is never called at runtime — the
-  // value is purely a marker that satisfies the `[acceptsFields]?`
-  // shape declared on `ErrorFactory`. The parameter type is
-  // `unknown` here because the implementation signature is
-  // type-erased; the actual contravariance check happens at the
-  // public overloads via `ParentFor<NoInfer<...>>`.
+  // contravariantly. The function is never called at runtime.
   Object.defineProperty(ErrorFactoryInstance, acceptsFields, {
     value: (_fields: unknown) => undefined,
     writable: false,
@@ -435,24 +524,14 @@ export function error(
     configurable: false,
   });
 
-  // Phase 4: copy the inherits list at definition so subsequent
-  // mutations of the caller's array do not retroactively change
-  // the classification. The copy is then frozen (Object.freeze
-  // below) so consumers cannot mutate the factory's own copy
-  // either. A reassignment of `factory.inherits = ...` is
-  // rejected by the freeze.
-  //
-  // Round 2: the caller's array itself is also frozen in place.
-  // The earlier snapshot-only freeze left a window where mutating
-  // the caller's array between factory construction and the first
-  // invocation could desynchronize the runtime validation block
-  // (which read the closure) from `is()` (which read the frozen
-  // snapshot). Freezing the input reference closes the window at
-  // the source — any later mutation now throws in strict mode.
+  // R8: keep a single frozen snapshot of the parents list. The
+  // previous version also froze the caller's array, which surprised
+  // consumers who passed a shared list. With the cascade machinery
+  // removed, a single frozen snapshot is sufficient: the runtime
+  // walk in `is()` reads only the factory's own copy, and
+  // reassignment of `factory.inherits` is rejected by the
+  // `Object.freeze` below.
   if (inherits !== undefined) {
-    if (Array.isArray(inherits)) {
-      Object.freeze(inherits);
-    }
     const inheritsSnapshot: AnyErrorFactory | readonly AnyErrorFactory[] = Array.isArray(inherits)
       ? ([...inherits] as readonly AnyErrorFactory[])
       : inherits;
@@ -474,12 +553,11 @@ export function error(
     ).rawMessage = message;
   }
 
-  // Phase 4: freeze the factory's metadata so consumers cannot
-  // mutate classification at runtime. The factory's `name`, `inherits`,
+  // Freeze the factory's metadata. The factory's `name`, `inherits`,
   // and `schema` are part of the type contract and must not change
   // after construction. The `rawMessage` and the function name are
   // already non-writable via defineProperty above.
-  Object.freeze(ErrorFactoryInstance as unknown as object);
+  Object.freeze(ErrorFactoryInstance);
 
   return ErrorFactoryInstance;
 }

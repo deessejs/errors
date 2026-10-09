@@ -10,6 +10,7 @@ import { describe, it, expectTypeOf } from 'vitest';
 import { z } from 'zod';
 import * as v from 'valibot';
 import { type } from '@ark/type';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { error, raise, ArgsValidationError } from '../../src/index.js';
 
 describe('error() type inference (Standard Schema mode)', () => {
@@ -164,7 +165,10 @@ describe('ArgsValidationError type contract', () => {
     const e = new ArgsValidationError('X', [{ message: 'oops' }], 'mock');
     expectTypeOf(e).toMatchTypeOf<Error>();
     expectTypeOf(e.source).toEqualTypeOf<string>();
-    expectTypeOf(e.issues).toEqualTypeOf<ReadonlyArray<unknown>>();
+    // R8: issues are typed as `ReadonlyArray<StandardSchemaV1.Issue>`
+    // (not `ReadonlyArray<unknown>`) so consumers can read `.message`
+    // and `.path` without re-casting.
+    expectTypeOf(e.issues).toEqualTypeOf<ReadonlyArray<StandardSchemaV1.Issue>>();
     expectTypeOf(e.vendor).toEqualTypeOf<string>();
   });
 });

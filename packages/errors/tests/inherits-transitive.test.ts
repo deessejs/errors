@@ -98,10 +98,12 @@ describe('R5: is() walks transitive chains without cascade', () => {
     expect(is(ok, Tip)).toBe(true);
   });
 
-  it("rejects later in-place mutation of the caller's inherits array", () => {
-    // Phase 4 freeze: the caller's array is `Object.freeze`d in
-    // place at construction time. Any later in-place mutation
-    // throws in strict mode.
+  it("preserves classification across caller's inherits array mutations", () => {
+    // R8: the factory snapshots the inherits list at construction
+    // time. The caller's array is no longer frozen in place — that
+    // side effect was surprising consumers who passed a shared
+    // list. The classification is preserved because `is()` walks
+    // the factory's own (frozen) copy.
     const Parent = error({
       name: 'Parent',
       fields: z.object({ id: z.string() }),
@@ -121,16 +123,17 @@ describe('R5: is() walks transitive chains without cascade', () => {
     expect(is(instance, Parent)).toBe(true);
     expect(is(instance, Other)).toBe(false);
 
-    expect(() => {
-      parents.length = 0;
-    }).toThrow(TypeError);
-    expect(() => {
-      parents.splice(0, 1, Other);
-    }).toThrow(TypeError);
-    expect(() => {
-      parents.push(Other);
-    }).toThrow(TypeError);
+    // Mutations on the caller's array are now allowed and have no
+    // effect on the existing classification.
+    parents.length = 0;
+    expect(is(instance, Parent)).toBe(true);
+    expect(is(instance, Other)).toBe(false);
 
+    parents.splice(0, 0, Other);
+    expect(is(instance, Parent)).toBe(true);
+    expect(is(instance, Other)).toBe(false);
+
+    parents.push(Other);
     expect(is(instance, Parent)).toBe(true);
     expect(is(instance, Other)).toBe(false);
   });

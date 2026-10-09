@@ -14,14 +14,20 @@
 
 // `Error.captureStackTrace` is a V8 extension, not in lib.dom or
 // lib.es2022. We feature-detect it at module load time and cast
-// through `unknown` to keep the call site terse.
+// through `unknown` to keep the call site terse. The `Function`
+// type for the `exclude` parameter is intentional: V8's spec
+// accepts any callable, and `Function` is the only single-token
+// name in lib.es2022 that describes it without enumerating every
+// conceivable signature.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+type AnyFunction = Function;
 const errorWithCapture = Error as unknown as {
-  captureStackTrace?: (target: object, exclude?: (...args: unknown[]) => unknown) => void;
+  captureStackTrace?: (target: object, exclude?: AnyFunction) => void;
 };
 
 const hasV8Capture = typeof errorWithCapture.captureStackTrace === 'function';
 
-const captureStackV8 = (message: string, exclude: (...args: unknown[]) => unknown): string => {
+const captureStackV8 = (message: string, exclude: AnyFunction): string => {
   // V8's captureStackTrace mutates the target in place to set
   // `.stack`. The exclude argument drops frames above it in the
   // call stack. We build a throwaway holder, capture into it, and
@@ -66,7 +72,7 @@ const captureStackFallback = (message: string): string => {
  *
  * @internal
  */
-const captureStack = (message: string, exclude?: (...args: unknown[]) => unknown): string => {
+const captureStack = (message: string, exclude?: AnyFunction): string => {
   if (hasV8Capture && exclude) {
     return captureStackV8(message, exclude);
   }
