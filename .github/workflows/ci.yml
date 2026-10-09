@@ -249,6 +249,10 @@ jobs:
   docs-examples-typecheck:
     name: Docs examples type-check
     runs-on: ubuntu-latest
+    # Restrict the GITHUB_TOKEN to read-only; the job only
+    # checks out code and runs tsc, no write access needed.
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
