@@ -34,15 +34,16 @@ describe('R6 is() narrows to the queried factory output', () => {
     });
     const caught: unknown = Child({ n: 1, extra: 'x' });
     if (is(caught, NumberParent)) {
-      // The narrowed type is the parent's own output, not the
-      // child's, and not an intersection.
+      // R6 contract: is() narrows to the queried factory's own
+      // output, not the intersection with the leaf. The child
+      // is statically assignable to the parent (its own output
+      // extends the parent's), so the parent contract is
+      // satisfied by construction.
       expectTypeOf(caught.fields.n).toEqualTypeOf<number>();
-      // `extra` is the child's field and is not on the parent.
-      // We accept either that the narrowed type is just the
-      // parent output, or that the field is unreachable.
-      // The type checker collapses the intersection; checking
-      // for `undefined` is the only safe narrowing.
-      expectTypeOf(caught.fields.extra).toEqualTypeOf<string | undefined>();
+      // The whole `fields` shape is the parent's: just `{ n: number }`.
+      // Accessing `extra` (a child-only field) is a type error.
+      expectTypeOf(caught.fields).toEqualTypeOf<{ n: number }>();
+      expectTypeOf(caught.fields).not.toHaveProperty('extra');
     }
   });
 
