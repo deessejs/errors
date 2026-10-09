@@ -118,7 +118,16 @@ function runSchema(
  * @internal
  */
 type ShapeKind =
-  'number' | 'string' | 'boolean' | 'bigint' | 'null' | 'array' | 'object' | 'undefined';
+  | 'number'
+  | 'string'
+  | 'boolean'
+  | 'bigint'
+  | 'null'
+  | 'array'
+  | 'object'
+  | 'function'
+  | 'symbol'
+  | 'undefined';
 
 function kindOf(value: unknown): ShapeKind {
   if (value === null) return 'null';
@@ -231,7 +240,9 @@ function validateAncestors(
   data: Record<string, unknown>,
   seen: Set<AnyErrorFactory>,
   childKeys: ReadonlySet<string> | null,
-  parentWrites: Map<string, ShapeKind>
+  parentWrites: Map<string, ShapeKind>,
+  leafSchema: StandardSchemaV1 | undefined,
+  leafName: string
 ): Record<string, unknown> {
   const rootInherits = root.inherits;
   if (rootInherits === undefined) return data;
@@ -267,6 +278,34 @@ function validateAncestors(
       const transformed = result.value as Record<string, unknown> | undefined;
       if (transformed !== undefined) {
         const vendor = (parentSchema as StandardSchemaV1)['~standard'].vendor;
+        // Round 4 strict-by-default for the no-schema leaf path.
+        // The runtime cannot recover the keys of a manual generic
+        // `<T>` (TypeScript erases them), so when the leaf has no
+        // schema, ANY parent write is a potential contract
+        // violation: the consumer may have typed `<{n: string}>`
+        // and a parent might transform `n`. We cannot prove the
+        // violation without the leaf's schema, so we throw
+        // conservatively. Consumers who want permissive behaviour
+        // on this path can either drop the manual generic (and
+        // use the no-generic form `error({name:'X', inherits: P})`
+        // — which has no contract) or add a schema to the leaf
+        // (so the leaf re-validation block above can verify
+        // structural compatibility). The exception is a parent
+        // whose `result.value` is empty (no writes), which is
+        // always safe: a non-mutating schema like `z.object({})`
+        // does not violate any contract.
+        if (leafSchema === undefined) {
+          throw new ArgsValidationError(
+            parent.name,
+            [
+              {
+                message: `parent "${parent.name}" writes to a no-schema child "${leafName}"; per-key protection requires a schema on the child (or drop the manual generic)`,
+                path: [],
+              },
+            ],
+            vendor
+          );
+        }
         for (const key of Object.keys(transformed)) {
           const next = transformed[key];
           const nextKind = kindOf(next);
@@ -325,13 +364,41 @@ function validateAncestors(
           data = { ...data, [key]: next };
         }
       }
+
+      // Round 4: re-validate the merged data against the leaf's
+      // schema. The leaf's schema is the oracle for the user's
+      // invariant: every instance must simultaneously satisfy the
+      // types of the child and the parents recognized by `is()`.
+      // The leaf's schema knows about literals (`z.literal('ok')`),
+      // object shapes (`z.object({id: z.string()})`), array shapes,
+      // and nested structures — none of which the kind gate can
+      // detect. Running the leaf's schema on the merged data is
+      // the only vendor-neutral oracle.
+      if (leafSchema !== undefined) {
+        const leafResult = runSchema(leafSchema, data, leafName);
+        if (!leafResult.ok) {
+          throw new ArgsValidationError(
+            parent.name,
+            leafResult.issues as ReadonlyArray<unknown>,
+            (leafSchema as StandardSchemaV1)['~standard'].vendor
+          );
+        }
+        // Re-apply the leaf's transformed output (in case the leaf
+        // applies defaults or strips unknown keys). This keeps
+        // the cascade consistent: every key the leaf re-validates
+        // is the value the next parent's runSchema will see.
+        const leafTransformed = leafResult.value as Record<string, unknown> | undefined;
+        if (leafTransformed !== undefined) {
+          data = leafTransformed;
+        }
+      }
     }
     // Recurse into the parent's own inherits. The walk matches the
     // type-level `ExtractFactoryFields` recursion in is/index.ts:42-118,
     // so the runtime narrowing and the runtime fields agree. The
     // childKeys set is rooted at the leaf factory, so the same
     // restriction applies transitively.
-    data = validateAncestors(parent, data, seen, childKeys, parentWrites);
+    data = validateAncestors(parent, data, seen, childKeys, parentWrites, leafSchema, leafName);
   }
   return data;
 }
@@ -544,6 +611,19 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
     // invariant via the childKeys set computed above. When T is the
     // empty shape, childKeys is `null` and the cascade falls back to
     // the per-key shape-kind gate.
+    //
+    // Round 4: the leaf's schema is the oracle for the deep-shape
+    // contract. After every parent writes, the cascade re-validates
+    // the merged data against the leaf's schema. For the no-schema
+    // path, we cannot re-validate; the strict-by-default rule for
+    // the no-schema leaf applies *per-parent* inside
+    // `validateAncestors`: a parent that carries a schema and
+    // writes any key is rejected when the leaf has no schema (we
+    // cannot tell at runtime whether the consumer declared a
+    // manual generic, so the conservative answer is to forbid any
+    // schema-bearing parent from writing to a no-schema leaf).
+    // All-no-schema inheritance remains permissive under the
+    // shape gate.
     const rootInherits = (ErrorFactoryInstance as ErrorFactory<T>).inherits;
     if (rootInherits !== undefined) {
       fieldsData = validateAncestors(
@@ -551,7 +631,9 @@ export function error<T extends Record<string, unknown> = Record<string, unknown
         fieldsData,
         new Set<AnyErrorFactory>([ErrorFactoryInstance as AnyErrorFactory]),
         childKeys,
-        new Map<string, ShapeKind>()
+        new Map<string, ShapeKind>(),
+        hasSchema ? fields : undefined,
+        name
       );
     }
 

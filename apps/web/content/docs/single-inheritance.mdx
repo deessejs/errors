@@ -121,7 +121,17 @@ When a parent factory carries a Standard Schema, the child must produce a `field
 
 ## Transformation Compatibility
 
-The cascade also enforces that an instance simultaneously satisfies the leaf's contract AND every ancestor's `InferOutput`. Two scenarios would otherwise be silently accepted and are now rejected at the factory call site:
+The cascade enforces that an instance simultaneously satisfies the leaf's contract AND every ancestor's `InferOutput`. The cascade runs three checks in order:
+
+1. **Per-key shape kind (Round 3).** A parent whose schema writes the same key the leaf declared, with a different shape kind (number vs. string, object vs. array), throws `ArgsValidationError` with `source: <ancestor.name>`, `issues[0].path: ['n']`, and `from` / `to` shape kinds.
+
+2. **Leaf re-validation oracle (Round 4).** After every parent writes, the cascade re-validates the merged `data` against the leaf's schema. The leaf's schema is the only vendor-neutral oracle that can detect:
+   - **Object shape mismatches.** `{id: string}` vs `{count: number}` — both are "object" at the `typeof` level, but the leaf's `z.object({id: z.string()})` rejects the parent's `{count: 1}`.
+   - **Literal value mismatches.** `z.literal('ok')` vs `z.literal('bad')` — both are strings at the `typeof` level, but the leaf's `z.literal('ok')` rejects `'bad'`.
+   - **Array element shapes.** `z.array(z.object({id: z.string()}))` vs `z.array(z.object({count: z.number()}))` — both are arrays, but the leaf's element schema rejects the parent's elements.
+   - **Nested structures.** `data.user.id` vs `data.user.name` — the kind gate passes at every level, but the leaf's nested `z.object` rejects the parent's `name` field.
+
+3. **Strict-by-default on the manual-generic path (Round 4).** When the leaf declares a manual generic (`error<{n: string}>()`) but no schema, the runtime cannot recover the generic's keys (TypeScript erases them). The cascade now rejects any parent that writes a key when the leaf has no schema — strict by default. Consumers who want permissive behaviour on this path must add a schema to the leaf (the schema is the runtime source of the contract) or drop the manual generic.
 
 ```ts title="incompatible-rewrite.ts"
 // Scenario 1: an ancestor's schema rewrites a key the leaf declared.
@@ -146,7 +156,7 @@ Leaf({ n: '42' }); // throws ArgsValidationError
 
 Same-kind transitions are still allowed. If the leaf's schema and the ancestor's schema agree on the kind (e.g. both produce `number`), the cascade applies the ancestor's transformation without throwing — the leaf's narrowed type and the instance's actual type still agree.
 
-For consumers who declared a leaf with the manual generic `error<{n: string}>()` but no schema: the runtime cannot recover the generic's keys (TypeScript erases them), so the leaf falls back to the shape gate. The generic remains a type-level guarantee; the runtime enforces it only when a schema is also present.
+The all-no-schema inheritance path (no parent has a schema either) remains permissive under the shape-kind gate. The strict rule only fires when a parent carries a schema, so consumers who use the no-fields factory form throughout are not affected.
 
 ## See Also
 

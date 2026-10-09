@@ -135,7 +135,7 @@ When parents in a multiple-inheritance chain carry Standard Schemas, the child m
 
 ## Transformation Compatibility Across Siblings
 
-When two parents in a multi-inheritance chain transform the same key in incompatible ways, the cascade now rejects the call. The shape gate runs at the parent-to-parent level: a parent that overwrites a key already written by an earlier parent in the cascade with a different shape kind throws `ArgsValidationError` with `source: <parent.name>`, `issues[0].path: [<key>]`, and `from` / `to` shape kinds.
+When two parents in a multi-inheritance chain transform the same key in incompatible ways, the cascade now rejects the call. The cascade runs three checks in order: per-key shape kind (Round 3), leaf re-validation (Round 4), and strict-by-default on the manual-generic path (Round 4). A parent that overwrites a key already written by an earlier parent in the cascade with a different shape kind throws `ArgsValidationError` with `source: <parent.name>`, `issues[0].path: [<key>]`, and `from` / `to` shape kinds.
 
 ```ts title="sibling-incompatible.ts"
 // Two parents in a multi-inheritance chain, each with a
@@ -156,12 +156,21 @@ const B = error({
   fields: z.object({ n: z.string() }),
   message: (d) => d.n,
 });
-const C = error({ name: 'C', inherits: [A, B] });
+const C = error({
+  name: 'C',
+  fields: z.object({ n: z.coerce.number() }),
+  message: (d) => String(d.n),
+  inherits: [A, B],
+});
 
 C({ n: '42' }); // throws ArgsValidationError, source: 'B'
 ```
 
 Same-kind sibling transitions (e.g. both produce `number`) remain valid. The shape gate only fires on cross-category rewrites. Parents that add disjoint keys still merge freely.
+
+### Deep-Shape Contract (Round 4)
+
+The Round 3 shape gate is too coarse for object-shape mismatches, literal value mismatches, array element shapes, and nested structures. The leaf's schema is the only vendor-neutral oracle that can detect these cases. After every parent writes, the cascade re-validates the merged `data` against the leaf's schema. The leaf re-validation closes the "two objects can have incompatible structures" gap, the "two strings can be different literals" gap, the "array of incompatible elements" gap, and the "nested structural difference" gap. The cost is one extra `runSchema` call per parent per instantiation.
 
 ## See Also
 

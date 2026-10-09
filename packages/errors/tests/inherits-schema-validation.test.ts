@@ -49,7 +49,15 @@ describe('inherits: parent schema validates child fields', () => {
       fields: z.object({ id: z.string() }),
       message: (data) => data.id,
     });
-    const Child = error<{ id: string }>({ name: 'Child', inherits: Parent });
+    // Round 4: the child has an explicit schema (a permissive
+    // `z.object({id: z.string()})`). The leaf re-validation runs
+    // after the parent's schema and accepts the merged data.
+    const Child = error({
+      name: 'Child',
+      fields: z.object({ id: z.string() }),
+      message: (data) => data.id,
+      inherits: Parent,
+    });
 
     const instance = Child({ id: 'x' });
     expect(instance.name).toBe('Child');
@@ -64,6 +72,10 @@ describe('inherits: parent schema validates child fields', () => {
     // holds. (A typed input would force a manual generic on the child,
     // which is a different test path; we exercise the empty-shape path
     // here.)
+    //
+    // Round 4: the all-no-schema path remains permissive. A no-schema
+    // parent writing to a no-schema child does not trigger the strict
+    // rule (the rule only fires when a parent carries a schema).
     const Parent = error({ name: 'Parent' });
     const Child = error({ name: 'Child', inherits: Parent });
 
@@ -78,7 +90,15 @@ describe('inherits: parent schema validates child fields', () => {
       message: (data) => data.id,
     });
     const PlainParent = error({ name: 'PlainParent' });
-    const Child = error<{ id: string }>({ name: 'Child', inherits: [SchemaParent, PlainParent] });
+    // Round 4: the child has an explicit schema. The strict rule
+    // does not fire (the leaf has a schema), and the leaf
+    // re-validation accepts the merged data.
+    const Child = error({
+      name: 'Child',
+      fields: z.object({ id: z.string() }),
+      message: (data) => data.id,
+      inherits: [SchemaParent, PlainParent],
+    });
 
     expect(() => Child({ id: 'x' })).not.toThrow();
     expect(() => Child({ id: 1 as unknown as string })).toThrow(ArgsValidationError);
