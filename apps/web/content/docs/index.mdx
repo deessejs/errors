@@ -17,26 +17,42 @@ The quickest way to understand how @deessejs/errors works is to see it in action
 
 ```ts title="index.ts"
 import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
 
-// Define your error types
+// Define your error type. With a Standard Schema attached,
+// every call validates the input and produces typed `fields`.
 const ValidationError = error({
   name: 'ValidationError',
-  message: 'Validation failed',
+  fields: z.object({ field: z.string() }),
+  message: (d) => `Validation failed for ${d.field}`,
 });
 
-// Use the factory to create error instances
-const validationErr = ValidationError({});
-console.log(validationErr.message); // "Validation failed"
+// Use the factory to create error instances.
+const validationErr = ValidationError({ field: 'email' });
+console.log(validationErr.message); // "Validation failed for email"
+console.log(validationErr.fields.field); // "email"
 ```
 
 For catching and handling errors, you can use the standard try/catch syntax or the library's `raise()` function:
 
 ```ts title="handling.ts"
+import { error, raise } from '@deessejs/errors';
+import { z } from 'zod';
+
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({ field: z.string() }),
+  message: (d) => `Validation failed for ${d.field}`,
+});
+
 try {
-  raise(ValidationError({}));
+  raise(ValidationError({ field: 'email' }));
 } catch (err) {
-  console.log(err.name); // "ValidationError"
-  console.log(err instanceof Error); // true
+  // `err` is `unknown` in strict mode; narrow before reading.
+  if (err instanceof Error) {
+    console.log(err.name); // "ValidationError"
+    console.log(err instanceof Error); // true
+  }
 }
 ```
 
@@ -47,14 +63,26 @@ try {
 When an error occurs as a result of another error, you can preserve that relationship using the `.from()` method. This creates a chain that maintains the full history of what went wrong.
 
 ```ts title="chaining.ts"
-const validationErr = ValidationError({});
-const appErr = error({ name: 'AppError' })();
+import { causes, error } from '@deessejs/errors';
+import { z } from 'zod';
 
-// Chain the validation error as the cause
+const ValidationError = error({
+  name: 'ValidationError',
+  fields: z.object({ field: z.string() }),
+  message: (d) => `Validation failed for ${d.field}`,
+});
+
+const AppError = error({ name: 'AppError' });
+
+const validationErr = ValidationError({ field: 'email' });
+const appErr = AppError();
+
+// Chain the validation error as the cause.
 appErr.from(validationErr);
 
 console.log(appErr.cause === validationErr); // true
-console.log(appErr.causes.length); // 1
+// The full chain is reachable via the causes() helper.
+console.log(causes(appErr).length); // 1
 ```
 
 ### Hierarchical Inheritance
@@ -70,25 +98,34 @@ const ValidationError = error({
   inherits: AppError,
 });
 
-const err = ValidationError({});
+// The no-schema factories have an empty input shape; the
+// call takes no arguments.
+const err = ValidationError();
 
-// Check the error type
+// Check the error type.
 console.log(is(err, ValidationError)); // true
 console.log(is(err, AppError)); // true (through inheritance)
 ```
 
 ### Message Templates
 
-You can define errors with message templates that include field placeholders. These are replaced at runtime with the data you provide.
+You can define errors with function-form `message`s that read the schema's post-transform output. The `message` function receives the validated fields, so the rendered string is type-checked against the schema.
 
 ```ts title="templates.ts"
-const UserError = error<{ userId: string; reason: string }>({
+import { error } from '@deessejs/errors';
+import { z } from 'zod';
+
+const UserError = error({
   name: 'UserError',
-  message: 'User "{userId}" failed: {reason}',
+  fields: z.object({
+    userId: z.string(),
+    reason: z.string(),
+  }),
+  message: (d) => `User "${d.userId}" failed: ${d.reason}`,
 });
 
 const err = UserError({ userId: 'usr_123', reason: 'not found' });
-console.log(err.message); // "User "usr_123" failed: not found"
+console.log(err.message); // 'User "usr_123" failed: not found'
 ```
 
 ## See Also
@@ -98,7 +135,7 @@ console.log(err.message); // "User "usr_123" failed: not found"
     Learn how to install and set up the library in your project.
   </Card>
   <Card title="Error Factory" href="/docs/error-factory">
-    Create custom error types with the error() function.
+    Create error types with the error() function.
   </Card>
   <Card title="Exception Chaining" href="/docs/from-method">
     Chain errors together to preserve context.

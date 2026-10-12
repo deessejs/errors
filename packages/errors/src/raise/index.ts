@@ -37,7 +37,9 @@ import type { ErrorInstance } from '../error/types.js';
  * raise(AppError().from(err).addNote('Context here'));
  * ```
  */
-const raise = (error: ErrorInstance): never => {
+const raise = <T extends Record<string, unknown> = Record<string, never>>(
+  error: ErrorInstance<T>
+): never => {
   throw error;
 };
 

@@ -31,7 +31,12 @@ const createTypedMockSchema = <Input, Output>(name = 'mock'): StandardSchemaV1<I
       version: 1,
       vendor: name,
       types: { input: undefined as unknown as Input, output: undefined as unknown as Output },
-      validate: () => ({ value: undefined as unknown as Output }),
+      // R8: a schema's validated output must be a non-null object (the
+      // runtime guard `isObjectFields` rejects `undefined`). The mock
+      // returns an empty object cast to `Output` so type-inference
+      // tests can run without the consumer caring about the value's
+      // shape; the type contract is exercised at compile time.
+      validate: () => ({ value: {} as unknown as Output }),
     },
   };
 };
@@ -81,8 +86,6 @@ describe('error() factory function', () => {
       expect(Array.isArray(instance.notes)).toBe(true);
       expect(instance.notes).toEqual([]);
       expect(instance.cause).toBeNull();
-      expect(Array.isArray(instance.causes)).toBe(true);
-      expect(instance.causes).toEqual([]);
       expect(instance.context).toBeNull();
     });
 
@@ -314,14 +317,18 @@ describe('error() factory function', () => {
       expect(instance.message).toBe('Field "" is invalid');
     });
 
-    it('should format template even with no fields provided', () => {
+    it('requires the input arg when a non-empty TInput is declared', () => {
+      // Pinning the type-level contract: a factory with a declared
+      // TInput must be called with that input. The call signature
+      // refuses no-arg calls at compile time; this test asserts the
+      // runtime consequence (a supplied empty string still formats).
       const TemplateError = error<{ field: string }>({
         name: 'TemplateError',
         message: 'Field "{field}" is invalid',
       });
 
-      const instance = TemplateError();
-      expect(instance.message).toBe('Field "{field}" is invalid');
+      const instance = TemplateError({ field: '' });
+      expect(instance.message).toBe('Field "" is invalid');
     });
 
     it('should not format message without placeholders', () => {
@@ -337,22 +344,27 @@ describe('error() factory function', () => {
 
   describe('fields with Standard Schema', () => {
     it('should accept Standard Schema fields', () => {
-      const mockSchema = createMockSchema<{ field: string; reason: string }>();
+      const mockSchema = createMockSchema<
+        { field: string; reason: string },
+        { field: string; reason: string }
+      >();
 
       const ValidationError = error({
         name: 'ValidationError',
         fields: mockSchema,
+        message: () => 'placeholder',
       });
 
       expect(ValidationError.schema).toBeDefined();
     });
 
     it('should store fields schema for runtime validation', () => {
-      const mockSchema = createMockSchema<{ field: string }>();
+      const mockSchema = createMockSchema<{ field: string }, { field: string }>();
 
       const FieldError = error({
         name: 'FieldError',
         fields: mockSchema,
+        message: () => 'placeholder',
       });
 
       expect(FieldError.schema).toBeDefined();
@@ -370,7 +382,11 @@ describe('error() factory function', () => {
     it('should infer proper types for ErrorFactory', () => {
       const AppError = error({ name: 'AppError' });
 
-      // Type checks - these compile if types are correct
+      // Type checks - these compile if types are correct.
+      // The factory returns ErrorInstance<Record<string, never>> (the
+      // empty shape, since no fields are declared), which is assignable
+      // to the bare `ErrorInstance` alias (default TFields =
+      // Record<string, never>).
       const instance: ErrorInstance = AppError();
       expect(instance.name).toBe('AppError');
     });
@@ -459,7 +475,11 @@ describe('error() factory function', () => {
       // Regression for issue #83: the field shape is derived from the
       // schema's output type, not from a placeholder T parameter.
       const schema = createTypedMockSchema<unknown, { email: string; age: number }>();
-      const ValidationError = error({ name: 'ValidationError', fields: schema });
+      const ValidationError = error({
+        name: 'ValidationError',
+        fields: schema,
+        message: () => 'placeholder',
+      });
 
       // The factory accepts exactly the schema's output shape as input.
       // This line is the inference contract: it must type-check without
@@ -482,13 +502,22 @@ describe('error() factory function', () => {
 
     it('should infer without requiring an explicit T annotation', () => {
       // The schema declares its output. The factory's return type
-      // carries that output through `InferFields<S>`.
+      // carries that output through the schema overload's
+      // `InferOutput<S>`. Phase 2: with a schema, the consumer
+      // must supply a function-form `message`; we use a minimal
+      // one that ignores the data.
       type EmailOutput = { email: string };
       const schema = createTypedMockSchema<unknown, EmailOutput>();
-      const Factory = error({ name: 'EmailError', fields: schema });
+      const Factory = error({
+        name: 'EmailError',
+        fields: schema,
+        message: () => 'placeholder',
+      });
 
-      // Type assertion at compile time: the call must accept `EmailOutput`.
-      // If inference were broken, this would fail with a type error.
+      // Type assertion at compile time: the call must accept
+      // `Partial<EmailOutput>` (the schema's input shape, made
+      // optional for ergonomic call sites). If inference were
+      // broken, this would fail with a type error.
       const _check: (input?: Partial<EmailOutput>) => ErrorInstance<EmailOutput> = Factory;
       void _check;
 

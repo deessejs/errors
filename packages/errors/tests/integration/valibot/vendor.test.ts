@@ -18,7 +18,7 @@ describe('valibot 1', () => {
         tag: v.picklist(['info', 'warn', 'error']),
         message: v.string(),
       }),
-      message: (data: { tag: string; message: string }) => `[${data.tag}] ${data.message}`,
+      message: (data) => `[${data.tag}] ${data.message}`,
     });
     const instance = E({ tag: 'info', message: 'hello' });
     expect(instance.message).toBe('[info] hello');
@@ -31,9 +31,16 @@ describe('valibot 1', () => {
       fields: v.object({
         tag: v.picklist(['info', 'warn', 'error']),
       }),
-      message: (data: { tag: string }) => data.tag,
+      message: (data) => data.tag,
     });
-    expect(() => E({ tag: 'weird' })).toThrow(ArgsValidationError);
+    // The valibot picklist infers the input shape as the literal
+    // union of the allowed values. The mock input 'weird' is
+    // rejected at runtime by the validator. We cast through unknown
+    // to bypass the static type (the picklist literal is narrower
+    // than string) and exercise the runtime rejection path.
+    expect(() => E({ tag: 'weird' } as unknown as { tag: 'info' | 'warn' | 'error' })).toThrow(
+      ArgsValidationError
+    );
   });
 
   it('exposes the issues and vendor on failure', () => {
@@ -42,7 +49,7 @@ describe('valibot 1', () => {
       fields: v.object({
         count: v.pipe(v.number(), v.minValue(0)),
       }),
-      message: (data: { count: number }) => String(data.count),
+      message: (data) => String(data.count),
     });
     let caught: unknown = null;
     try {

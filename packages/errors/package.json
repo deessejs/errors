@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/errors",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "description": "Lightweight, type-safe error handling for TypeScript — Python-style exception chaining, hierarchical inheritance, and rich error semantics. Function-based API, ESM-only, designed for first-class interoperability with @deessejs/fp.",
   "homepage": "https://errors.deessejs.com",
   "repository": {
@@ -31,6 +31,9 @@
     "test:run": "vitest run",
     "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit",
+    "type-check:test": "tsc --noEmit -p tsconfig.test.json",
+    "test:consumer": "pnpm build && node tests/consumer-from-dist.mjs",
+    "test:docs": "pnpm build && node tests/docs-examples-typecheck.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },

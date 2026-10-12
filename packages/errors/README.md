@@ -36,19 +36,28 @@ npm install @deessejs/errors
 ## Usage
 
 ```typescript
+import { z } from 'zod';
 import { error, raise, is, causes } from '@deessejs/errors';
 
-// Define an error factory with a templated message
+// Define a factory with a Standard Schema. The `message` is a
+// function that receives the schema's *output* (post-transform).
+// The factory's call signature requires the schema's *input*,
+// so callers can supply the validated shape directly.
 const ValidationError = error({
   name: 'ValidationError',
-  message: 'Field "{field}" is invalid: {reason}',
+  fields: z.object({
+    field: z.string(),
+    reason: z.string(),
+  }),
+  message: (data) => `Field "${data.field}" is invalid: ${data.reason}`,
 });
 
-// Construct a typed error
+// Construct a typed error. The schema validates the input.
 const err = ValidationError({ field: 'email', reason: 'invalid format' });
 // err.message === 'Field "email" is invalid: invalid format'
 
-// Chain a cause
+// Chain a cause. .from() replaces the previous cause; the
+// previous cause is reachable through its own .cause link.
 const cause = error({ name: 'NetworkError' })();
 err.from(cause);
 
@@ -70,11 +79,11 @@ causes(err); // [cause]
 
 ## Engine compatibility
 
-| Runtime    | Required             |
-| ---------- | -------------------- |
-| Node.js    | `>=22.14.0`          |
-| pnpm       | `10` for development |
-| TypeScript | `5.x`                |
+| Runtime    | Required                                                         |
+| ---------- | ---------------------------------------------------------------- |
+| Node.js    | `>=22.14.0`                                                      |
+| pnpm       | `10` for development                                             |
+| TypeScript | `5.4` or later (the public `error()` overloads use `NoInfer<T>`) |
 
 ESM-only. Consumers using a CJS resolver need to use dynamic `import()` or migrate to ESM.
 

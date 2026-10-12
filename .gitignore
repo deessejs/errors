@@ -43,5 +43,9 @@ temp/
 # Generated files
 *.tsbuildinfo
 
+# Docs examples type-check probe fixtures (generated on the
+# fly by packages/errors/tests/docs-examples-typecheck.mjs).
+packages/errors/tests/.docs-probe/
+
 # Changesets
 .changeset/
