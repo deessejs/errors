@@ -7,7 +7,8 @@
  * in the consumer-facing docs site; this suite verifies the contract.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import type { vi } from 'vitest';
 import { ArgsValidationError, error } from '../src/error/error.js';
 import type { StandardSchemaV1 } from '../src/index.js';
 
