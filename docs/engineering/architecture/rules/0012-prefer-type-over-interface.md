@@ -52,7 +52,7 @@ The convention this rule picks is `type`, for three reasons:
   `type` makes merge a deliberate choice, not an accident.
 - **`type` is the union's natural home.** A codebase that mixes
   unions and interfaces has to remember that `interface X extends
-Y | Z` is invalid; the syntax switches between the two. A
+  Y | Z` is invalid; the syntax switches between the two. A
   codebase that uses `type` uniformly has one syntax for "shape"
   and one syntax for "either this or that".
 

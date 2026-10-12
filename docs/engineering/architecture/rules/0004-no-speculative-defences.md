@@ -327,7 +327,7 @@ the operational form of that position.
   precise tool for "value is absent" and is not the kind of
   speculative defence the rule forbids.
 - **Kale, Aziz.** _Why Senior Developers Rarely Need `if (x ==
-null)`._ Dev Genius, July 2026. The reframe — "why was this value
+  null)`._ Dev Genius, July 2026. The reframe — "why was this value
   allowed to be null in the first place?" — is captured in the
   rule's question 0.
 - **Pizza again.** Cited for the operational form: "if the type

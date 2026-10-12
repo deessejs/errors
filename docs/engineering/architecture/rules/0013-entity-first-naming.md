@@ -139,7 +139,7 @@ The rule applies to **shape names** — the name of a class, a type,
 a module, a service handle. It does not apply to:
 
 - **Variable names** that hold an instance briefly. `const
-manager = new OrderCancellationHandler();` is acceptable; the
+  manager = new OrderCancellationHandler();` is acceptable; the
   variable is scoped to one expression and the type name carries
   the focal responsibility.
 - **Test names**. `UserManagerTest` is acceptable as a test class

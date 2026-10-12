@@ -1,0 +1,12 @@
+{
+  "extends": ["../../.oxlintrc.json"],
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    "tests/integration/**",
+    "tests/perf/**",
+    "tests/types/**",
+    "tests/snapshots/**",
+    "examples/**"
+  ]
+}

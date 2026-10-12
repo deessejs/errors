@@ -142,7 +142,7 @@ The refactor is mechanical and reviewable in one PR.
 - **Code review**. A reviewer who sees `process.env` in a business
   file (anything under `src/` that ships at runtime) blocks the PR.
 - **Grep gate**. A standing check before release: `grep -r
-"process\.env" src/` returns only the accessor module. If any
+  "process\.env" src/` returns only the accessor module. If any
   other file shows up, the release is blocked until the references
   are migrated.
 - **CI lint** (future). A custom rule or `no-restricted-syntax`
@@ -163,7 +163,7 @@ file is the rule, not the exception.
   operational form of "minimal dependencies, typed boundaries".
 - **Rule 0008** — No Chained Type Assertions: the type discipline
   this rule relies on. A typed accessor that required an `as
-unknown as Environment` to construct is a violation of 0008; the
+  unknown as Environment` to construct is a violation of 0008; the
   accessor module is the only file that legitimately narrows the
   ambient `process` shape.
 - **Rule 0015** — Domain-Specific Types Over Primitives: rule

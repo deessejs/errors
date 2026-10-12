@@ -55,7 +55,7 @@ compiles, but the type contract is now fictional.
 - A single `value as unknown` followed by **structural work** that
   produces a new value, not a second cast. Example:
   `value as unknown; if (!isShape(value)) throw ...; return value as
-Shape;` is acceptable because the work between the two
+  Shape;` is acceptable because the work between the two
   occurrences is a runtime guard, not another assertion.
 - Augmentation of host types with `declare module` to teach the type
   system about a property the runtime provides. This is a
@@ -69,7 +69,7 @@ fix is one of three, in order of preference:
 1. **Use a runtime guard that produces the type the compiler
    expects.** A function that takes `unknown` and returns `T | null`
    removes the cast at the call site: `const typed = toShape(value);
-if (typed === null) throw ...;`. The compiler narrows after the
+   if (typed === null) throw ...;`. The compiler narrows after the
    guard; the assertion disappears.
 
 2. **Change the source type.** If `value` is typed too narrowly to

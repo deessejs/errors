@@ -6,33 +6,33 @@
 
 ## Built-in sub-agents
 
-| Agent | Model | Tools | Purpose |
-|-------|-------|-------|---------|
-| Explore | Haiku | Read-only | File discovery, code search, codebase exploration |
-| Plan | Inherits | Read-only | Codebase research for planning (used in plan mode) |
-| general-purpose | Inherits | All tools | Complex multi-step research and modifications |
-| statusline-setup | Sonnet | - | Configures status line |
-| Claude Code Guide | Haiku | - | Answers questions about Claude Code features |
+| Agent             | Model    | Tools     | Purpose                                            |
+| ----------------- | -------- | --------- | -------------------------------------------------- |
+| Explore           | Haiku    | Read-only | File discovery, code search, codebase exploration  |
+| Plan              | Inherits | Read-only | Codebase research for planning (used in plan mode) |
+| general-purpose   | Inherits | All tools | Complex multi-step research and modifications      |
+| statusline-setup  | Sonnet   | -         | Configures status line                             |
+| Claude Code Guide | Haiku    | -         | Answers questions about Claude Code features       |
 
 ## Configuration
 
 ### Frontmatter fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Unique identifier (lowercase, hyphens) |
-| `description` | Yes | When Claude should delegate to this sub-agent |
-| `tools` | No | Allowlist of tools (inherits all if omitted) |
-| `disallowedTools` | No | Denylist of tools to remove |
-| `model` | No | `sonnet`, `opus`, `haiku`, full ID, or `inherit` |
-| `permissionMode` | No | `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan` |
-| `maxTurns` | No | Max agentic turns before stopping |
-| `skills` | No | Skills to preload into context at startup |
-| `mcpServers` | No | MCP servers scoped to this sub-agent |
-| `memory` | No | `user`, `project`, or `local` for persistent learning |
-| `background` | No | `true` to always run in background |
-| `isolation` | No | `worktree` for isolated git worktree |
-| `color` | No | UI color: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan` |
+| Field             | Required | Description                                                                    |
+| ----------------- | -------- | ------------------------------------------------------------------------------ |
+| `name`            | Yes      | Unique identifier (lowercase, hyphens)                                         |
+| `description`     | Yes      | When Claude should delegate to this sub-agent                                  |
+| `tools`           | No       | Allowlist of tools (inherits all if omitted)                                   |
+| `disallowedTools` | No       | Denylist of tools to remove                                                    |
+| `model`           | No       | `sonnet`, `opus`, `haiku`, full ID, or `inherit`                               |
+| `permissionMode`  | No       | `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`       |
+| `maxTurns`        | No       | Max agentic turns before stopping                                              |
+| `skills`          | No       | Skills to preload into context at startup                                      |
+| `mcpServers`      | No       | MCP servers scoped to this sub-agent                                           |
+| `memory`          | No       | `user`, `project`, or `local` for persistent learning                          |
+| `background`      | No       | `true` to always run in background                                             |
+| `isolation`       | No       | `worktree` for isolated git worktree                                           |
+| `color`           | No       | UI color: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan` |
 
 ### Example sub-agent definition
 
@@ -51,24 +51,24 @@ specific, actionable feedback on quality, security, and best practices.
 
 ## Scopes and priority
 
-| Location | Scope | Priority |
-|----------|-------|----------|
-| Managed settings | Organization-wide | 1 (highest) |
-| `--agents` CLI flag | Current session | 2 |
-| `.claude/agents/` | Project | 3 |
-| `~/.claude/agents/` | User (all projects) | 4 |
-| Plugin `agents/` | Plugin enabled | 5 (lowest) |
+| Location            | Scope               | Priority    |
+| ------------------- | ------------------- | ----------- |
+| Managed settings    | Organization-wide   | 1 (highest) |
+| `--agents` CLI flag | Current session     | 2           |
+| `.claude/agents/`   | Project             | 3           |
+| `~/.claude/agents/` | User (all projects) | 4           |
+| Plugin `agents/`    | Plugin enabled      | 5 (lowest)  |
 
 Higher priority wins when names conflict.
 
 ## Skills vs Sub-agents
 
-| Aspect | Skills | Sub-agents |
-|--------|--------|------------|
-| Context | Runs in main conversation | Isolated context |
-| Use case | Reusable prompts/workflows | Side tasks with verbose output |
-| Tool access | Uses main session tools | Custom tool restrictions |
-| Invocation | `$/skill-name` or auto | Agent tool or @-mention |
+| Aspect      | Skills                     | Sub-agents                     |
+| ----------- | -------------------------- | ------------------------------ |
+| Context     | Runs in main conversation  | Isolated context               |
+| Use case    | Reusable prompts/workflows | Side tasks with verbose output |
+| Tool access | Uses main session tools    | Custom tool restrictions       |
+| Invocation  | `$/skill-name` or auto     | Agent tool or @-mention        |
 
 **Preload skills into sub-agents:** Use `skills` field to inject skill content at startup. Full content is injected, not just made available for invocation.
 
@@ -82,11 +82,11 @@ skills:
 
 Scopes:
 
-| Scope | Location | Use when |
-|-------|----------|----------|
-| `user` | `~/.claude/agent-memory/<name>/` | Cross-project knowledge |
-| `project` | `.claude/agent-memory/<name>/` | Project-specific, version-controlled |
-| `local` | `.claude/agent-memory-local/<name>/` | Project-specific, not version-controlled |
+| Scope     | Location                             | Use when                                 |
+| --------- | ------------------------------------ | ---------------------------------------- |
+| `user`    | `~/.claude/agent-memory/<name>/`     | Cross-project knowledge                  |
+| `project` | `.claude/agent-memory/<name>/`       | Project-specific, version-controlled     |
+| `local`   | `.claude/agent-memory-local/<name>/` | Project-specific, not version-controlled |
 
 Memory includes first 200 lines or 25KB of `MEMORY.md`, whichever is first.
 
@@ -97,18 +97,18 @@ Sub-agents can define `PreToolUse` and `PostToolUse` hooks:
 ```yaml
 hooks:
   PreToolUse:
-    - matcher: "Bash"
+    - matcher: 'Bash'
       hooks:
         - type: command
-          command: "./scripts/validate.sh"
+          command: './scripts/validate.sh'
 ```
 
 Lifecycle events in `settings.json`:
 
-| Event | Fires |
-|-------|-------|
-| `SubagentStart` | When sub-agent begins |
-| `SubagentStop` | When sub-agent completes |
+| Event           | Fires                    |
+| --------------- | ------------------------ |
+| `SubagentStart` | When sub-agent begins    |
+| `SubagentStop`  | When sub-agent completes |
 
 ## Invocation patterns
 
@@ -120,12 +120,12 @@ Lifecycle events in `settings.json`:
 
 Fork is a sub-agent that inherits the entire conversation history instead of starting fresh. Key differences:
 
-| | Fork | Named sub-agent |
-|--|------|-----------------|
-| Context | Full history | Fresh |
-| System prompt | Same as main | From definition |
-| Model | Same as main | From definition |
-| Permissions | Prompts in terminal | Pre-approved |
+|               | Fork                | Named sub-agent |
+| ------------- | ------------------- | --------------- |
+| Context       | Full history        | Fresh           |
+| System prompt | Same as main        | From definition |
+| Model         | Same as main        | From definition |
+| Permissions   | Prompts in terminal | Pre-approved    |
 
 Enable with `CLAUDE_CODE_FORK_SUBAGENT=1` (experimental, v2.1.117+).
 

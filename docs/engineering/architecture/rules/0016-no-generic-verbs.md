@@ -146,7 +146,7 @@ It does not refuse:
 
 - **Generic verbs inside a function body** — a comment, a log
   message, an error message. `// process the message before
-sending` is fine in a comment; the comment does not have to
+  sending` is fine in a comment; the comment does not have to
   carry the contract.
 - **Generic verbs as nouns** — `handleRequest` as a class name is
   a different smell (rule 0013). The rule here is about the

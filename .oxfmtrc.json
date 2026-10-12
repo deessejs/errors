@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    ".next/",
+    ".turbo/",
+    ".cache/",
+    ".tmp/",
+    "temp/",
+
+    "# Agent tooling metadata (not project source)",
+    ".claude/",
+
+    "# Generated files",
+    "apps/web/.source/",
+    "apps/web/next-env.d.ts"
+  ]
+}
