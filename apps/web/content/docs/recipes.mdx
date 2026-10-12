@@ -43,7 +43,7 @@ function validateUser(data: unknown) {
         field: issue.path.join('.'),
         reason: issue.message,
         value: (result.error as { value?: unknown }).value,
-      }),
+      })
     );
   }
 
@@ -79,7 +79,7 @@ async function fetchWithError(url: string) {
       NetworkError({
         endpoint: url,
         statusCode: response.status,
-      }),
+      })
     );
   }
 
@@ -108,7 +108,11 @@ const DatabaseError = error({
 });
 
 // Wrap database operations
-async function executeQuery(db: { query: (q: string) => Promise<unknown> }, query: string, table: string) {
+async function executeQuery(
+  db: { query: (q: string) => Promise<unknown> },
+  query: string,
+  table: string
+) {
   try {
     return await db.query(query);
   } catch (err) {

@@ -158,7 +158,7 @@
     schema whose `InferOutput` is `null`, an `unknown[]`, a
     primitive, or `undefined` is rejected at compile time via
     the `fields: S & (IsObjectOutput<InferOutput<S>> extends true
-? unknown : never)` intersection, and at runtime via the
+    ? unknown : never)` intersection, and at runtime via the
     `isObjectFields` guard that throws `ArgsValidationError` if
     the schema's value is malformed.
 

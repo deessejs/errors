@@ -85,7 +85,7 @@ This lets you mix @deessejs/errors with standard JavaScript error handling seaml
 When `is()` returns true, TypeScript knows the error is of that specific type. This enables type-safe access to fields:
 
 ```ts title="type-safety.ts"
-import { z } from "zod";
+import { z } from 'zod';
 import { error, is } from '@deessejs/errors';
 
 const ValidationError = error({

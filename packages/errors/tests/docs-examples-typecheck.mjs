@@ -141,7 +141,7 @@ function isSignatureOnlyBlock(code) {
         !l.startsWith('//') &&
         !l.startsWith('/*') &&
         !l.startsWith('*') &&
-        !importLineRe.test(l),
+        !importLineRe.test(l)
     );
   if (lines.length === 0) return true;
   for (const line of lines) {
@@ -253,8 +253,8 @@ for (const block of allBlocks) {
         include: [fixture],
       },
       null,
-      2,
-    ),
+      2
+    )
   );
 
   // Type check.
@@ -267,7 +267,9 @@ for (const block of allBlocks) {
       file: block.file,
       index: block.index,
       kind: 'type',
-      output: (typeResult.stdout || '').trim() + (typeResult.stderr ? '\n' + typeResult.stderr.trim() : ''),
+      output:
+        (typeResult.stdout || '').trim() +
+        (typeResult.stderr ? '\n' + typeResult.stderr.trim() : ''),
     });
     continue;
   }
@@ -278,7 +280,7 @@ for (const block of allBlocks) {
   const runResult = spawnSync(
     process.execPath,
     ['--experimental-strip-types', '--no-warnings', fixture],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
   );
   if (runResult.status !== 0) {
     failures.push({
@@ -311,7 +313,10 @@ for (const block of allBlocks) {
       index: block.index,
       kind: 'expectation',
       output: mismatches
-        .map((m) => `  console.log #${m.i + 1} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`)
+        .map(
+          (m) =>
+            `  console.log #${m.i + 1} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`
+        )
         .join('\n'),
     });
     continue;
@@ -329,7 +334,7 @@ if (!process.env.DOCS_PROBE_KEEP) {
 }
 
 console.log(
-  `docs-examples-typecheck: ${passBlocks} block(s) pass, ${sigBlocks} signature-only, ${totalBlocks - sigBlocks - passBlocks} fail (${totalBlocks} total from ${mdxFiles.length} files); ${totalAnnotations} annotation(s) verified`,
+  `docs-examples-typecheck: ${passBlocks} block(s) pass, ${sigBlocks} signature-only, ${totalBlocks - sigBlocks - passBlocks} fail (${totalBlocks} total from ${mdxFiles.length} files); ${totalAnnotations} annotation(s) verified`
 );
 
 // Self-test: a probe that never fails is not a probe. The
@@ -350,7 +355,7 @@ console.log(
   }
   if (expectations.length === 0 || !selfTestFailed) {
     console.error(
-      '\nFATAL: probe self-test failed — annotation regex does not match the expected format, or the expectation matcher does not detect mismatches. The probe cannot be trusted to verify the docs.',
+      '\nFATAL: probe self-test failed — annotation regex does not match the expected format, or the expectation matcher does not detect mismatches. The probe cannot be trusted to verify the docs.'
     );
     process.exit(2);
   }
@@ -358,7 +363,7 @@ console.log(
 
 if (totalAnnotations === 0) {
   console.error(
-    '\nFATAL: no // -> annotations found across the docs. The probe cannot verify announced values. Either the docs lack annotations, or the regex does not match them.',
+    '\nFATAL: no // -> annotations found across the docs. The probe cannot verify announced values. Either the docs lack annotations, or the regex does not match them.'
   );
   process.exit(2);
 }

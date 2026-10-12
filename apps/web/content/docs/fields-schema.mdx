@@ -10,11 +10,11 @@ Errors become much more useful when they carry structured data about what went w
 With a Standard Schema, the field shape is the schema's `InferOutput`. The factory's call signature requires the schema's `InferInput`. Inputs that don't validate throw `ArgsValidationError` at construction.
 
 ```ts title="basic.ts"
-import { z } from "zod";
-import { error } from "@deessejs/errors";
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({
     field: z.string(),
     reason: z.string(),
@@ -24,15 +24,15 @@ const ValidationError = error({
 });
 
 const err = ValidationError({
-  field: "email",
-  reason: "invalid format",
+  field: 'email',
+  reason: 'invalid format',
 });
 console.log(err.fields.field); // -> email
 
 const err2 = ValidationError({
-  field: "email",
-  reason: "invalid format",
-  value: "not-an-email",
+  field: 'email',
+  reason: 'invalid format',
+  value: 'not-an-email',
 });
 console.log(err2.fields.value); // -> not-an-email
 ```
@@ -44,18 +44,18 @@ The fields object is always accessible on the error instance, giving you a consi
 Once an error is caught, you can access its fields to provide meaningful feedback or logging:
 
 ```ts title="access.ts"
-import { z } from "zod";
-import { error, is, raise } from "@deessejs/errors";
+import { z } from 'zod';
+import { error, is, raise } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({ field: z.string(), reason: z.string() }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
 try {
   try {
-    raise(ValidationError({ field: "email", reason: "not a valid email address" }));
+    raise(ValidationError({ field: 'email', reason: 'not a valid email address' }));
   } catch (err) {
     // err is `unknown` in strict mode; narrow before reading.
     if (is(err, ValidationError)) {
@@ -77,11 +77,11 @@ For production-grade error definitions, attach a [Standard Schema](https://stand
 Inputs that don't validate throw an `ArgsValidationError` carrying the vendor name and the failure issues:
 
 ```ts title="runtime-validation.ts"
-import { z } from "zod";
-import { ArgsValidationError, error } from "@deessejs/errors";
+import { z } from 'zod';
+import { ArgsValidationError, error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({
     field: z.string().min(1),
     reason: z.string().min(1),
@@ -90,12 +90,12 @@ const ValidationError = error({
 });
 
 // Valid input -> rendered message
-const ok = ValidationError({ field: "email", reason: "invalid" });
+const ok = ValidationError({ field: 'email', reason: 'invalid' });
 console.log(ok.message); // -> Field "email": invalid
 
 // Invalid input -> ArgsValidationError
 try {
-  ValidationError({ field: "", reason: "invalid" });
+  ValidationError({ field: '', reason: 'invalid' });
 } catch (err) {
   if (err instanceof ArgsValidationError) {
     console.log(err.vendor); // -> zod
@@ -107,11 +107,11 @@ try {
 ### Using Valibot
 
 ```ts title="valibot.ts"
-import * as v from "valibot";
-import { error } from "@deessejs/errors";
+import * as v from 'valibot';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: v.object({
     field: v.pipe(v.string(), v.minLength(1)),
     reason: v.pipe(v.string(), v.minLength(1)),
@@ -119,26 +119,26 @@ const ValidationError = error({
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
-const err = ValidationError({ field: "email", reason: "invalid" });
+const err = ValidationError({ field: 'email', reason: 'invalid' });
 console.log(err.message); // -> Field email: invalid
 ```
 
 ### Using ArkType
 
 ```ts title="arktype.ts"
-import { type } from "@ark/type";
-import { error } from "@deessejs/errors";
+import { type } from '@ark/type';
+import { error } from '@deessejs/errors';
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: type({
-    field: "string",
-    reason: "string",
+    field: 'string',
+    reason: 'string',
   }),
   message: (data) => `Field ${data.field}: ${data.reason}`,
 });
 
-const err = ValidationError({ field: "email", reason: "invalid" });
+const err = ValidationError({ field: 'email', reason: 'invalid' });
 console.log(err.message); // -> Field email: invalid
 ```
 
@@ -165,11 +165,11 @@ Schema validation in error factories provides several benefits:
 Here are some common patterns for error fields:
 
 ```ts title="patterns.ts"
-import { z } from "zod";
-import { error } from "@deessejs/errors";
+import { z } from 'zod';
+import { error } from '@deessejs/errors';
 
 const DatabaseError = error({
-  name: "DatabaseError",
+  name: 'DatabaseError',
   fields: z.object({
     query: z.string(),
     table: z.string().optional(),
@@ -179,7 +179,7 @@ const DatabaseError = error({
 });
 
 const ApiError = error({
-  name: "ApiError",
+  name: 'ApiError',
   fields: z.object({
     endpoint: z.string(),
     statusCode: z.number(),
@@ -189,7 +189,7 @@ const ApiError = error({
 });
 
 const ValidationError = error({
-  name: "ValidationError",
+  name: 'ValidationError',
   fields: z.object({
     field: z.string(),
     reason: z.string(),

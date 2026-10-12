@@ -119,8 +119,7 @@ const CacheError = error({
     key: z.string(),
     operation: z.string(),
   }),
-  message: (d) =>
-    `Cache ${d.operation} for key ${d.key} at ${d.endpoint} → ${d.path} failed`,
+  message: (d) => `Cache ${d.operation} for key ${d.key} at ${d.endpoint} → ${d.path} failed`,
   inherits: [NetworkError, StorageError],
 });
 

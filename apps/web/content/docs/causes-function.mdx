@@ -118,14 +118,10 @@ const appErr = AppError().from(networkErr);
 
 // The walk finds the NetworkError at chain[0] and the
 // ValidationError at chain[1] (the root cause, last).
-const hasNetworkFailure = causes(appErr).some(
-  (cause) => is(cause, NetworkError),
-);
+const hasNetworkFailure = causes(appErr).some((cause) => is(cause, NetworkError));
 console.log(hasNetworkFailure); // -> true
 
-const hasValidationError = causes(appErr).some(
-  (cause) => is(cause, ValidationError),
-);
+const hasValidationError = causes(appErr).some((cause) => is(cause, ValidationError));
 console.log(hasValidationError); // -> true
 ```
 
@@ -148,9 +144,7 @@ const appErr = AppError().from(networkErr);
 // through .cause.
 appErr.from(new Error('Disk full'));
 
-console.log(
-  causes(appErr).some((cause) => is(cause, NetworkError)),
-); // -> false
+console.log(causes(appErr).some((cause) => is(cause, NetworkError))); // -> false
 ```
 
 ## See Also
