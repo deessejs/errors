@@ -37,6 +37,10 @@ temp/
 # pnpm
 .pnpm-store/
 
+# npm/yarn are not used in this pnpm monorepo; ignore their lockfiles
+package-lock.json
+yarn.lock
+
 # Turbo remote cache
 .turbo/
 
