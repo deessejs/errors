@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
+    "snippet-check": "node scripts/check-marketing-examples.mjs",
     "postinstall": "fumadocs-mdx && next typegen",
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc --noEmit -p tsconfig.test.json"

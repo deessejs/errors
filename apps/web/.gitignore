@@ -9,6 +9,7 @@
 /.next/
 /out/
 /build
+/marketing-check
 *.tsbuildinfo
 
 # misc

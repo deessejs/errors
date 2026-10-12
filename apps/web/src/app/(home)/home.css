@@ -1,0 +1,161 @@
+/* ------------------------------------------------------------------ */
+/* Home theme tokens (Tailwind v4 @theme)                              */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  /* Headings (used by SectionHeader, Hero, Concepts, Benefits).       */
+  --text-heading-20: 1.25rem;
+  --text-heading-20--line-height: 1.75rem;
+  --text-heading-24: 1.5rem;
+  --text-heading-24--line-height: 2rem;
+  --text-heading-32: 2rem;
+  --text-heading-32--line-height: 2.25rem;
+  --text-heading-40: 2.5rem;
+  --text-heading-40--line-height: 2.75rem;
+  --text-heading-48: 3rem;
+  --text-heading-48--line-height: 1;
+  --text-heading-56: 3.5rem;
+  --text-heading-56--line-height: 1;
+
+  /* Copy (descriptions, footer rows). */
+  --text-copy-13: 0.8125rem;
+  --text-copy-13--line-height: 1.25rem;
+  --text-copy-14: 0.875rem;
+  --text-copy-14--line-height: 1.5rem;
+  --text-copy-16: 1rem;
+  --text-copy-16--line-height: 1.75rem;
+  --text-copy-18: 1.125rem;
+  --text-copy-18--line-height: 1.75rem;
+
+  /* Labels (eyebrow, links, button text). */
+  --text-label-13: 0.8125rem;
+  --text-label-13--line-height: 1.25rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Home classes (the FP visual language).                             */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  .home-eyebrow {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+    font-size: 0.8125rem;
+    line-height: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-foreground, #6b7280);
+  }
+
+  .home-button {
+    border-radius: 0.375rem;
+  }
+
+  .home-rail {
+    border-color: var(--border, #e5e7eb);
+  }
+
+  .home-skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 50;
+    padding: 0.5rem 0.75rem;
+    background: var(--background, #fff);
+    color: var(--foreground, #111827);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 0.375rem;
+  }
+  .home-skip-link:focus {
+    left: 1rem;
+    top: 1rem;
+  }
+
+  .home-theme-switch {
+    /* Placeholder for future theme-switch styling parity with FP. */
+  }
+
+  /* Navigation (parity with FP's fp-nav-* utilities). */
+  .fp-nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .fp-nav-viewport {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .fp-nav-content {
+    background: var(--background, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 0.5rem;
+    box-shadow:
+      0 1px 2px 0 rgb(0 0 0 / 0.05),
+      0 8px 24px -8px rgb(0 0 0 / 0.12);
+  }
+
+  .fp-nav-eyebrow {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-foreground, #6b7280);
+  }
+
+  .fp-nav-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: background-color 150ms ease, color 150ms ease;
+    color: var(--foreground, #111827);
+  }
+  .fp-nav-item:hover {
+    background: var(--accent, #f3f4f6);
+  }
+  .fp-nav-item-desc {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground, #6b7280);
+  }
+
+  /* Mobile drawer. */
+  .fp-mobile-menu {
+    background: var(--background, #fff);
+  }
+  .fp-mobile-eyebrow {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground, #6b7280);
+  }
+  .fp-mobile-trigger {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground, #111827);
+  }
+  .fp-mobile-content {
+    padding: 0.25rem 0 0.5rem 0.5rem;
+  }
+  .fp-mobile-chevron {
+    color: var(--muted-foreground, #6b7280);
+    font-size: 1.125rem;
+    line-height: 1rem;
+  }
+}

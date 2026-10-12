@@ -3,8 +3,9 @@
 import { Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { cn } from '@/lib/cn';
 
-export function CtaCard() {
+export function CtaCard({ noBorderB = false }: { noBorderB?: boolean } = {}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -25,7 +26,7 @@ export function CtaCard() {
   };
 
   return (
-    <section className="bg-fd-background-secondary">
+    <section className={cn('bg-fd-background-secondary', !noBorderB && 'border-b border-border')}>
       <div className="max-w-6xl mx-auto px-6 pb-24">
         <div className="mt-10 border border-fd-border bg-fd-card rounded-none p-8">
           <h3 className="text-2xl font-bold text-fd-foreground">Ready to get started?</h3>
